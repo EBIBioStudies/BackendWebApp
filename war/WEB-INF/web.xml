@@ -36,7 +36,8 @@
   </servlet>
   <servlet-mapping>
     <servlet-name>webdav</servlet-name>
-    <url-pattern>/webdav/*</url-pattern>
+    <url-pattern>/data/*</url-pattern>
   </servlet-mapping>
+
 
 </web-app>

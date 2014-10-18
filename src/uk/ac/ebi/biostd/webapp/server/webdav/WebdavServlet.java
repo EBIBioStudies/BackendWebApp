@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package uk.ac.ebi.biostd.webapp.server;
+package uk.ac.ebi.biostd.webapp.server.webdav;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -318,7 +318,7 @@ public class WebdavServlet
         }
 
         if (method.equals(METHOD_PROPFIND)) {
-            doPropfind(req, resp);
+            doPropfind(req, resp,"U01");
         } else if (method.equals(METHOD_PROPPATCH)) {
             doProppatch(req, resp);
         } else if (method.equals(METHOD_MKCOL)) {
@@ -434,7 +434,7 @@ public class WebdavServlet
     /**
      * PROPFIND Method.
      */
-    protected void doPropfind(HttpServletRequest req, HttpServletResponse resp)
+    protected void doPropfind(HttpServletRequest req, HttpServletResponse resp, String usrDir)
         throws ServletException, IOException {
 
         if (!listings) {
@@ -450,6 +450,8 @@ public class WebdavServlet
         if (path.length() > 1 && path.endsWith("/"))
             path = path.substring(0, path.length() - 1);
 
+        path = "/data/"+usrDir+path;
+        
         // Properties which are to be displayed.
         Vector<String> properties = null;
         // Propfind depth
@@ -542,7 +544,7 @@ public class WebdavServlet
 
         }
 
-        WebResource resource = resources.getResource(path);
+        WebResource resource = resources.getResource(path); // "/"+usrDir);
 
         if (!resource.exists()) {
             int slash = path.lastIndexOf('/');
