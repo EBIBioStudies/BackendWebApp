@@ -3,28 +3,29 @@ package uk.ac.ebi.biostd.webapp.server.webdav;
 import java.io.InputStream;
 import java.net.URL;
 import java.security.cert.Certificate;
+import java.util.Date;
 import java.util.jar.Manifest;
 
 import org.apache.catalina.WebResource;
 import org.apache.catalina.WebResourceRoot;
+import org.apache.catalina.util.ConcurrentDateFormat;
 
 public class RootResource implements WebResource
 {
 
  private WebResourceRoot wrRoot;
+ private String mimeType;
  
  @Override
  public long getLastModified()
  {
-  // TODO Auto-generated method stub
-  return 0;
+  return System.currentTimeMillis();
  }
 
  @Override
  public String getLastModifiedHttp()
  {
-  // TODO Auto-generated method stub
-  return null;
+  return ConcurrentDateFormat.formatRfc1123(new Date(getLastModified()));
  }
 
  @Override
@@ -60,84 +61,72 @@ public class RootResource implements WebResource
  @Override
  public String getName()
  {
-  // TODO Auto-generated method stub
-  return null;
+  return "/";
  }
 
  @Override
  public long getContentLength()
  {
-  // TODO Auto-generated method stub
   return 0;
  }
 
  @Override
  public String getCanonicalPath()
  {
-  // TODO Auto-generated method stub
-  return null;
+  return "/";
  }
 
  @Override
  public boolean canRead()
  {
-  // TODO Auto-generated method stub
-  return false;
+  return true;
  }
 
  @Override
  public String getWebappPath()
  {
-  // TODO Auto-generated method stub
-  return null;
+  return "/";
  }
 
  @Override
  public String getETag()
  {
-  // TODO Auto-generated method stub
-  return null;
+  return Long.toString( System.currentTimeMillis() );
  }
 
  @Override
  public void setMimeType(String mimeType)
  {
-  // TODO Auto-generated method stub
-  
+  this.mimeType=mimeType;
  }
 
  @Override
  public String getMimeType()
  {
-  // TODO Auto-generated method stub
-  return null;
+  return mimeType;
  }
 
  @Override
  public InputStream getInputStream()
  {
-  // TODO Auto-generated method stub
   return null;
  }
 
  @Override
  public byte[] getContent()
  {
-  // TODO Auto-generated method stub
   return null;
  }
 
  @Override
  public long getCreation()
  {
-  // TODO Auto-generated method stub
-  return 0;
+  return System.currentTimeMillis();
  }
 
  @Override
  public URL getURL()
  {
-  // TODO Auto-generated method stub
   return null;
  }
 
