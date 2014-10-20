@@ -14,7 +14,12 @@ public class RootResource implements WebResource
 {
 
  private WebResourceRoot wrRoot;
- private String mimeType;
+ private String mimeType="text/plain";
+ 
+ public RootResource( WebResourceRoot wr )
+ {
+  wrRoot = wr;
+ }
  
  @Override
  public long getLastModified()

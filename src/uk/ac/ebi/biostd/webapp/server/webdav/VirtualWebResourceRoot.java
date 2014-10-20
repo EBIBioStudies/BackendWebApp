@@ -2,6 +2,7 @@ package uk.ac.ebi.biostd.webapp.server.webdav;
 
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -13,19 +14,60 @@ import org.apache.catalina.TrackedWebResource;
 import org.apache.catalina.WebResource;
 import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.WebResourceSet;
+import org.apache.catalina.webresources.EmptyResource;
+
+import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserGroup;
 
 public class VirtualWebResourceRoot implements WebResourceRoot
 {
- private WebResourceRoot realRoot;
+ protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
- public VirtualWebResourceRoot( WebResourceRoot rrt )
+ 
+ public static final String personalDir="Personal";
+ public static final String userDir="/Users/";
+ public static final String groupDir="/Groups/";
+ 
+ private WebResourceRoot realRoot;
+ private User user;
+
+ public VirtualWebResourceRoot( WebResourceRoot rrt, User u )
  {
   realRoot = rrt;
+  
+  user = u;
+ }
+ 
+ private String translatePath( String path )
+ {
+  if( path.startsWith(personalDir,1) && path.charAt(0) == '/' )
+   return userDir+user.getId()+path.substring(personalDir.length()+1);
+  
+  int pos = path.indexOf('/', 1);
+  
+  String grpName = pos > 0 ? path.substring(1,pos):path.substring(1);
+  
+  
+  for( UserGroup ug : user.getGroups() )
+  {
+   if( ug.getName().equals(grpName) && ug.isProject() )
+    return groupDir+ug.getId()+(pos>0?path.substring(pos):"/");
+  }
+   
+  return null;
  }
  
  @Override
  public WebResource getResource(String path)
  {
+  if( path.equals("/") )
+   return new RootResource( this );
+  
+  path = translatePath(path);
+  
+  if( path == null )
+   return new EmptyResource(this, path);
+  
   return realRoot.getResource(path);
  }
 
@@ -33,36 +75,81 @@ public class VirtualWebResourceRoot implements WebResourceRoot
  @Override
  public String[] list(String path)
  {
+  if( path.equals("/") )
+  {
+   ArrayList<String> rDir = new ArrayList<String>(5);
+   
+   rDir.add(personalDir);
+   
+   for( UserGroup ug : user.getGroups() )
+   {
+    if( ug.isProject() )
+     rDir.add(ug.getName());
+   }
+
+   return rDir.toArray( new String[ rDir.size() ] );
+  }
+
+  path = translatePath(path);
+  
+  if( path == null )
+   return EMPTY_STRING_ARRAY;
+
   return realRoot.list(path);
  }
  
  @Override
  public boolean mkdir(String path)
  {
+  path = translatePath(path);
+  
+  if( path == null )
+   return false;
+  
   return realRoot.mkdir(path);
  }
 
  @Override
  public boolean write(String path, InputStream is, boolean overwrite)
  {
+  path = translatePath(path);
+  
+  if( path == null )
+   return false;
+
   return realRoot.write(path, is, overwrite);
  }
  
  @Override
  public WebResource[] getResources(String path)
  {
+  path = translatePath(path);
+  
+  if( path == null )
+   return null;
+
   return realRoot.getResources(path);
  }
 
  @Override
  public WebResource getClassLoaderResource(String path)
  {
+  path = translatePath(path);
+  
+  if( path == null )
+   return null;
+
   return realRoot.getClassLoaderResource(path);
  }
 
  @Override
  public WebResource[] getClassLoaderResources(String path)
  {
+  path = translatePath(path);
+  
+  if( path == null )
+   return null;
+
   return realRoot.getClassLoaderResources(path);
  }
 
@@ -70,6 +157,11 @@ public class VirtualWebResourceRoot implements WebResourceRoot
  @Override
  public Set<String> listWebAppPaths(String path)
  {
+  path = translatePath(path);
+  
+  if( path == null )
+   return null;
+
   return realRoot.listWebAppPaths(path);
  }
 
@@ -88,6 +180,11 @@ public class VirtualWebResourceRoot implements WebResourceRoot
  @Override
  public WebResource[] listResources(String path)
  {
+  path = translatePath(path);
+  
+  if( path == null )
+   return null;
+
   return realRoot.listResources(path);
  }
 
