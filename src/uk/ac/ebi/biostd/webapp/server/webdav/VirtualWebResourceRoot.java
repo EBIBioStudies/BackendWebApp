@@ -29,17 +29,16 @@ public class VirtualWebResourceRoot implements WebResourceRoot
  public static final String groupDir="/Groups/";
  
  private WebResourceRoot realRoot;
- private User user;
 
- public VirtualWebResourceRoot( WebResourceRoot rrt, User u )
+ public VirtualWebResourceRoot( WebResourceRoot rrt  )
  {
   realRoot = rrt;
-  
-  user = u;
  }
  
  private String translatePath( String path )
  {
+  User user = ThreadUser.getUser();
+  
   if( path.startsWith(personalDir,1) && path.charAt(0) == '/' )
    return userDir+user.getId()+path.substring(personalDir.length()+1);
   
@@ -80,6 +79,8 @@ public class VirtualWebResourceRoot implements WebResourceRoot
    ArrayList<String> rDir = new ArrayList<String>(5);
    
    rDir.add(personalDir);
+
+   User user = ThreadUser.getUser();
    
    for( UserGroup ug : user.getGroups() )
    {

@@ -21,6 +21,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Base64.Decoder;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -266,6 +268,8 @@ public class WebdavServlet extends DefaultServlet
 
   if(servManager == null)
    throw new ServletException("Can't find service profile: " + (servProfile == null ? "<default>" : servProfile));
+  
+  resources = new VirtualWebResourceRoot(resources );
  }
 
  // ------------------------------------------------------ Protected Methods
@@ -293,7 +297,7 @@ public class WebdavServlet extends DefaultServlet
  }
 
  
- protected User authwUser(String auth) throws IOException
+ protected User authUser(String auth) throws IOException
  {
 
   if(auth == null)
@@ -307,22 +311,41 @@ public class WebdavServlet extends DefaultServlet
   // Get encoded user and password, comes after "BASIC "  
   String userpassEncoded = auth.substring(6);
   // Decode it, using any base 64 decoder  
-  sun.misc.BASE64Decoder dec = new sun.misc.BASE64Decoder();
-  String userpassDecoded = new String(dec.decodeBuffer(userpassEncoded));
+  
+  Decoder dec = Base64.getDecoder();
+  
+  String userpassDecoded = new String(dec.decode(userpassEncoded));
 
+  int pos = userpassDecoded.indexOf(':');
+  
+  if( pos < 0 )
+   return null;
+  
+  String uName = userpassDecoded.substring(0,pos);
+  String uPass = userpassDecoded.substring(pos+1);
+  
 
   UserManager uMngr = servManager.getUserManager();
   
+  User usr = uMngr.getUserByName( uName );
 
+  if( usr == null || !usr.checkPassword(uPass) )
+  {
+   try
+   {
+    Thread.sleep(1000);
+   }
+   catch(InterruptedException e)
+   {
+   }
+
+   return null;
+  }
   
-  if("authorized".equals(validUsers.get(userpassDecoded)))
-  {
-   return true;
-  }
-  else
-  {
-   return false;
-  }
+  ThreadUser.setUser(usr);
+  
+  return usr;
+  
  }
  
  /**
@@ -357,6 +380,8 @@ public class WebdavServlet extends DefaultServlet
   }
   
   
+
+  
   final String method = req.getMethod();
 
   if(debug > 0)
@@ -366,7 +391,7 @@ public class WebdavServlet extends DefaultServlet
 
   if(method.equals(METHOD_PROPFIND))
   {
-   doPropfind(req, resp, "U01");
+   doPropfind( req, resp );
   }
   else if(method.equals(METHOD_PROPPATCH))
   {
@@ -497,7 +522,7 @@ public class WebdavServlet extends DefaultServlet
  /**
   * PROPFIND Method.
   */
- protected void doPropfind(HttpServletRequest req, HttpServletResponse resp, String usrDir) throws ServletException, IOException
+ protected void doPropfind(HttpServletRequest req, HttpServletResponse resp ) throws ServletException, IOException
  {
 
   if(!listings)
@@ -514,7 +539,7 @@ public class WebdavServlet extends DefaultServlet
   if(path.length() > 1 && path.endsWith("/"))
    path = path.substring(0, path.length() - 1);
 
-  path = "/data/" + usrDir + path;
+//  path = "/data/" + usrDir + path;
 
   // Properties which are to be displayed.
   Vector<String> properties = null;
