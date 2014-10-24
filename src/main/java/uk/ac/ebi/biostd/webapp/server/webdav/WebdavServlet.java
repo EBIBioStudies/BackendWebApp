@@ -41,6 +41,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.catalina.WebResource;
+import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.servlets.DefaultServlet;
 import org.apache.catalina.util.ConcurrentDateFormat;
 import org.apache.catalina.util.DOMWriter;
@@ -269,7 +270,14 @@ public class WebdavServlet extends DefaultServlet
   if(servManager == null)
    throw new ServletException("Can't find service profile: " + (servProfile == null ? "<default>" : servProfile));
   
-  resources = new VirtualWebResourceRoot(resources );
+  String mountPath = getServletConfig().getInitParameter(AppConfig.DataMountPathParameter);
+  
+  if( mountPath == null )
+   throw new ServletException(AppConfig.DataMountPathParameter+" parameter is not defined");
+  
+  resources = (WebResourceRoot)getServletConfig().getServletContext().getAttribute("davRoot");
+  
+  resources = new VirtualWebResourceRoot( resources, "" );
  }
 
  // ------------------------------------------------------ Protected Methods
@@ -377,6 +385,8 @@ public class WebdavServlet extends DefaultServlet
   {
    resp.setHeader("WWW-Authenticate", "BASIC realm=\"WebDAV login\"");
    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+   
+   return;
   }
   
   

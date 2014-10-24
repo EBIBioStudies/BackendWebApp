@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
   <servlet>
     <servlet-name>greetServlet</servlet-name>
     <servlet-class>uk.ac.ebi.biostd.webapp.server.GreetingServiceImpl</servlet-class>
@@ -21,23 +21,4 @@
     <servlet-name>DumpServlet</servlet-name>
     <url-pattern>/upload</url-pattern>
   </servlet-mapping>
-  
-   <servlet>
-  <servlet-name>webdav</servlet-name>
-  <servlet-class>uk.ac.ebi.biostd.webapp.server.WebdavServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>0</param-value>
-    </init-param>
-    <init-param>
-      <param-name>listings</param-name>
-      <param-value>true</param-value>
-    </init-param>
-  </servlet>
-  <servlet-mapping>
-    <servlet-name>webdav</servlet-name>
-    <url-pattern>/data/*</url-pattern>
-  </servlet-mapping>
-
-
 </web-app>

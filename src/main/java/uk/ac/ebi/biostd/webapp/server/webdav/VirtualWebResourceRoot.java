@@ -29,10 +29,16 @@ public class VirtualWebResourceRoot implements WebResourceRoot
  public static final String groupDir="/Groups/";
  
  private WebResourceRoot realRoot;
+ private String mountPath;
 
- public VirtualWebResourceRoot( WebResourceRoot rrt  )
+ public VirtualWebResourceRoot( WebResourceRoot rrt, String mountPath  )
  {
   realRoot = rrt;
+  
+  if( mountPath.endsWith("/") )
+   mountPath=mountPath.substring(0,mountPath.length()-1);
+  
+  this.mountPath = mountPath;
  }
  
  private String translatePath( String path )
@@ -40,17 +46,20 @@ public class VirtualWebResourceRoot implements WebResourceRoot
   User user = ThreadUser.getUser();
   
   if( path.startsWith(personalDir,1) && path.charAt(0) == '/' )
-   return userDir+user.getId()+path.substring(personalDir.length()+1);
+   return mountPath+userDir+user.getId()+path.substring(personalDir.length()+1);
   
   int pos = path.indexOf('/', 1);
   
   String grpName = pos > 0 ? path.substring(1,pos):path.substring(1);
   
   
-  for( UserGroup ug : user.getGroups() )
+  if(user.getGroups() != null)
   {
-   if( ug.getName().equals(grpName) && ug.isProject() )
-    return groupDir+ug.getId()+(pos>0?path.substring(pos):"/");
+   for(UserGroup ug : user.getGroups())
+   {
+    if(ug.getName().equals(grpName) && ug.isProject())
+     return mountPath+groupDir + ug.getId() + (pos > 0 ? path.substring(pos) : "/");
+   }
   }
    
   return null;
@@ -60,7 +69,8 @@ public class VirtualWebResourceRoot implements WebResourceRoot
  public WebResource getResource(String path)
  {
   if( path.equals("/") )
-   return new RootResource( this );
+   return realRoot.getResource(path);
+//   return new RootResource( this );
   
   path = translatePath(path);
   
@@ -82,12 +92,15 @@ public class VirtualWebResourceRoot implements WebResourceRoot
 
    User user = ThreadUser.getUser();
    
-   for( UserGroup ug : user.getGroups() )
+   if( user.getGroups() != null )
    {
-    if( ug.isProject() )
-     rDir.add(ug.getName());
+    for( UserGroup ug : user.getGroups() )
+    {
+     if( ug.isProject() )
+      rDir.add(ug.getName());
+    }
    }
-
+   
    return rDir.toArray( new String[ rDir.size() ] );
   }
 
