@@ -278,6 +278,7 @@ public class WebdavServlet extends DefaultServlet
   resources = (WebResourceRoot)getServletConfig().getServletContext().getAttribute("davRoot");
   
   resources = new VirtualWebResourceRoot( resources, "" );
+  
  }
 
  // ------------------------------------------------------ Protected Methods

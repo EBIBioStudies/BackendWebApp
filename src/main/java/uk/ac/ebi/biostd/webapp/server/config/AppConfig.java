@@ -3,6 +3,8 @@ package uk.ac.ebi.biostd.webapp.server.config;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.persistence.EntityManagerFactory;
+
 import uk.ac.ebi.biostd.mng.ServiceManager;
 
 
@@ -15,6 +17,8 @@ public class AppConfig
  
  private static ServiceManager defaultServiceManager;
  private static Map<String, ServiceManager> servMngrs;
+ 
+ private static Map<String, EntityManagerFactory> factoryMap = new HashMap<String, EntityManagerFactory>();
  
  public static ServiceManager getServiceManager()
  {
@@ -45,5 +49,10 @@ public class AppConfig
    servMngrs = new HashMap<String, ServiceManager>();
   
   servMngrs.put(prof, serviceManager);
+ }
+
+ public static void addFactory(String key, EntityManagerFactory emf)
+ {
+  factoryMap.put(key, emf);
  }
 }

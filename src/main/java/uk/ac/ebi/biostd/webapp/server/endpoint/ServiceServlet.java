@@ -8,8 +8,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.webapp.server.BackendConfig;
-import uk.ac.ebi.biostd.webapp.server.mng.Session;
+import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
 
 public abstract class ServiceServlet extends HttpServlet
 {
@@ -44,7 +45,7 @@ public abstract class ServiceServlet extends HttpServlet
   Session sess = null;
   
   if( sessID != null )
-   sess = BackendConfig.getDefaultConfiguration().getSessionManager().checkin( sessID );
+   sess = AppConfig.getServiceManager().getSessionManager().checkin( sessID );
   
 //  if (sessID == null)
 //  {
@@ -67,7 +68,7 @@ public abstract class ServiceServlet extends HttpServlet
   finally
   {
    if( sess != null )
-    BackendConfig.getDefaultConfiguration().getSessionManager().checkout();
+    AppConfig.getServiceManager().getSessionManager().checkout();
   }
  }
  

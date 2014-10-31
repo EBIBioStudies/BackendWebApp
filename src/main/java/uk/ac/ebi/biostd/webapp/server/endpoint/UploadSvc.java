@@ -14,14 +14,16 @@ import org.apache.commons.fileupload.FileItemStream;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.fileupload.util.Streams;
 
+import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.webapp.Constants;
 import uk.ac.ebi.biostd.webapp.server.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceRequest;
-import uk.ac.ebi.biostd.webapp.server.mng.Session;
 import uk.ac.ebi.biostd.webapp.server.util.StreamPump;
 
 public class UploadSvc extends ServiceServlet
 {
+
+ private static final long serialVersionUID = 1L;
 
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException

@@ -1,0 +1,17 @@
+<project name="BioStdWebApp" default="deps" basedir="." xmlns:artifact="antlib:org.apache.maven.artifact.ant">
+	<description>BioStudies</description>
+	
+	
+	<target name="deps" description="download dependences jars" >
+		<artifact:pom id="biostdpom" file="pom.xml" />
+		<artifact:dependencies filesetId="deps" pomRefId="biostdpom" />
+		
+		<copy todir="war/WEB-INF/lib">
+			<fileset refid="deps" />
+			<!-- This mapper strips off all leading directory information -->
+			<mapper type="flatten" />
+		</copy>
+		
+    </target>
+
+</project>

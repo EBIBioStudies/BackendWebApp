@@ -10,6 +10,10 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import uk.ac.ebi.biostd.authz.Session;
+import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.mng.SessionManager;
+
 
 public class SessionManagerImpl implements SessionManager, Runnable
 {
@@ -36,9 +40,9 @@ public class SessionManagerImpl implements SessionManager, Runnable
  }
  
  @Override
- public Session createSession(String userName)
+ public Session createSession(User user)
  {
-  String key = generateSessionKey(userName);
+  String key = generateSessionKey(user.getLogin());
 
   File sessDir = new File(sessDirRoot,key);
   sessDir.mkdirs();
@@ -46,7 +50,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
   Session sess = new Session( sessDir );
     
   sess.setSessionKey(key);
-  sess.setUser(userName);
+  sess.setUser(user);
 
   try
   {
@@ -143,7 +147,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
   }
  }
 
- final static String algorithm="MD5";
+ final static String algorithm="SHA1";
  
  private String generateSessionKey( String strs )
  {
@@ -246,12 +250,12 @@ public class SessionManagerImpl implements SessionManager, Runnable
  }
 
  @Override
- public String getEffectiveUser()
+ public User getEffectiveUser()
  {
   Session sess = getSession();
   
   if( sess == null )
-   return BuiltInUsers.ANONYMOUS.getName();
+   return null;
   
   return sess.getUser();
  }
