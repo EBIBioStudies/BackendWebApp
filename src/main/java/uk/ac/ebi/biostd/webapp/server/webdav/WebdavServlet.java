@@ -60,7 +60,6 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.mng.ServiceManager;
 import uk.ac.ebi.biostd.mng.UserManager;
 import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
 
@@ -240,8 +239,6 @@ public class WebdavServlet extends DefaultServlet
 
  // --------------------------------------------------------- Public Methods
 
- private ServiceManager                          servManager;
-
  /**
   * Initialize this servlet.
   */
@@ -260,20 +257,11 @@ public class WebdavServlet extends DefaultServlet
   if(getServletConfig().getInitParameter("allowSpecialPaths") != null)
    allowSpecialPaths = Boolean.parseBoolean(getServletConfig().getInitParameter("allowSpecialPaths"));
 
-  String servProfile = null;
-
-  if(getServletConfig().getInitParameter("serviceProfile") != null)
-   servProfile = getServletConfig().getInitParameter("serviceProfile");
-
-  servManager = AppConfig.getServiceManager(servProfile);
-
-  if(servManager == null)
-   throw new ServletException("Can't find service profile: " + (servProfile == null ? "<default>" : servProfile));
   
-  String mountPath = getServletConfig().getInitParameter(AppConfig.DataMountPathParameter);
-  
-  if( mountPath == null )
-   throw new ServletException(AppConfig.DataMountPathParameter+" parameter is not defined");
+//  String mountPath = getServletConfig().getInitParameter(AppConfig.DataMountPathParameter);
+//  
+//  if( mountPath == null )
+//   throw new ServletException(AppConfig.DataMountPathParameter+" parameter is not defined");
   
   resources = (WebResourceRoot)getServletConfig().getServletContext().getAttribute("davRoot");
   
@@ -334,7 +322,7 @@ public class WebdavServlet extends DefaultServlet
   String uPass = userpassDecoded.substring(pos+1);
   
 
-  UserManager uMngr = servManager.getUserManager();
+  UserManager uMngr = AppConfig.getServiceManager().getUserManager();
   
   User usr = uMngr.getUserByName( uName );
 

@@ -21,4 +21,26 @@
     <servlet-name>DumpServlet</servlet-name>
     <url-pattern>/upload</url-pattern>
   </servlet-mapping>
+  <servlet>
+    <description></description>
+    <display-name>AuthServlet</display-name>
+    <servlet-name>AuthServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.auth.AuthServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AuthServlet</servlet-name>
+    <url-pattern>/auth/*</url-pattern>
+  </servlet-mapping>
+  
+  <servlet>
+    <description></description>
+    <display-name>DirServlet</display-name>
+    <servlet-name>DirServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.dir.DirServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>DirServlet</servlet-name>
+    <url-pattern>/dir</url-pattern>
+  </servlet-mapping>
+  
 </web-app>

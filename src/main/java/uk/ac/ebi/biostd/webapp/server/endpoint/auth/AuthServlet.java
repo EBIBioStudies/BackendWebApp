@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -13,14 +12,13 @@ import javax.servlet.http.HttpServletResponse;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.mng.SessionManager;
+import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
-import uk.ac.ebi.biostd.webapp.server.util.Streams;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
 /**
  * Servlet implementation class AuthServlet
  */
-@WebServlet("/AuthServlet")
 public class AuthServlet extends HttpServlet 
 {
  
@@ -32,7 +30,7 @@ public class AuthServlet extends HttpServlet
  public static final String PasswordParameter="password";   
  public static final String EmailParameter="email";   
  public static final String UsernameParameter="username";   
- public static final String FormatParameter="username";   
+ public static final String FormatParameter="format";   
 	
  /**
   * @see HttpServlet#HttpServlet()
@@ -286,7 +284,7 @@ public class AuthServlet extends HttpServlet
     {}
    }
    
-   String json = Streams.readFully(request.getInputStream(), cs);
+   String json = StringUtils.readFully(request.getInputStream(), cs);
    
    if( json.length() == 0 )
    {

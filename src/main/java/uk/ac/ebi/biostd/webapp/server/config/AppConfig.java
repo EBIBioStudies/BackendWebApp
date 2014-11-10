@@ -1,58 +1,117 @@
 package uk.ac.ebi.biostd.webapp.server.config;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.File;
 
 import javax.persistence.EntityManagerFactory;
 
+import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.mng.ServiceManager;
+import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 
 
 public class AppConfig
 {
- public static final String AppName = "pageant";
+ public static final String SessionCookie = "BIOSTDSESS";
  
- public static final String                 DataDirParameter       = AppName + ".dataDir";
- public static final String                 DataMountPathParameter = AppName + ".dataMountPath"; 
+ public static final String SessionDir = "sessions";
+ public static final String UsersDir = "Users";
+ public static final String GroupsDir = "Groups";
  
+ public static final String WorkdirParameter       = "workdir";
+ public static final String DataDirParameter       = "datadir";
+ public static final String DataMountPathParameter = "dataMountPath";
+ 
+ 
+ private static String dataDirectory;
+ private static String dataMountPath;
+ private static String workDirectory;
+
+
  private static ServiceManager defaultServiceManager;
- private static Map<String, ServiceManager> servMngrs;
+ private static EntityManagerFactory emf;
+
+ private static File usersDir;
+ private static File groupsDir;
  
- private static Map<String, EntityManagerFactory> factoryMap = new HashMap<String, EntityManagerFactory>();
- 
- public static ServiceManager getServiceManager()
- {
-  return getServiceManager(null);
- }
- 
- public static ServiceManager getServiceManager( String profile )
+ public static boolean readParameter(String param, String val) throws ServiceConfigException
  {
   
-  if( profile == null )
-   return defaultServiceManager;
+  if( WorkdirParameter.equals(param) )
+  {
+   workDirectory=val;
+   return true;
+  }
   
-  if( servMngrs == null )
-   return null;
+  if( DataDirParameter.equals(param) )
+  {
+   dataDirectory=val;
    
+   usersDir = new File( dataDirectory, UsersDir );
+   groupsDir = new File( dataDirectory, GroupsDir );
+   
+   return true;
+  }
+
+  if( DataMountPathParameter.equals(param) )
+  {
+   dataMountPath=val;
+   return true;
+  }
+
   
-  return servMngrs.get( profile );
+  return false;
+
  }
 
+ 
+ public static String getWorkDirectory()
+ {
+  return workDirectory;
+ }
+
+ public static ServiceManager getServiceManager()
+ {
+  return defaultServiceManager;
+ }
+ 
  public static void setServiceManager(ServiceManager serviceManager)
  {
   defaultServiceManager = serviceManager;
  }
 
- public static void setServiceManager(String prof, ServiceManager serviceManager)
+
+ public static void setEntityManagerFactory(EntityManagerFactory e)
  {
-  if( servMngrs == null )
-   servMngrs = new HashMap<String, ServiceManager>();
-  
-  servMngrs.put(prof, serviceManager);
+  emf=e;
+ }
+ 
+ public static EntityManagerFactory getEntityManagerFactory()
+ {
+  return emf;
  }
 
- public static void addFactory(String key, EntityManagerFactory emf)
+
+ public static String getDataDirectory()
  {
-  factoryMap.put(key, emf);
+  return dataDirectory;
  }
+
+
+ public static String getDataMountPath()
+ {
+  return dataMountPath;
+ }
+
+
+ public static File getUserDir(User user)
+ {
+  return new File(usersDir,String.valueOf( user.getId() ));
+ }
+
+ public static File getGroupDir(UserGroup grp)
+ {
+  return new File(groupsDir,String.valueOf( grp.getId() ));
+ }
+
 }
