@@ -25,13 +25,13 @@ public class JSONHttpResponse implements Response
   
   PrintWriter out = response.getWriter();
   
-  out.print("{\nstatus: \"");
+  out.print("{\n\"status\": \"");
   out.print(sts);
   out.print("\"");
   
   if( msg != null )
   {
-   out.print(",\nmessage: \"");
+   out.print(",\n\"message\": \"");
    out.print(msg);
    out.print("\"");
   }
@@ -39,10 +39,10 @@ public class JSONHttpResponse implements Response
   
   for( KV res : kvs )
   {
-   out.print(",\n");
+   out.print(",\n\"");
    out.print(res.getKey());
-   out.print(": \"");
-   out.println(res.getValue());
+   out.print("\": \"");
+   out.print(res.getValue());
    out.print("\"");
   }
  

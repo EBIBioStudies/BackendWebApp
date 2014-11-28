@@ -15,7 +15,6 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.ServletRegistration;
-import javax.servlet.annotation.WebListener;
 
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.WebResourceRoot;
@@ -24,7 +23,7 @@ import org.apache.catalina.webresources.StandardRoot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceInitExceprion;
@@ -38,7 +37,7 @@ import uk.ac.ebi.biostd.webapp.server.webdav.WebdavServlet;
  * Application Lifecycle Listener implementation class WebAppInit
  *
  */
-@WebListener
+
 public class WebAppInit implements ServletContextListener 
 {
  public static final String DefaultName = "_default_";
@@ -140,7 +139,7 @@ public class WebAppInit implements ServletContextListener
 
      try
      {
-      if(!AppConfig.readParameter(param, val))
+      if(!BackendConfig.readParameter(param, val))
        log.warn("Unknown configuration parameter: " + key + " will be ignored");
      }
      catch(ServiceConfigException e)
@@ -162,10 +161,10 @@ public class WebAppInit implements ServletContextListener
    if(me.getKey() == null)
     continue;
 
-   AppConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", me.getValue()));
+   BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", me.getValue()));
   }
   
-  AppConfig.setServiceManager( ServiceFactory.createService( ) );
+  BackendConfig.setServiceManager( ServiceFactory.createService( ) );
   
  }
  
@@ -206,14 +205,14 @@ public class WebAppInit implements ServletContextListener
    throw new RuntimeException("Can't find WebResourceRoot. Not Tomcat 8?");
   }
   
-  String dataDir = AppConfig.getDataDirectory();
-  String dataMount = AppConfig.getDataMountPath();
+  String dataDir = BackendConfig.getDataDirectory();
+  String dataMount = BackendConfig.getDataMountPath();
   
   if( dataDir == null )
-   throw new RuntimeException(AppConfig.DataDirParameter+" parameter is not set");
+   throw new RuntimeException(BackendConfig.DataDirParameter+" parameter is not set");
 
   if( dataMount == null )
-   throw new RuntimeException(AppConfig.DataMountPathParameter+" parameter is not set");
+   throw new RuntimeException(BackendConfig.DataMountPathParameter+" parameter is not set");
   
   resRoot.createWebResourceSet(ResourceSetType.POST, dataMount, dataDir, null, "/");
   
@@ -235,7 +234,7 @@ public class WebAppInit implements ServletContextListener
   ServletRegistration.Dynamic dn = ctx.addServlet("WebDAV",WebdavServlet.class);
 
   dn.setAsyncSupported(true);
-  dn.setInitParameter(AppConfig.DataMountPathParameter, dataMount);
+  dn.setInitParameter(BackendConfig.DataMountPathParameter, dataMount);
   dn.setInitParameter("listings", "true");
   dn.setInitParameter("readonly", "false");
   dn.addMapping(dataMount.endsWith("/")?dataMount+'*':dataMount+"/*");

@@ -7,7 +7,15 @@ public class JSONReqParameterPool implements ParameterPool
 {
  private JSONObject obj;
  private Action defaultAction = null;
+ private String cliAddr;
  
+ 
+ public JSONReqParameterPool( String txt, Action defAct, String addr ) throws JSONException
+ {
+  obj = new JSONObject(txt);
+  defaultAction = defAct;
+  cliAddr=addr;
+ }
  
  @Override
  public Action getDefaultAction()
@@ -16,16 +24,24 @@ public class JSONReqParameterPool implements ParameterPool
  }
  
  
- public JSONReqParameterPool( String txt, Action defAct ) throws JSONException
- {
-  obj = new JSONObject(txt);
-  defaultAction = defAct;
- }
- 
  @Override
  public String getParameter(String pName)
  {
-  return obj.getString(pName);
+  try
+  { 
+   return obj.getString(pName);
+  }
+  catch( JSONException e )
+  {}
+  
+  return null;
+ }
+
+
+ @Override
+ public String getClientAddress()
+ {
+  return cliAddr;
  }
 
  

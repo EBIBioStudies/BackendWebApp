@@ -2,6 +2,7 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 
 import uk.ac.ebi.biostd.mng.ServiceManager;
 import uk.ac.ebi.biostd.mng.SessionManager;
+import uk.ac.ebi.biostd.mng.SubmissionManager;
 import uk.ac.ebi.biostd.mng.UserManager;
 
 public class ServiceManagerImpl implements ServiceManager
@@ -12,6 +13,7 @@ public class ServiceManagerImpl implements ServiceManager
  
  private UserManager userManager;
  private SessionManager sessionManager;
+ private SubmissionManager submissionManager;
  
  @Override
  public UserManager getUserManager()
@@ -56,6 +58,18 @@ public class ServiceManagerImpl implements ServiceManager
  {
   return config;
  }
+
+ @Override
+ public SubmissionManager getSubmissionManager()
+ {
+  return submissionManager;
+ }
+
+ public void setSubmissionManager(SubmissionManager submissionManager)
+ {
+  this.submissionManager = submissionManager;
+ }
+
  
  
 

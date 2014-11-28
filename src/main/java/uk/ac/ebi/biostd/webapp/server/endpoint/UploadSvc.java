@@ -15,10 +15,10 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.fileupload.util.Streams;
 
 import uk.ac.ebi.biostd.authz.Session;
+import uk.ac.ebi.biostd.util.StreamPump;
 import uk.ac.ebi.biostd.webapp.Constants;
-import uk.ac.ebi.biostd.webapp.server.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceRequest;
-import uk.ac.ebi.biostd.webapp.server.util.StreamPump;
 
 public class UploadSvc extends ServiceServlet
 {
@@ -67,7 +67,7 @@ public class UploadSvc extends ServiceServlet
     if(upReq.getHandlerName() == null)
      resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
     else
-     BackendConfig.getDefaultConfiguration().getRemoteRequestManager().processUpload(upReq, resp.getWriter());
+     BackendConfig.getServiceManager().getRemoteRequestManager().processUpload(upReq, resp.getWriter());
 
     return;
    }

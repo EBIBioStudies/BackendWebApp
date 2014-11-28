@@ -2,7 +2,8 @@ package uk.ac.ebi.biostd.webapp.client.ui.log;
 
 
 
-import uk.ac.ebi.biostd.webapp.shared.dto.log.LogNode;
+
+import uk.ac.ebi.biostd.treelog.LogNode;
 
 import com.smartgwt.client.widgets.tree.TreeNode;
 

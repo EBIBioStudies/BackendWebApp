@@ -61,7 +61,7 @@ import org.xml.sax.SAXException;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.mng.UserManager;
-import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 /**
  * Servlet which adds support for WebDAV level 2. All the basic HTTP requests
@@ -322,7 +322,7 @@ public class WebdavServlet extends DefaultServlet
   String uPass = userpassDecoded.substring(pos+1);
   
 
-  UserManager uMngr = AppConfig.getServiceManager().getUserManager();
+  UserManager uMngr = BackendConfig.getServiceManager().getUserManager();
   
   User usr = uMngr.getUserByName( uName );
 

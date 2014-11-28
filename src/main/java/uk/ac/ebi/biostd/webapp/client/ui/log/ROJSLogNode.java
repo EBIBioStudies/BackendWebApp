@@ -2,8 +2,8 @@ package uk.ac.ebi.biostd.webapp.client.ui.log;
 
 import java.util.List;
 
+import uk.ac.ebi.biostd.treelog.LogNode;
 import uk.ac.ebi.biostd.webapp.client.ui.util.ListOnJsArray;
-import uk.ac.ebi.biostd.webapp.shared.dto.log.LogNode;
 
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArray;
@@ -14,6 +14,7 @@ public final class ROJSLogNode extends JavaScriptObject implements LogNode
  
  public native String getLevelAsString() /*-{ return this.level; }-*/ ;
  public native String setLevelAsString( String lvl ) /*-{ this.level=lvl; }-*/ ;
+ @Override
  public native String getMessage() /*-{ return this.message; }-*/ ;
  public native JsArray<ROJSLogNode> getSubnodes() /*-{ return this.subnodes; }-*/ ;
  

@@ -2,7 +2,7 @@ package uk.ac.ebi.biostd.webapp.client.ui.log;
 
 import java.util.List;
 
-import uk.ac.ebi.biostd.webapp.shared.dto.log.LogNode;
+import uk.ac.ebi.biostd.treelog.LogNode;
 
 import com.smartgwt.client.widgets.tree.Tree;
 import com.smartgwt.client.widgets.tree.TreeGrid;

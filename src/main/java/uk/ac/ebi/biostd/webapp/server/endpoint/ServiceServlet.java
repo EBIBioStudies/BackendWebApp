@@ -9,7 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import uk.ac.ebi.biostd.authz.Session;
-import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public abstract class ServiceServlet extends HttpServlet
 {
@@ -22,7 +22,7 @@ public abstract class ServiceServlet extends HttpServlet
  {
   String sessID = null;
   
-  sessID = req.getParameter(AppConfig.SessionCookie);
+  sessID = req.getParameter(BackendConfig.SessionCookie);
   
   if( sessID == null )
   {
@@ -32,7 +32,7 @@ public abstract class ServiceServlet extends HttpServlet
    {
     for (int i = cuks.length - 1; i >= 0; i--)
     {
-     if (cuks[i].getName().equals(AppConfig.SessionCookie) )
+     if (cuks[i].getName().equals(BackendConfig.SessionCookie) )
      {
       sessID = cuks[i].getValue();
       break;
@@ -44,7 +44,7 @@ public abstract class ServiceServlet extends HttpServlet
   Session sess = null;
   
   if( sessID != null )
-   sess = AppConfig.getServiceManager().getSessionManager().checkin( sessID );
+   sess = BackendConfig.getServiceManager().getSessionManager().checkin( sessID );
   
 //  if (sessID == null)
 //  {
@@ -67,7 +67,7 @@ public abstract class ServiceServlet extends HttpServlet
   finally
   {
    if( sess != null )
-    AppConfig.getServiceManager().getSessionManager().checkout();
+    BackendConfig.getServiceManager().getSessionManager().checkout();
   }
  }
  

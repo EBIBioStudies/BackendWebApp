@@ -19,8 +19,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.util.StringUtils;
-import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 
 /**
@@ -49,22 +50,72 @@ public class DirServlet extends ServiceServlet
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
    
-   resp.getWriter().print("{\nstatus: \"FAIL\",\nmessage: \"User not logged in\"\n}");
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"User not logged in\"\n}");
    return;
   }
   
-  out.print("{\nstatus: \"OK\",\nfiles: [\n");
+  out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
   
   User user  = sess.getUser();
   
-  File udir = AppConfig.getUserDir( user );
+  File udir = BackendConfig.getUserDir( user );
+  
+  boolean first = true;
   
   if( udir.exists() )
   {
-   out.print("{\nname: \"User\",\n type: \"DIR\",\npath: \"/User\",\n files: ");
+   out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
    
    listDirectory( new FileNode(udir), "/User", out);
+   
+   out.print("\n}");
+   
+   first = false;
   }
+  
+  Collection<UserGroup> grps = user.getGroups();
+  
+  if( grps != null && grps.size() > 0 )
+  {
+   if( ! first )
+    out.print(",\n");
+
+   out.print("{\n\"name\": \"Groups\",\n \"type\": \"DIR\",\n\"path\": \"/Groups\",\n \"files\": [\n");
+
+   first = true;
+   
+   for( UserGroup g : grps )
+   {
+    File gdir = BackendConfig.getGroupDir( g );
+    
+    if( gdir.exists() )
+    {
+     if( ! first )
+      out.print(",\n");
+     else
+      first = false;
+     
+     String gname = StringUtils.escapeCStr(g.getName());
+     
+     out.print("{\n\"name\": \""); // User\",\n type: \"DIR\",\npath: \"/User\",\n files: ");
+     out.print(gname);
+     out.print("\",\n \"type\": \"DIR\",\n\"path\": \"/Groups/"); ///User\",\n files: ");
+     out.print(gname);
+     out.print("\",\n \"files\": ");
+     
+     listDirectory( new FileNode(gdir), "/Groups/"+gname, out);
+     
+     out.print("\n}");
+    }
+
+    
+   }
+   
+   out.print("\n}");
+   
+  }
+  
+  out.print("\n]\n}\n");
   
  }
 
@@ -146,30 +197,30 @@ public class DirServlet extends ServiceServlet
    String fname = f.getName();
    String npath =  path+"/"+fname;
    
-   out.append("{\nname: \"");
+   out.append("{\n\"name\": \"");
    StringUtils.appendAsCStr(out, fname );
-   out.append("\",\npath: \"");
+   out.append("\",\n\"path\": \"");
    StringUtils.appendAsCStr(out, npath );
-   out.append("\",\nsize: ");
+   out.append("\",\n\"size\": ");
    out.append(String.valueOf(f.getSize()));
-   out.append(",\ntype: \"");
+   out.append(",\n\"type\": \"");
    
    if( f.isDirectory() )
    {
-    out.append("DIR\",\nfiles:");
+    out.append("DIR\",\n\"files\":");
     
     listDirectory(f, npath, out);
    }
-   else if( f.getFile() != null && fname.length() > 4 && fname.substring(fname.length()-1).equalsIgnoreCase(".zip") )
+   else if( f.getFile() != null && fname.length() > 4 && fname.substring(fname.length()-4).equalsIgnoreCase(".zip") )
    {
-    out.append("ARCHIVE\",\nfiles:");
+    out.append("ARCHIVE\",\n\"files\":");
     
     listDirectory( listZipArchive(f.getFile(), npath), npath, out);
    }
    else
     out.append("FILE\"");
   
-   out.append("}");
+   out.append("\n}");
   }
   
   out.append("\n]\n");
@@ -263,7 +314,9 @@ public class DirServlet extends ServiceServlet
 
     ZDir cDir = root;
 
-    for(int i = 0; i < parts.size() - 1; i++)
+//    int n = entry.isDirectory()?parts.size()-1 : parts.size();
+    
+    for(int i = 0; i < parts.size()-1; i++)
     {
      ZDir d = cDir.dirs.get(parts.get(i));
 
@@ -274,9 +327,9 @@ public class DirServlet extends ServiceServlet
       d.name = parts.get(i);
 
       cDir.dirs.put(d.name, d);
-
-      cDir = d;
      }
+
+     cDir = d;
     }
 
     if(!entry.isDirectory())

@@ -1,19 +1,13 @@
 package uk.ac.ebi.biostd.webapp.client;
 
+import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.webapp.client.ui.admin.AdminPanel;
+import uk.ac.ebi.biostd.webapp.client.ui.admin.RootWidget;
+import uk.ac.ebi.biostd.webapp.client.ui.mng.LoginManager;
+
 import com.google.gwt.core.client.EntryPoint;
-import com.smartgwt.client.data.DataSource;
-import com.smartgwt.client.data.DataSourceField;
-import com.smartgwt.client.data.RestDataSource;
-import com.smartgwt.client.types.DSDataFormat;
-import com.smartgwt.client.types.DSProtocol;
-import com.smartgwt.client.types.FieldType;
-import com.smartgwt.client.widgets.IButton;
-import com.smartgwt.client.widgets.events.ClickEvent;
-import com.smartgwt.client.widgets.events.ClickHandler;
-import com.smartgwt.client.widgets.form.DynamicForm;
-import com.smartgwt.client.widgets.layout.VLayout;
-import com.smartgwt.client.widgets.tab.Tab;
-import com.smartgwt.client.widgets.tab.TabSet;
+import com.google.gwt.core.client.GWT;
+import com.google.gwt.user.client.rpc.AsyncCallback;
 
 /**
  * Entry point classes define <code>onModuleLoad()</code>.
@@ -24,48 +18,53 @@ public class BioStdWebApp implements EntryPoint
  @Override
  public void onModuleLoad()
  {
-  TabSet mainTs = new TabSet();
   
-  mainTs.setWidth100();
-  mainTs.setHeight100();
+  ClientConfig.setService( (BioStdServiceAsync)GWT.create(BioStdService.class) );
   
-  Tab submTb = new Tab("Submit");
+  AdminPanel apc = new AdminPanel();
   
-  VLayout vl = new VLayout();
+  RootWidget rw = new RootWidget(apc);
   
-  DataSource ds = new RestDataSource();
+  ClientConfig.setRootWidget(rw);
   
-  ds.addField( new DataSourceField("file", FieldType.BINARY, "File") );
-  
-  ds.setID("ptSubmit");
-  ds.setDataFormat(DSDataFormat.JSON);
-  ds.setDataURL("upload");
-  ds.setDataProtocol(DSProtocol.POSTPARAMS);
-  
-  final DynamicForm sumbForm = new DynamicForm();
-  
-  sumbForm.setDataSource(ds);
-  
-  submTb.setPane(vl);
-  
-  vl.addMember(sumbForm);
-  
-  IButton btn = new IButton("Submit");
-  
-  btn.addClickHandler( new ClickHandler()
+  ClientConfig.setLoginManager( new LoginManager()
   {
    
    @Override
-   public void onClick(ClickEvent event)
+   public void userLoggedIn(User u)
    {
-    sumbForm.saveData();
+    ClientConfig.getRootWidget().showApplication();
+    ClientConfig.setLoggedUser( u );
+   }
+   
+   @Override
+   public void askForLogin()
+   {
+    ClientConfig.setLoggedUser( null );
+    ClientConfig.getRootWidget().askForLogin();
    }
   });
+  
+  ClientConfig.getService().getCurrentUser(new AsyncCallback<User>()
+  {
+   
+   @Override
+   public void onSuccess(User u)
+   {
+    if( u == null )
+     ClientConfig.getLoginManager().askForLogin();
+    else
+     ClientConfig.getRootWidget().showApplication();
+   }
+   
+   @Override
+   public void onFailure(Throwable arg0)
+   {
+    ClientConfig.getLoginManager().askForLogin();
+   }
+  });
+  
+  rw.draw();
 
-  vl.addMember(btn);
-  
-  mainTs.addTab(submTb);
-  
-  mainTs.draw();
  }
 }

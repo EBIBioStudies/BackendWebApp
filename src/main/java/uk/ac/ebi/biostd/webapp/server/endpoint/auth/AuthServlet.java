@@ -3,17 +3,21 @@ package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import net.tanesha.recaptcha.ReCaptcha;
+import net.tanesha.recaptcha.ReCaptchaFactory;
+import net.tanesha.recaptcha.ReCaptchaResponse;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.mng.SessionManager;
 import uk.ac.ebi.biostd.util.StringUtils;
-import uk.ac.ebi.biostd.webapp.server.config.AppConfig;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
 /**
@@ -31,6 +35,8 @@ public class AuthServlet extends HttpServlet
  public static final String EmailParameter="email";   
  public static final String UsernameParameter="username";   
  public static final String FormatParameter="format";   
+ public static final String ReCaptchaChallengeParameter="recaptcha_challenge";   
+ public static final String ReCaptchaResponseParameter="recaptcha_response";   
 	
  /**
   * @see HttpServlet#HttpServlet()
@@ -41,6 +47,14 @@ public class AuthServlet extends HttpServlet
   // TODO Auto-generated constructor stub
  }
 
+ @Override
+ public void init(ServletConfig config) throws ServletException
+ {
+  super.init(config);
+  
+//  System.out.println( "Contex path: " + config.getServletContext().getContextPath() );
+ }
+ 
  public static String getCookieSessId( HttpServletRequest req )
  {
   Cookie[] cuks = req.getCookies();
@@ -49,7 +63,7 @@ public class AuthServlet extends HttpServlet
   {
    for (int i = cuks.length - 1; i >= 0; i--)
    {
-    if (cuks[i].getName().equals(SessionIdParameter) )
+    if (cuks[i].getName().equals(BackendConfig.SessionCookie) )
      return cuks[i].getValue();
    }
   }
@@ -81,7 +95,7 @@ public class AuthServlet extends HttpServlet
   if( prm == null )
    act = prms.getDefaultAction();
   
-  SessionManager sessMngr = AppConfig.getServiceManager().getSessionManager();
+  SessionManager sessMngr = BackendConfig.getServiceManager().getSessionManager();
   
   if( act == Action.check )
   {
@@ -103,11 +117,11 @@ public class AuthServlet extends HttpServlet
    
    if( sess != null )
    {
-    resp.respond(HttpServletResponse.SC_OK, "OK");
+    resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(UserLoginParameter,sess.getUser().getLogin()), new KV(UsernameParameter,sess.getUser().getFullName()) );
     return;
    }
    
-   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL");
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User not logged in");
 
    return;
   }
@@ -122,10 +136,10 @@ public class AuthServlet extends HttpServlet
     return;
    }
    
-   User usr = AppConfig.getServiceManager().getUserManager().getUserByName(prm);
+   User usr = BackendConfig.getServiceManager().getUserManager().getUserByName(prm);
    
    if( usr == null )
-    usr = AppConfig.getServiceManager().getUserManager().getUserByEmail(prm);
+    usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(prm);
    
    if( usr == null )
    {
@@ -153,9 +167,12 @@ public class AuthServlet extends HttpServlet
    
    String skey = sess.getSessionKey();
    
-   resp.addCookie( new Cookie(SessionIdParameter, skey) );
+   Cookie cke =  new Cookie(BackendConfig.SessionCookie, skey);
+   cke.setPath(getServletContext().getContextPath());
    
-   resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey));
+   resp.addCookie( cke );
+   
+   resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey), new KV(UsernameParameter,usr.getFullName()));
    
    return;
   }
@@ -165,18 +182,18 @@ public class AuthServlet extends HttpServlet
    
    if( login == null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL '"+UserLoginParameter+"' parameter is not defined");
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserLoginParameter+"' parameter is not defined");
 
     return;
    }
   
    User usr = null;
    
-   usr = AppConfig.getServiceManager().getUserManager().getUserByName(login);
+   usr = BackendConfig.getServiceManager().getUserManager().getUserByName(login);
    
    if( usr != null )
    {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL User exists");
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User exists");
 
     return;
    }
@@ -185,7 +202,7 @@ public class AuthServlet extends HttpServlet
   
    if( email == null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL '"+EmailParameter+"' parameter is not defined");
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+EmailParameter+"' parameter is not defined");
 
     return;
    }
@@ -194,11 +211,42 @@ public class AuthServlet extends HttpServlet
    
    if( pass == null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL '"+PasswordParameter+"' parameter is not defined");
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' parameter is not defined");
+
+    return;
+   }
+   
+   String cptChal = prms.getParameter(ReCaptchaChallengeParameter);
+   
+   if( cptChal == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaChallengeParameter+"' parameter is not defined");
 
     return;
    }
 
+   String cptResp = prms.getParameter(ReCaptchaResponseParameter);
+   
+   if( cptResp == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaResponseParameter+"' parameter is not defined");
+
+    return;
+   }
+
+   
+   ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
+   
+   ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
+
+   if ( !reCaptchaResponse.isValid() ) 
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
+
+    return;
+   }
+
+   
    
    User u = new User();
    
@@ -209,11 +257,11 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-    AppConfig.getServiceManager().getUserManager().addUser(u);
+//    AppConfig.getServiceManager().getUserManager().addUser(u);
    }
    catch( Throwable t )
    {
-    resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL Add user error: "+t.getMessage());
+    resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Add user error: "+t.getMessage());
 
     return;
    } 
@@ -251,7 +299,7 @@ public class AuthServlet extends HttpServlet
   }
 
 
-  boolean jsonReq = "application/json".equals( request.getContentType() );
+  boolean jsonReq = request.getContentType()!=null && request.getContentType().startsWith("application/json");
   
   Response resp = null;
   
@@ -295,7 +343,7 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-    params = new JSONReqParameterPool(json, act);
+    params = new JSONReqParameterPool(json, act, request.getRemoteAddr());
    }
    catch( Exception e )
    {
