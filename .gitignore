@@ -3,5 +3,9 @@
 .classpath
 .project
 /build/
-/war/WEB-INF/classes
-/war/WEB-INF/lib
+/war
+/war
+/target/
+/war/
+/resout/
+/gwt-unitCache/

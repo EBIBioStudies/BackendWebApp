@@ -104,7 +104,8 @@ public class LogTree3 extends TreeGrid
   TreeNode rn = data.getRoot();
   TreeNode[] rCh = data.getChildren(rn);
   
-  data.openFolder( rCh[0] );
+  if( rCh.length > 0 )
+   data.openFolder( rCh[0] );
  }
  
  private void createTreeStructure(LogNode cls, LogTreeNode node)

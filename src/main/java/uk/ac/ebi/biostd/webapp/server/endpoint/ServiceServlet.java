@@ -24,6 +24,30 @@ public abstract class ServiceServlet extends HttpServlet
   
   sessID = req.getParameter(BackendConfig.SessionCookie);
   
+  if( sessID == null && ! "GET".equalsIgnoreCase(req.getMethod()) )
+  {
+   
+   String qryStr = req.getQueryString();
+   
+   if( qryStr != null )
+   {
+    String[] parts = qryStr.split("&");
+    
+    String pfx = BackendConfig.SessionCookie+"=";
+    
+    for( String prm : parts )
+    {
+     if( prm.startsWith(pfx) )
+     {
+      sessID = prm.substring(pfx.length());
+      break;
+     }
+    }
+   }
+   
+  }
+  
+  
   if( sessID == null )
   {
    Cookie[] cuks = req.getCookies();

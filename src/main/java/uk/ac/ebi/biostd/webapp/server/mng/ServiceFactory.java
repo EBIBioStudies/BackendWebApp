@@ -2,7 +2,6 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 
 import java.io.File;
 
-import uk.ac.ebi.biostd.mng.ServiceManager;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPASubmissionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPAUserManager;

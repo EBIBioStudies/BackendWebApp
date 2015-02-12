@@ -3,7 +3,6 @@ package uk.ac.ebi.biostd.webapp.server.webdav;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +43,7 @@ import org.apache.tomcat.util.descriptor.web.FilterDef;
 import org.apache.tomcat.util.descriptor.web.FilterMap;
 import org.apache.tomcat.util.descriptor.web.LoginConfig;
 import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
+import org.apache.tomcat.util.http.CookieProcessor;
 
 public class ContextWrapper implements Context
 {
@@ -1440,32 +1440,16 @@ public class ContextWrapper implements Context
  }
 
  @Override
- public void setUseRfc6265(boolean useRfc6265)
+ public CookieProcessor getCookieProcessor()
  {
-  context.setUseRfc6265(useRfc6265);
+  return context.getCookieProcessor();
  }
 
  @Override
- public boolean getUseRfc6265()
+ public void setCookieProcessor(CookieProcessor cp)
  {
-  return context.getUseRfc6265();
+  context.setCookieProcessor(cp);
  }
 
- @Override
- public void setCookieEncoding(String encoding)
- {
-  context.setCookieEncoding(encoding);
- }
 
- @Override
- public String getCookieEncoding()
- {
-  return context.getCookieEncoding();
- }
-
- @Override
- public Charset getCookieEncodingCharset()
- {
-  return context.getCookieEncodingCharset();
- }
 }

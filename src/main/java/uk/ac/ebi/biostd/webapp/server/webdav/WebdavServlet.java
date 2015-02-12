@@ -60,8 +60,8 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.mng.UserManager;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 /**
  * Servlet which adds support for WebDAV level 2. All the basic HTTP requests

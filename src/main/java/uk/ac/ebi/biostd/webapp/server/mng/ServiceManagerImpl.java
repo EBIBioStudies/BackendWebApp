@@ -1,12 +1,10 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
-import uk.ac.ebi.biostd.mng.ServiceManager;
-import uk.ac.ebi.biostd.mng.SessionManager;
-import uk.ac.ebi.biostd.mng.SubmissionManager;
-import uk.ac.ebi.biostd.mng.UserManager;
 
 public class ServiceManagerImpl implements ServiceManager
 {
+
+
  private String serviceName;
  
  private ServiceConfig config;
@@ -14,6 +12,8 @@ public class ServiceManagerImpl implements ServiceManager
  private UserManager userManager;
  private SessionManager sessionManager;
  private SubmissionManager submissionManager;
+ private FileManager fileManager;
+ private SecurityManager authzManager;
  
  @Override
  public UserManager getUserManager()
@@ -70,7 +70,34 @@ public class ServiceManagerImpl implements ServiceManager
   this.submissionManager = submissionManager;
  }
 
- 
+ @Override
+ public RemoteRequestManager getRemoteRequestManager()
+ {
+  // TODO Auto-generated method stub
+  return null;
+ }
+
+ @Override
+ public FileManager getFileManager()
+ {
+  return fileManager;
+ }
+
+ public void setFileManager(FileManager fileManager)
+ {
+  this.fileManager = fileManager;
+ }
+
+ @Override
+ public SecurityManager getSecurityManager()
+ {
+  return authzManager;
+ }
+
+ public void setSecurityManager(SecurityManager authzManager)
+ {
+  this.authzManager = authzManager;
+ }
  
 
 }

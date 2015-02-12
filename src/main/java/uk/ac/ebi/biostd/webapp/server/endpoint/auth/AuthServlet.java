@@ -15,9 +15,9 @@ import net.tanesha.recaptcha.ReCaptchaFactory;
 import net.tanesha.recaptcha.ReCaptchaResponse;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.mng.SessionManager;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
 /**
@@ -143,7 +143,7 @@ public class AuthServlet extends HttpServlet
    
    if( usr == null )
    {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL");
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL login failed");
 
     return;
    }
@@ -155,7 +155,7 @@ public class AuthServlet extends HttpServlet
     
    if( ! usr.checkPassword(prm) )
    {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL");
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL login failed");
 
     return;
    }

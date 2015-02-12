@@ -8,8 +8,9 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.mng.SessionListener;
-import uk.ac.ebi.biostd.mng.UserManager;
+import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
+import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
+
 
 public class JPAUserManager implements UserManager, SessionListener
 {

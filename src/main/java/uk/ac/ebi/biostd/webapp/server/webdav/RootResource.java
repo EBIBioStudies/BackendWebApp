@@ -153,4 +153,10 @@ public class RootResource implements WebResource
   return null;
  }
 
+ @Override
+ public URL getCodeBase()
+ {
+  return null;
+ }
+
 }

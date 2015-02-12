@@ -121,7 +121,7 @@ public class UploadSvc extends ServiceServlet
    
     Thread.currentThread().setName( "Upload ("+upReq.getHandlerName()+") from "+req.getRemoteAddr() );
 
-    BackendConfig.getDefaultConfiguration().getRemoteRequestManager().processUpload(upReq, resp.getWriter());
+    BackendConfig.getServiceManager().getRemoteRequestManager().processUpload(upReq, resp.getWriter());
    }
    catch(Throwable ex)
    {

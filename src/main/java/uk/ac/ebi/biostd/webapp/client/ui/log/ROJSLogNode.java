@@ -7,6 +7,7 @@ import uk.ac.ebi.biostd.webapp.client.ui.util.ListOnJsArray;
 
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArray;
+import com.google.gwt.core.client.JsonUtils;
 
 public final class ROJSLogNode extends JavaScriptObject implements LogNode
 {
@@ -18,8 +19,13 @@ public final class ROJSLogNode extends JavaScriptObject implements LogNode
  public native String getMessage() /*-{ return this.message; }-*/ ;
  public native JsArray<ROJSLogNode> getSubnodes() /*-{ return this.subnodes; }-*/ ;
  
- public static native ROJSLogNode convert( String txt ) /*-{ return eval(txt); }-*/ ;
+// public static native ROJSLogNode convert( String txt ) /*-{ return eval(txt); }-*/ ;
 
+ public static ROJSLogNode convert( String txt ) 
+ {
+  return JsonUtils.safeEval(txt);
+ }
+ 
  @Override
  public void log(Level lvl, String msg)
  {
@@ -61,6 +67,18 @@ public final class ROJSLogNode extends JavaScriptObject implements LogNode
  public Level getLevel()
  {
   return Level.valueOf(getLevelAsString());
+ }
+
+ @Override
+ public boolean remove(LogNode ln)
+ {
+  return false;
+ }
+
+ @Override
+ public boolean move(LogNode oldPar, LogNode newPar)
+ {
+  return false;
  }
 
 }

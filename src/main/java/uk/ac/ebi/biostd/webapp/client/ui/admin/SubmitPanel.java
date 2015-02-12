@@ -24,6 +24,7 @@ import uk.ac.ebi.biostd.webapp.client.ClientConfig;
 import uk.ac.ebi.biostd.webapp.client.ui.log.LogTree3;
 import uk.ac.ebi.biostd.webapp.client.ui.log.ROJSLogNode;
 
+import com.google.gwt.core.shared.GWT;
 import com.smartgwt.client.types.Alignment;
 import com.smartgwt.client.widgets.Canvas;
 import com.smartgwt.client.widgets.IButton;
@@ -99,7 +100,17 @@ public class SubmitPanel extends HLayout
      {
       progressPanel.successState();
       
-      LogNode rLn = ROJSLogNode.convert(uploadSuccessEvent.getServerData());
+      LogNode rLn = null;
+      
+      try
+      {
+       rLn = ROJSLogNode.convert(uploadSuccessEvent.getServerData());
+       
+      }
+      catch(Exception e)
+      {
+       GWT.log("JSON parsing error: "+e.getMessage());
+      }
       
       final LogTree3 lgTree = new LogTree3(rLn);
       

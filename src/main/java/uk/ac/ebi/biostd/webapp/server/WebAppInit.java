@@ -66,6 +66,8 @@ public class WebAppInit implements ServletContextListener
  @Override
  public void contextDestroyed(ServletContextEvent arg0)
  {
+  BackendConfig.getServiceManager().getSessionManager().shutdown();
+  BackendConfig.getEntityManagerFactory().close();
  }
 
  

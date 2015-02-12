@@ -14,8 +14,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.mng.SessionListener;
-import uk.ac.ebi.biostd.mng.SessionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
+import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
+
 
 
 public class SessionManagerImpl implements SessionManager, Runnable
@@ -142,13 +143,6 @@ public class SessionManagerImpl implements SessionManager, Runnable
   
   while( ! shutdown )
   {
-   try
-   {
-    Thread.sleep(CHECK_INTERVAL);
-   }
-   catch(InterruptedException e)
-   {
-   }
 
    
    try
@@ -192,6 +186,15 @@ public class SessionManagerImpl implements SessionManager, Runnable
    {
     lock.unlock();
    }
+   
+   try
+   {
+    Thread.sleep(CHECK_INTERVAL);
+   }
+   catch(InterruptedException e)
+   {
+   }
+
   }
  }
 

@@ -1,11 +1,11 @@
 package uk.ac.ebi.biostd.webapp.client.ui.submission;
 
 
+import uk.ac.ebi.biostd.treelog.LogNode;
 import uk.ac.ebi.biostd.webapp.Constants;
 import uk.ac.ebi.biostd.webapp.client.ui.log.LogWindow;
 import uk.ac.ebi.biostd.webapp.client.ui.log.ROJSLogNode;
 import uk.ac.ebi.biostd.webapp.client.ui.submission.NewDMPanel.RemoveListener;
-import uk.ac.ebi.biostd.webapp.shared.dto.log.LogNode;
 
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.Button;

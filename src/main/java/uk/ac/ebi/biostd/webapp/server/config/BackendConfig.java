@@ -6,8 +6,9 @@ import javax.persistence.EntityManagerFactory;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
-import uk.ac.ebi.biostd.mng.ServiceManager;
+import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
+import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 
 
 public class BackendConfig
@@ -17,6 +18,7 @@ public class BackendConfig
  public static final String SessionDir = "sessions";
  public static final String UsersDir = "Users";
  public static final String GroupsDir = "Groups";
+ public static final String SubmissionDir = "Submissions";
  
  public static final String WorkdirParameter       = "workdir";
  public static final String DataDirParameter       = "datadir";
@@ -36,6 +38,7 @@ public class BackendConfig
 
  private static File usersDir;
  private static File groupsDir;
+ private static File submissionsDir;
 
  
  public static boolean readParameter(String param, String val) throws ServiceConfigException
@@ -44,6 +47,9 @@ public class BackendConfig
   if( WorkdirParameter.equals(param) )
   {
    workDirectory=val;
+   
+   submissionsDir = new File( workDirectory, SubmissionDir );
+   
    return true;
   }
   
@@ -118,6 +124,12 @@ public class BackendConfig
  {
   return new File(usersDir,String.valueOf( user.getId() ));
  }
+ 
+
+ public static File getSubmissionDir(Submission sbm)
+ {
+  return new File(submissionsDir,String.valueOf( sbm.getId() ));
+ }
 
  public static File getGroupDir(UserGroup grp)
  {
@@ -129,5 +141,7 @@ public class BackendConfig
  {
   return recapchaPrivateKey;
  }
+
+
 
 }
