@@ -13,12 +13,13 @@ import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 
 public class BackendConfig
 {
- public static final String SessionCookie = "BIOSTDSESS";
+ public static final String SessionCookie = "BIOSTDSESS";   //think about security issues on system that ignore file name cases
  
  public static final String SessionDir = "sessions";
  public static final String UsersDir = "Users";
  public static final String GroupsDir = "Groups";
  public static final String SubmissionDir = "Submissions";
+ public static final String SubmissionFilesDir = "Files";
  
  public static final String WorkdirParameter       = "workdir";
  public static final String DataDirParameter       = "datadir";
@@ -140,6 +141,12 @@ public class BackendConfig
  public static String getRecapchaPrivateKey()
  {
   return recapchaPrivateKey;
+ }
+
+
+ public static File getSubmissionFilesDir(Submission sbm)
+ {
+  return new File( getSubmissionDir(sbm), SubmissionFilesDir );
  }
 
 

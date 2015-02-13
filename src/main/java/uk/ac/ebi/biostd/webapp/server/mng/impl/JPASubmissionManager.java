@@ -1,5 +1,8 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -96,8 +99,6 @@ public class JPASubmissionManager implements SubmissionManager
     
   EntityManager em = emf.createEntityManager();
 
-  EntityTransaction trn = em.getTransaction();
-
   TagResolver tgRslv = new TagResolverImpl(em);
   
   Parser parser = null;
@@ -128,7 +129,7 @@ public class JPASubmissionManager implements SubmissionManager
   }
   
   
-  trn.begin();
+  em.getTransaction().begin();
   
   List<SubmissionInfo> subms=null;
   try
@@ -175,6 +176,8 @@ public class JPASubmissionManager implements SubmissionManager
      submOk = false;
      continue;
     }
+    
+    si.setOriginalSubmission(oldSbm);
     
     if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserUpdateSubmission(oldSbm, usr) )
     {
@@ -235,6 +238,21 @@ public class JPASubmissionManager implements SubmissionManager
   
   for( SubmissionInfo si : subms )
   {
+   
+   if( si.getAccNoPrefix() != null || si.getAccNoSuffix() != null )
+   {
+    while(true)
+    {
+     String newAcc = getNextAccNo(si.getAccNoPrefix(), si.getAccNoSuffix(), em);
+
+     if(checkSubmissionIdUniq(newAcc, em))
+     {
+      si.getSubmission().setAccNo(newAcc);
+      break;
+     }
+    }
+   }
+   
    for(SectionOccurrence seco : si.getGlobalSections())
    {
     if(seco.getPrefix() != null || seco.getSuffix() != null)
@@ -252,8 +270,75 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
    }
+   
+   if( si.getOriginalSubmission() != null )
+    em.remove(si.getOriginalSubmission());
 
+   em.persist( si.getSubmission() );
+   
   }
+  
+  em.getTransaction().commit();
+  
+  for( SubmissionInfo si : subms )
+  {
+  
+   fileMngr.createSubmissionDir( si.getSubmission() );
+   
+   if( si.getFileOccurrences() != null  )
+   {
+    for( FileOccurrence fo : si.getFileOccurrences() )
+    {
+     try
+     {
+      fileMngr.copyToSubmissionFilesDir( si.getSubmission(), fo.getFilePointer() );
+     }
+     catch( IOException e )
+     {
+      si.getLogNode().log(Level.ERROR, "File transfer error: "+fo.getFilePointer());
+     }
+    }
+   }
+   
+   String srcFileName = "source";
+   
+   switch( type )
+   {
+    case JSON:
+     srcFileName += ".json.txt";
+     break;
+     
+    case PageTab:
+     srcFileName += ".pagetab.txt";
+     break;
+
+    case XML:
+     srcFileName += ".xml";
+     break;
+
+    default:
+     break;
+   }
+   
+   File srcFile = fileMngr.createSubmissionDirFile( si.getSubmission(), srcFileName );
+   
+   try
+   {
+    PrintWriter srcOut = new PrintWriter(srcFile);
+    
+    srcOut.append(txt);
+    
+    srcOut.close();
+    
+   }
+   catch(IOException e)
+   {
+    si.getLogNode().log(Level.ERROR, "File write error: "+srcFileName);
+   }
+   
+  }
+  
+  SimpleLogNode.setLevels(gln);
   
   return gln;
 
