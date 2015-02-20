@@ -75,7 +75,7 @@ public class DumpServlet extends ServiceServlet
   
   String data = new String( bindata, cs );
   
-  LogNode ln = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data);
+  LogNode ln = BackendConfig.getServiceManager().getSubmissionManager().createPageTabSubmission(data, sess.getUser());
   
   Log2JSON.convert(ln, resp.getWriter());
   

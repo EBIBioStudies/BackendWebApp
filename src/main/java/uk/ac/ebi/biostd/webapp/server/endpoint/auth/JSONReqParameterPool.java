@@ -27,14 +27,7 @@ public class JSONReqParameterPool implements ParameterPool
  @Override
  public String getParameter(String pName)
  {
-  try
-  { 
-   return obj.getString(pName);
-  }
-  catch( JSONException e )
-  {}
-  
-  return null;
+   return obj.optString(pName);
  }
 
 

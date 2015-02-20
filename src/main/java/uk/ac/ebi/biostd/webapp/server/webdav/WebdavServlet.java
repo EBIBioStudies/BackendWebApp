@@ -16,6 +16,7 @@
  */
 package uk.ac.ebi.biostd.webapp.server.webdav;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -341,6 +342,14 @@ public class WebdavServlet extends DefaultServlet
   
   ThreadUser.setUser(usr);
   
+  WebResource wr = resources.getResource("/");
+  
+  File dataRoot = new File(wr.getCanonicalPath());
+  
+  File usrRoot = new File( dataRoot, BackendConfig.UsersDir+"/"+usr.getId() );
+
+  usrRoot.mkdirs();
+  
   return usr;
   
  }
@@ -378,8 +387,6 @@ public class WebdavServlet extends DefaultServlet
    return;
   }
   
-  
-
   
   final String method = req.getMethod();
 

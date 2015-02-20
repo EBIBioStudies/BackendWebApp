@@ -59,6 +59,17 @@
     <url-pattern>/biostdadm/adminServiceGWT</url-pattern>
   </servlet-mapping>
   
+  <servlet>
+    <description></description>
+    <display-name>SubmitServlet</display-name>
+    <servlet-name>SubmitServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.submit.SubmitServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SubmitServlet</servlet-name>
+    <url-pattern>/submit/*</url-pattern>
+  </servlet-mapping>
+  
   <listener>
     <listener-class>uk.ac.ebi.biostd.webapp.server.WebAppInit</listener-class>
   </listener>

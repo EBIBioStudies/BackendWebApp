@@ -66,8 +66,11 @@ public class WebAppInit implements ServletContextListener
  @Override
  public void contextDestroyed(ServletContextEvent arg0)
  {
-  BackendConfig.getServiceManager().getSessionManager().shutdown();
-  BackendConfig.getEntityManagerFactory().close();
+  if( BackendConfig.getServiceManager().getSessionManager() != null )
+   BackendConfig.getServiceManager().getSessionManager().shutdown();
+  
+  if( BackendConfig.getEntityManagerFactory() != null )
+   BackendConfig.getEntityManagerFactory().close();
  }
 
  
@@ -167,6 +170,7 @@ public class WebAppInit implements ServletContextListener
   }
   
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
+  
   
  }
  

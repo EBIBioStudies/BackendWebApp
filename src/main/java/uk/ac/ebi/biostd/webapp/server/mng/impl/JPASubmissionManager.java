@@ -13,6 +13,9 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.db.TagResolver;
 import uk.ac.ebi.biostd.idgen.Counter;
@@ -39,6 +42,8 @@ import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
 
 public class JPASubmissionManager implements SubmissionManager
 {
+ private static Logger log;
+ 
  static enum SourceType
  {
   XML,
@@ -52,6 +57,10 @@ public class JPASubmissionManager implements SubmissionManager
  
  public JPASubmissionManager(EntityManagerFactory emf)
  {
+  if( log == null )
+   log = LoggerFactory.getLogger(getClass());
+
+  
   this.emf=emf;
 
   parserCfg = new ParserConfig();
@@ -89,7 +98,7 @@ public class JPASubmissionManager implements SubmissionManager
 
   SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, (update?"Updating":"Creating")+" submission(s) from "+type.name()+" source", ec);
   
-  if( ! update && BackendConfig.getServiceManager().getSecurityManager().mayUserCreateSubmission(usr)  )
+  if( ! update && ! BackendConfig.getServiceManager().getSecurityManager().mayUserCreateSubmission(usr)  )
   {
    gln.log(Level.ERROR, "User has no permission to create submissions");
    return gln;
@@ -147,7 +156,7 @@ public class JPASubmissionManager implements SubmissionManager
  
   SimpleLogNode.setLevels(gln);
   
-  if( gln.getLevel() != Level.SUCCESS )
+  if( gln.getLevel() == Level.ERROR )
    return gln;
   
   FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
@@ -156,6 +165,8 @@ public class JPASubmissionManager implements SubmissionManager
 
   for( SubmissionInfo si : subms )
   {
+   si.getSubmission().setOwner(usr);
+   
    Set<String> globSecId = null;
    Submission oldSbm = null; 
    
@@ -352,9 +363,12 @@ public class JPASubmissionManager implements SubmissionManager
   q.setParameter("prefix", prefix);
   q.setParameter("suffix", suffix);
   
-  IdGen gen = (IdGen)q.getSingleResult();
+  @SuppressWarnings("unchecked")
+  List<IdGen> genList = q.getResultList();
   
-  if( gen == null )
+  IdGen gen = null;
+  
+  if( genList.size() == 0 )
   {
    gen = new IdGen();
    
@@ -363,6 +377,10 @@ public class JPASubmissionManager implements SubmissionManager
    
    em.persist(gen);
   }
+  else if( genList.size() == 1 )
+   gen = genList.get(0);
+  else
+   log.error("Query returned multiple ("+genList.size()+") IdGen objects");
 
   Counter cnt = gen.getCounter();
   

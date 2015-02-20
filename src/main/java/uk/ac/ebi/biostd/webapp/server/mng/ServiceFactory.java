@@ -3,8 +3,10 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 import java.io.File;
 
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.FileManagerImpl;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPASubmissionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPAUserManager;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.SecurityManagerImpl;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.SessionManagerImpl;
 
 public class ServiceFactory
@@ -44,6 +46,8 @@ public class ServiceFactory
   svc.setUserManager( new JPAUserManager( BackendConfig.getEntityManagerFactory() ) );
   svc.setSessionManager( new SessionManagerImpl(sessDir) );
   svc.setSubmissionManager( new JPASubmissionManager(BackendConfig.getEntityManagerFactory()));
+  svc.setSecurityManager(new SecurityManagerImpl() );
+  svc.setFileManager( new FileManagerImpl() );
   
   return svc;
   

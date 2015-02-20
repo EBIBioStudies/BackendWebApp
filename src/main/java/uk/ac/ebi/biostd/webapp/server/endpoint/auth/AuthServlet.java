@@ -257,7 +257,7 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-//    AppConfig.getServiceManager().getUserManager().addUser(u);
+    BackendConfig.getServiceManager().getUserManager().addUser(u);
    }
    catch( Throwable t )
    {
@@ -266,7 +266,8 @@ public class AuthServlet extends HttpServlet
     return;
    } 
    
-   resp.respond(HttpServletResponse.SC_OK, "OK");
+   resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(UsernameParameter,u.getFullName()));
+//   resp.respond(HttpServletResponse.SC_OK, "OK");
    
   }
    

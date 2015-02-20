@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.treelog.Log2JSON;
 import uk.ac.ebi.biostd.treelog.LogNode;
+import uk.ac.ebi.biostd.treelog.SimpleLogNode;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
@@ -49,10 +50,14 @@ public class SubmitServlet extends ServiceServlet
    }
    catch(Throwable e)
    {
-    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    response.getWriter().print("FAIL Invalid path: " + pi);
-    return;
    }
+  }
+  
+  if( act == null )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL Invalid path: " + pi);
+   return;
   }
 
   boolean jsonReq = request.getContentType() != null && request.getContentType().startsWith("application/json");
@@ -69,7 +74,7 @@ public class SubmitServlet extends ServiceServlet
    return;
   }
   
-  Charset cs = Charset.defaultCharset();
+  Charset cs = Charset.forName("utf-8");
 
   String enc = request.getCharacterEncoding();
 
@@ -109,9 +114,19 @@ public class SubmitServlet extends ServiceServlet
    else if( pageTabReq )
     topLn = BackendConfig.getServiceManager().getSubmissionManager().createPageTabSubmission(body, sess.getUser() );
   }
+  else if( act == Action.update )
+  {
+   if( jsonReq )
+    topLn = BackendConfig.getServiceManager().getSubmissionManager().updateJSONSubmission(body, sess.getUser() );
+   else if( xmlReq )
+    topLn = BackendConfig.getServiceManager().getSubmissionManager().updateXMLSubmission(body, sess.getUser() );
+   else if( pageTabReq )
+    topLn = BackendConfig.getServiceManager().getSubmissionManager().updatePageTabSubmission(body, sess.getUser() );
+  }
   
   response.setContentType("application/json");
   
+  SimpleLogNode.setLevels(topLn);
   Log2JSON.convert(topLn, response.getWriter());
   
  }

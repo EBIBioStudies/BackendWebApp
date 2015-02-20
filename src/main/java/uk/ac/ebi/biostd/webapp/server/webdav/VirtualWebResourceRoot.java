@@ -18,6 +18,7 @@ import org.apache.catalina.webresources.EmptyResource;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public class VirtualWebResourceRoot implements WebResourceRoot
 {
@@ -25,11 +26,11 @@ public class VirtualWebResourceRoot implements WebResourceRoot
 
  
  public static final String personalDir="Personal";
- public static final String userDir="/Users/";
- public static final String groupDir="/Groups/";
  
  private WebResourceRoot realRoot;
  private String mountPath;
+ private String userDir;
+ private String groupDir;
 
  public VirtualWebResourceRoot( WebResourceRoot rrt, String mountPath  )
  {
@@ -37,6 +38,21 @@ public class VirtualWebResourceRoot implements WebResourceRoot
   
   if( mountPath.endsWith("/") )
    mountPath=mountPath.substring(0,mountPath.length()-1);
+  
+  userDir = BackendConfig.UsersDir;
+  groupDir = BackendConfig.GroupsDir;
+  
+  if( ! userDir.startsWith("/") )
+   userDir = "/"+userDir;
+
+  if( ! groupDir.startsWith("/") )
+   groupDir = "/"+groupDir ;
+  
+  if( ! userDir.endsWith("/") )
+   userDir = userDir + "/";
+
+  if( ! groupDir.endsWith("/") )
+   groupDir = groupDir + "/";
   
   this.mountPath = mountPath;
  }
