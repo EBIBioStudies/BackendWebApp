@@ -20,6 +20,7 @@ import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.db.TagResolver;
 import uk.ac.ebi.biostd.idgen.Counter;
 import uk.ac.ebi.biostd.idgen.IdGen;
+import uk.ac.ebi.biostd.in.PMDoc;
 import uk.ac.ebi.biostd.in.Parser;
 import uk.ac.ebi.biostd.in.ParserConfig;
 import uk.ac.ebi.biostd.in.ParserException;
@@ -140,10 +141,10 @@ public class JPASubmissionManager implements SubmissionManager
   
   em.getTransaction().begin();
   
-  List<SubmissionInfo> subms=null;
+  PMDoc doc=null;
   try
   {
-   subms = parser.parse(txt, gln);
+   doc = parser.parse(txt, gln);
   }
   catch(ParserException e)
   {
@@ -163,7 +164,7 @@ public class JPASubmissionManager implements SubmissionManager
 
   boolean submOk=true;
 
-  for( SubmissionInfo si : subms )
+  for( SubmissionInfo si : doc.getSubmissions() )
   {
    si.getSubmission().setOwner(usr);
    
@@ -247,7 +248,7 @@ public class JPASubmissionManager implements SubmissionManager
   }
   
   
-  for( SubmissionInfo si : subms )
+  for( SubmissionInfo si : doc.getSubmissions() )
   {
    
    if( si.getAccNoPrefix() != null || si.getAccNoSuffix() != null )
@@ -291,7 +292,7 @@ public class JPASubmissionManager implements SubmissionManager
   
   em.getTransaction().commit();
   
-  for( SubmissionInfo si : subms )
+  for( SubmissionInfo si : doc.getSubmissions() )
   {
   
    fileMngr.createSubmissionDir( si.getSubmission() );
