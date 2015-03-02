@@ -7,18 +7,17 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.Map;
+import java.util.logging.XMLFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import uk.ac.ebi.biosd.xs.export.EBeyeXMLFormatter;
-import uk.ac.ebi.biosd.xs.export.XMLFormatter;
-import uk.ac.ebi.biosd.xs.keyword.OWLKeywordExpansion;
-import uk.ac.ebi.biosd.xs.mtexport.ExporterStat;
-import uk.ac.ebi.biosd.xs.output.OutputModule;
-import uk.ac.ebi.biosd.xs.task.TaskConfigException;
-import uk.ac.ebi.biosd.xs.util.FileUtils;
-import uk.ac.ebi.biosd.xs.util.MapParamPool;
+import uk.ac.ebi.biostd.webapp.server.export.ExporterStat;
+import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
+import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
+import uk.ac.ebi.biostd.webapp.server.util.MapParamPool;
+
+
 
 public class EBEyeOutputModule implements OutputModule
 {
@@ -137,35 +136,13 @@ public class EBEyeOutputModule implements OutputModule
   return ebeyeFmt;
  }
 
- @Override
- public Appendable getGroupOut()
- {
-  return grpFileOut;
- }
 
  @Override
- public Appendable getSampleOut()
+ public Appendable getOut()
  {
   return smplFileOut;
  }
 
- @Override
- public boolean isGroupedSamplesOnly()
- {
-  return groupedOnly;
- }
-
- @Override
- public boolean isSourcesByAcc()
- {
-  return false;
- }
-
- @Override
- public boolean isSourcesByName()
- {
-  return false;
- }
 
  @Override
  public void start() throws IOException

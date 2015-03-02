@@ -71,7 +71,7 @@ public class JPASubmissionManager implements SubmissionManager
 
  
  @Override
- public Collection<Submission> getSubmissionsByOwner(User u)
+ public Collection<Submission> getSubmissionsByOwner(User u, int offset, int limit)
  {
   EntityManager em = emf.createEntityManager();
 
@@ -79,10 +79,16 @@ public class JPASubmissionManager implements SubmissionManager
   
   trn.begin();
   
-  Query q = em.createQuery("select s from Submission s JOIN Submission.owner u where u.id=?1");
+  Query q = em.createQuery("select s from Submission s JOIN s.owner u where u.id=?1 order by s.MTime desc");
 
   q.setParameter(1, u.getId());
 
+  if( offset > 0 )
+   q.setFirstResult(offset);
+  
+  if( limit > 0 )
+   q.setMaxResults(limit);
+  
   @SuppressWarnings("unchecked")
   List<Submission> res = q.getResultList();
 

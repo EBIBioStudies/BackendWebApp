@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
+package uk.ac.ebi.biostd.webapp.server.endpoint;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -6,28 +6,20 @@ import org.json.JSONObject;
 public class JSONReqParameterPool implements ParameterPool
 {
  private JSONObject obj;
- private Action defaultAction = null;
  private String cliAddr;
  
  
- public JSONReqParameterPool( String txt, Action defAct, String addr ) throws JSONException
+ public JSONReqParameterPool( String txt, String addr ) throws JSONException
  {
   obj = new JSONObject(txt);
-  defaultAction = defAct;
   cliAddr=addr;
- }
- 
- @Override
- public Action getDefaultAction()
- {
-  return defaultAction;
  }
  
  
  @Override
  public String getParameter(String pName)
  {
-   return obj.optString(pName);
+   return obj.optString(pName, null );
  }
 
 

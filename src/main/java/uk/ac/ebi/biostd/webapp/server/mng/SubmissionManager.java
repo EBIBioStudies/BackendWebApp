@@ -8,7 +8,7 @@ import uk.ac.ebi.biostd.treelog.LogNode;
 
 public interface SubmissionManager
 {
- Collection< Submission > getSubmissionsByOwner( User u );
+ Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
 
  LogNode createJSONSubmission(String txt, User usr);
  LogNode createXMLSubmission(String txt, User usr);

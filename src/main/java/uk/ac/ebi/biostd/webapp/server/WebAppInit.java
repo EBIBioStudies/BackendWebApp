@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Enumeration;
@@ -35,8 +36,6 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
-import uk.ac.ebi.biostd.webapp.server.export.ebeye.EBEyeOutputModule;
-import uk.ac.ebi.biostd.webapp.server.export.xmlout.FormatingOutputModule;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceInitExceprion;
@@ -57,18 +56,20 @@ public class WebAppInit implements ServletContextListener
 
  static final String DBParamPrefix = "db.";
  static final String ServiceParamPrefix = "biostd.";
- static final String TaskParamPrefix = "task.";
+ static final String TaskParamPrefix = "export.";
  static final String OutputParamPrefix = "output";
 
- static final String OutputTypeParameter = "type";
- static final String XMLDumpType = "xml";
- static final String EBEyeType = "ebeye";
+ static final String OutputClassParameter = "class";
+// static final String XMLDumpType = "xml";
+// static final String EBEyeType = "ebeye";
  
  
  private Logger log = null;
 
  private static final long dayInMills = TimeUnit.DAYS.toMillis(1);
 
+ private Timer timer;
+ 
  public WebAppInit()
  {
   if( log == null )
@@ -90,6 +91,9 @@ public class WebAppInit implements ServletContextListener
   
   if( BackendConfig.getEntityManagerFactory() != null )
    BackendConfig.getEntityManagerFactory().close();
+  
+  if( timer != null )
+   timer.cancel();
  }
 
  
@@ -187,9 +191,11 @@ public class WebAppInit implements ServletContextListener
 
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
   
+  TaskInfo tinf = null;
+  
   try
   {
-   createTask(taskConfig);
+   tinf = createTask(taskConfig);
   }
   catch( TaskConfigException e )
   {
@@ -197,22 +203,18 @@ public class WebAppInit implements ServletContextListener
    throw new RuntimeException("BioStd webapp initialization failed");
   }
 
-  
-  for( TaskInfo tinf : TaskManager.getDefaultInstance().getTasks() )
+  if(tinf.getTimeZero() >= 0)
   {
-   if( tinf.getTimeZero() >= 0 )
-   {
-    if(timer == null)
-     timer = new Timer("Timer", true);
-    
-    timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), dayInMills);
-   
-    log.info("Task '"+tinf.getTask().getName()+"' is scheduled to run periodically");
-   }
+   if(timer == null)
+    timer = new Timer("Timer", true);
+
+   timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), dayInMills);
+
+   log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically");
   }
  }
  
- private void createTask(TaskConfig tc) throws TaskConfigException
+ private TaskInfo createTask(TaskConfig tc) throws TaskConfigException
  {
   Calendar cal = Calendar.getInstance(TimeZone.getDefault());
   long ctime = System.currentTimeMillis();
@@ -254,32 +256,75 @@ public class WebAppInit implements ServletContextListener
    {
     Map<String,String> cfg = me.getValue();
     
-    String type = cfg.get(OutputTypeParameter);
+    String type = cfg.get(OutputClassParameter);
     
     if( type == null )
-     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': missed 'type' parameter");
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': missed '"+OutputClassParameter+"' parameter");
     
-    if( XMLDumpType.equals(type) )
-     mods.add( new FormatingOutputModule(tc.getName()+":"+me.getKey(),cfg));
-    else if( EBEyeType.equals(type) )
-     mods.add( new EBEyeOutputModule(tc.getName()+":"+me.getKey(),cfg) );
+    Class<?> outtaskCls = null;
     
+    OutputModule outMod = null;
+    
+    try
+    {
+     outtaskCls = Class.forName(type);
+    }
+    catch( ClassNotFoundException e )
+    {
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': output module class '"+outtaskCls+"' not found");
+    }
+    
+    if( ! OutputModule.class.isAssignableFrom(outtaskCls) )
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Class '"+outtaskCls+"' doesn't implement OutputModule interface");
+    
+    Constructor<?> ctor = null;
+    
+    try
+    {
+     try
+     {
+      ctor = outtaskCls.getConstructor(String.class, Map.class);
+      outMod = (OutputModule) ctor.newInstance(tc.getName()+":"+me.getKey(),cfg);
+     }
+     catch(NoSuchMethodException e)
+     {
+      try
+      {
+       ctor = outtaskCls.getConstructor(String.class);
+       outMod = (OutputModule) ctor.newInstance(tc.getName()+":"+me.getKey());
+      }
+      catch(NoSuchMethodException e1)
+      {
+       throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't fine appropriate constructor of class '" + outtaskCls + "'");
+      }
+     }
+     catch(SecurityException e)
+     {
+      throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't get constructor of class '" + outtaskCls + "' " + e.getMessage());
+     }
+    }
+    catch(Exception ex)
+    {
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't create instance of class '" + outtaskCls + "'");
+    }
+
+    mods.add( outMod );
    }
    
    try
    {
-    ExportTask tsk = new ExportTask(tc.getName(), emf, myEqFact, mods, tc);
+    ExportTask tsk = new ExportTask(tc.getName(), emf, mods, tc);
     
     tinf.setTask(tsk);
     
-    TaskManager.getDefaultInstance().addTask(tinf);
+    return tinf;
    }
    catch(TaskInitError e)
    {
     log.warn("Task '"+tc.getName()+"': Initialization error: "+e.getMessage() );
    }
    
-  
+  return null;
  }
  
  private long getAdjustedDelay( int hour, int min )

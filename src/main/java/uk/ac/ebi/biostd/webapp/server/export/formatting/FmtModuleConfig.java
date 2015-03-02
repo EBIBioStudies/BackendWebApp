@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.export.formating;
+package uk.ac.ebi.biostd.webapp.server.export.formatting;
 
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -15,7 +15,7 @@ public class FmtModuleConfig
 
  public static final String OutputFileParameter        = "outfile";
  public static final String FormatParameter            = "format";
- public static final String TmpDirParameter            = "tmpDir";
+ public static final String TmpDirParameter            = "tmpdir";
 
  private String      format;
  private Boolean     publicOnly;

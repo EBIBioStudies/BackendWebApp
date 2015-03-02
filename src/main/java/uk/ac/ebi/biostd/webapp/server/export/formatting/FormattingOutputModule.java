@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.export.formating;
+package uk.ac.ebi.biostd.webapp.server.export.formatting;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,7 +25,7 @@ import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.util.MapParamPool;
 
-public class FormatingOutputModule implements OutputModule
+public class FormattingOutputModule implements OutputModule
 {
  static final boolean DefaultShowNS = false;
  static final boolean DefaultShowAC = true;
@@ -47,7 +47,7 @@ public class FormatingOutputModule implements OutputModule
  
  private static Logger log = null;
  
- public FormatingOutputModule(String name, Map<String, String> cfgMap) throws TaskConfigException
+ public FormattingOutputModule(String name, Map<String, String> cfgMap) throws TaskConfigException
  {
   if( log == null )
    log = LoggerFactory.getLogger(getClass());
@@ -203,7 +203,7 @@ public class FormatingOutputModule implements OutputModule
   hdrs.put("ioErrors", Collections.singletonList(String.valueOf( stat.getRecoverAttempt() ) ) );
   
  
-  File tmpOutFile = new File("~"+outFile.getAbsolutePath());
+  File tmpOutFile = new File(outFile.getAbsolutePath()+".tmp");
   
   try
   ( 

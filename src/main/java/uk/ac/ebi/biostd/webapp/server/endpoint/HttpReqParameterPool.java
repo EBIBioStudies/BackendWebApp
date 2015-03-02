@@ -1,25 +1,16 @@
-package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
+package uk.ac.ebi.biostd.webapp.server.endpoint;
 
 import javax.servlet.http.HttpServletRequest;
 
 public class HttpReqParameterPool implements ParameterPool
 {
  private HttpServletRequest req;
- private Action defaultAction = null;
  
- 
- @Override
- public Action getDefaultAction()
- {
-  return defaultAction;
- }
 
-
- public HttpReqParameterPool(HttpServletRequest req, Action defAct)
+ public HttpReqParameterPool(HttpServletRequest req)
  {
   super();
   this.req = req;
-  defaultAction = defAct;
  }
 
 

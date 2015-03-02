@@ -1,10 +1,8 @@
-package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
+package uk.ac.ebi.biostd.webapp.server.endpoint;
 
 public interface ParameterPool
 {
  String getParameter(String pName);
- 
- Action getDefaultAction();
  
  String getClientAddress();
 }

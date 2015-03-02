@@ -17,6 +17,9 @@ import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.JSONReqParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
@@ -72,10 +75,8 @@ public class AuthServlet extends HttpServlet
  }
  
  
- private void process( ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void process( Action act, ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
  {
-  Action act = Action.check;
-  
   String prm = prms.getParameter(ActionParameter);
   
   if( prm != null )
@@ -91,9 +92,6 @@ public class AuthServlet extends HttpServlet
     return;
    }
   }
-  
-  if( prm == null )
-   act = prms.getDefaultAction();
   
   SessionManager sessMngr = BackendConfig.getServiceManager().getSessionManager();
   
@@ -344,7 +342,7 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-    params = new JSONReqParameterPool(json, act, request.getRemoteAddr());
+    params = new JSONReqParameterPool(json, request.getRemoteAddr());
    }
    catch( Exception e )
    {
@@ -354,9 +352,9 @@ public class AuthServlet extends HttpServlet
    }
   }
   else
-   params = new HttpReqParameterPool(request, act);
+   params = new HttpReqParameterPool(request);
   
-  process(params, request, resp);  
+  process(act, params, request, resp);  
 
  }
 
