@@ -133,6 +133,7 @@ public class AuthServlet extends HttpServlet
 
     return;
    }
+
    
    User usr = BackendConfig.getServiceManager().getUserManager().getUserByName(prm);
    

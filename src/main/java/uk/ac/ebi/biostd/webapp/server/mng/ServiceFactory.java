@@ -43,7 +43,7 @@ public class ServiceFactory
   ServiceManagerImpl svc  = new ServiceManagerImpl();
 
   
-  svc.setUserManager( new JPAUserManager( BackendConfig.getEntityManagerFactory() ) );
+  svc.setUserManager( new JPAUserManager( ) );
   svc.setSessionManager( new SessionManagerImpl(sessDir) );
   svc.setSubmissionManager( new JPASubmissionManager(BackendConfig.getEntityManagerFactory()));
   svc.setSecurityManager(new SecurityManagerImpl() );

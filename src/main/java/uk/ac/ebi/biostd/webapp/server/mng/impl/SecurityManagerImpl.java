@@ -19,4 +19,10 @@ public class SecurityManagerImpl implements SecurityManager
   return oldSbm.getOwner().getLogin().equals( usr.getLogin() );
  }
 
+ @Override
+ public boolean mayUserDeleteSubmission(Submission sbm, User usr)
+ {
+  return sbm.getOwner().getLogin().equals( usr.getLogin() ) || usr.isSuperuser();
+ }
+
 }

@@ -3,31 +3,29 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 import java.util.List;
 
 import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 
 public class JPAUserManager implements UserManager, SessionListener
 {
- private EntityManagerFactory emf;
- private EntityManager em;
  
- public JPAUserManager(EntityManagerFactory emf)
+ public JPAUserManager()
  {
-  this.emf=emf;
  }
 
  @Override
  public User getUserByName(String uName)
  {
-  if(em == null)
-   em = emf.createEntityManager();
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
+  System.out.println( "Entity manager open: "+em.isOpen() );
+  
   Query q = em.createQuery("select u from User u where login=?1");
 
   q.setParameter(1, uName);
@@ -45,8 +43,7 @@ public class JPAUserManager implements UserManager, SessionListener
  @Override
  public User getUserByEmail(String prm)
  {
-  if(em == null)
-   em = emf.createEntityManager();
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
   Query q = em.createQuery("select u from User u where email=?");
 
@@ -65,8 +62,7 @@ public class JPAUserManager implements UserManager, SessionListener
  @Override
  public void addUser(User u)
  {
-  if(em == null)
-   em = emf.createEntityManager();
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
   
   EntityTransaction trn = em.getTransaction();
   

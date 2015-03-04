@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 
@@ -35,6 +36,8 @@ public class SessionManagerImpl implements SessionManager, Runnable
  
  private final File sessDirRoot;
  
+ private Session anonSess;
+ 
  public SessionManagerImpl( File sdr )
  {
   sessDirRoot=sdr;
@@ -52,7 +55,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
 
   File sessDir = new File(sessDirRoot,key);
   
-  Session sess = new Session( sessDir );
+  Session sess = new Session( sessDir, BackendConfig.getEntityManagerFactory() );
     
   sess.setSessionKey(key);
   sess.setUser(user);
@@ -181,6 +184,26 @@ public class SessionManagerImpl implements SessionManager, Runnable
      }
       
     }
+    
+    if( anonSess != null )
+    {
+     if( ( ( time - anonSess.getLastAccessTime() ) > MAX_SESSION_IDLE_TIME ) || shutdown )
+     {
+      anonSess.destroy();
+      
+      Iterator<Map.Entry<Thread, Session>> thIter = threadMap.entrySet().iterator();
+      
+      while( thIter.hasNext() )
+      {
+       Map.Entry<Thread, Session> me = thIter.next();
+       
+       if( me.getValue() == anonSess )
+        thIter.remove();
+      }
+      
+      anonSess=null;
+     }
+    }
    }
    finally
    {
@@ -248,7 +271,22 @@ public class SessionManagerImpl implements SessionManager, Runnable
   {
    lock.lock();
    
-   return threadMap.get(Thread.currentThread());
+   Session sess = threadMap.get(Thread.currentThread());
+   
+   if( sess == null )
+   {
+    if( anonSess != null )
+     sess = anonSess;
+    
+    String key = generateSessionKey("__");
+
+    File sessDir = new File(sessDirRoot,key);
+    
+    sess =  anonSess = new Session(sessDir, BackendConfig.getEntityManagerFactory()) ;  
+    
+   }
+   
+   return sess;
   }
   finally
   {
@@ -359,6 +397,28 @@ public class SessionManagerImpl implements SessionManager, Runnable
    lock.lock();
 
    sessLstnrs.remove(sl);
+  }
+  finally
+  {
+   lock.unlock();
+  }
+ }
+
+ @Override
+ public Session getAnonymousSession()
+ {
+  try
+  {
+   lock.lock();
+
+  if( anonSess != null )
+   return anonSess;
+  
+  String key = generateSessionKey("__");
+
+  File sessDir = new File(sessDirRoot,key);
+  
+  return anonSess = new Session(sessDir, BackendConfig.getEntityManagerFactory()) ;
   }
   finally
   {

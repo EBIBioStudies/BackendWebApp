@@ -18,4 +18,6 @@ public interface SubmissionManager
  LogNode updateXMLSubmission(String txt, User usr);
  LogNode updatePageTabSubmission(String txt, User usr);
 
+ LogNode deleteSubmissionByAccession(String acc, User usr);
+
 }

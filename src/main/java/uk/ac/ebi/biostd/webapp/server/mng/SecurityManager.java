@@ -9,5 +9,6 @@ public interface SecurityManager
  boolean mayUserCreateSubmission(User usr);
 
  boolean mayUserUpdateSubmission(Submission oldSbm, User usr);
+ boolean mayUserDeleteSubmission(Submission sbm, User usr);
 
 }

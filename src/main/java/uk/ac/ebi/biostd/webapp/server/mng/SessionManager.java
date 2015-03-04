@@ -8,6 +8,7 @@ public interface SessionManager
  User getEffectiveUser();
  
  Session createSession(User user);
+ Session getAnonymousSession();
  Session getSession( String sKey );
  Session getSession();
  Session getSessionByUser(String id);

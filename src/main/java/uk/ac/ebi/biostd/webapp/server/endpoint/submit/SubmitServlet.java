@@ -24,7 +24,8 @@ public class SubmitServlet extends ServiceServlet
  enum Action
  {
   create,
-  update
+  update,
+  delete
  };
  
  
@@ -60,6 +61,12 @@ public class SubmitServlet extends ServiceServlet
    return;
   }
 
+  if( act == Action.delete )
+  {
+   processDelete( request, response, sess);
+   return;
+  }
+  
   boolean jsonReq = request.getContentType() != null && request.getContentType().startsWith("application/json");
 
   boolean xmlReq = !jsonReq && request.getContentType() != null && request.getContentType().startsWith("text/xml");
@@ -130,5 +137,26 @@ public class SubmitServlet extends ServiceServlet
   Log2JSON.convert(topLn, response.getWriter());
   
  }
+ 
+ public void processDelete(HttpServletRequest request, HttpServletResponse response, Session sess) throws IOException
+ {
+  String sbmAcc = request.getParameter("id");
+  
+  if(sbmAcc == null )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL 'id' parameter is not specified");
+   return;
+  }
+  
+  response.setContentType("application/json");
+  
+  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().deleteSubmissionByAccession(sbmAcc, sess.getUser());
+  
+  SimpleLogNode.setLevels(topLn);
+  Log2JSON.convert(topLn, response.getWriter());
+
+ }
+
  
 }

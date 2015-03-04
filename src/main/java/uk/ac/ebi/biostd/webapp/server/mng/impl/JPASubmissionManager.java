@@ -3,10 +3,14 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -31,6 +35,7 @@ import uk.ac.ebi.biostd.in.pagetab.SectionOccurrence;
 import uk.ac.ebi.biostd.in.pagetab.SubmissionInfo;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.model.SubmissionAttribute;
 import uk.ac.ebi.biostd.treelog.ErrorCounter;
 import uk.ac.ebi.biostd.treelog.ErrorCounterImpl;
 import uk.ac.ebi.biostd.treelog.LogNode;
@@ -52,9 +57,10 @@ public class JPASubmissionManager implements SubmissionManager
   PageTab
  }
 
- private EntityManagerFactory emf;
  
  private ParserConfig parserCfg;
+ 
+ private Pattern rTimePattern;
  
  public JPASubmissionManager(EntityManagerFactory emf)
  {
@@ -62,26 +68,27 @@ public class JPASubmissionManager implements SubmissionManager
    log = LoggerFactory.getLogger(getClass());
 
   
-  this.emf=emf;
 
   parserCfg = new ParserConfig();
   
   parserCfg.setMultipleSubmissions(true);
+  
+  rTimePattern = Pattern.compile(Submission.releaseDateFormat);
  }
 
  
  @Override
  public Collection<Submission> getSubmissionsByOwner(User u, int offset, int limit)
  {
-  EntityManager em = emf.createEntityManager();
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
   EntityTransaction trn = em.getTransaction();
   
   trn.begin();
   
-  Query q = em.createQuery("select s from Submission s JOIN s.owner u where u.id=?1 order by s.MTime desc");
+  Query q = em.createNamedQuery("Submission.getByOwner");
 
-  q.setParameter(1, u.getId());
+  q.setParameter("uid", u.getId());
 
   if( offset > 0 )
    q.setFirstResult(offset);
@@ -94,11 +101,62 @@ public class JPASubmissionManager implements SubmissionManager
 
   trn.commit();
   
-  em.close();
-  
   return res;
  }
 
+ @Override
+ public LogNode deleteSubmissionByAccession( String acc, User usr )
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  ErrorCounter ec = new ErrorCounterImpl();
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Deleting submission '"+acc+"'", ec);
+
+  
+  em.getTransaction().begin();
+  
+  Query q = em.createNamedQuery("Submission.getByAcc");
+  
+  q.setParameter("accNo", acc);
+  
+  Submission sbm = (Submission)q.getSingleResult();
+  
+  if( sbm == null )
+  {
+   gln.log(Level.ERROR, "Submission not found");
+   return gln;
+  }
+  
+  if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserDeleteSubmission(sbm, usr) )
+  {
+   gln.log(Level.ERROR, "User has no permission to delete this submission");
+   return gln;
+  }
+  
+  sbm.setMTime( System.currentTimeMillis() / 1000 );
+  sbm.setVersion( - sbm.getVersion() );
+  
+  try
+  {
+   em.getTransaction().commit();
+  }
+  catch( Throwable t )
+  {
+   String err = "Database transaction failed: "+t.getMessage();
+   
+   gln.log(Level.ERROR, err);
+   
+   if( em.getTransaction().isActive() )
+    em.getTransaction().rollback();
+   
+   return gln;
+  }
+  
+  em.flush();
+  
+  return gln;
+ }
+ 
  private LogNode createSubmission( String txt, SourceType type, boolean update, User usr )
  {
   ErrorCounter ec = new ErrorCounterImpl();
@@ -113,7 +171,7 @@ public class JPASubmissionManager implements SubmissionManager
   
   gln.log(Level.INFO, "Body size: " + txt.length());
     
-  EntityManager em = emf.createEntityManager();
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
   TagResolver tgRslv = new TagResolverImpl(em);
   
@@ -177,6 +235,10 @@ public class JPASubmissionManager implements SubmissionManager
    Set<String> globSecId = null;
    Submission oldSbm = null; 
    
+   long ts = System.currentTimeMillis()/1000;
+   
+   si.getSubmission().setMTime(ts);
+   
    if( update )
    {
     if( si.getAccNoPrefix() !=null || si.getAccNoSuffix() !=null || si.getSubmission().getAccNo() == null )
@@ -188,6 +250,7 @@ public class JPASubmissionManager implements SubmissionManager
     
     oldSbm = getSubmissionByAcc(si.getSubmission().getAccNo(),em);
     
+    
     if( oldSbm == null )
     {
      si.getLogNode().log(Level.ERROR, "Submission '"+si.getSubmission().getAccNo()+"' doesn't exist and can't be updated");
@@ -195,7 +258,9 @@ public class JPASubmissionManager implements SubmissionManager
      continue;
     }
     
+    si.getSubmission().setCTime(oldSbm.getCTime());
     si.setOriginalSubmission(oldSbm);
+    si.getSubmission().setVersion( oldSbm.getVersion() + 1 );
     
     if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserUpdateSubmission(oldSbm, usr) )
     {
@@ -208,9 +273,69 @@ public class JPASubmissionManager implements SubmissionManager
     
     collectGlobalSecIds(oldSbm.getRootSection(),globSecId);
    }
-   
+   else
+   {
+    si.getSubmission().setCTime(ts);
+    si.getSubmission().setVersion(1);
+   }
 
-   
+   boolean rTimeFound=false;
+   for( SubmissionAttribute sa: si.getSubmission().getAttributes() )
+   {
+    if( Submission.releaseDateAttribute.equals( sa.getName() ) )
+    {
+     if( rTimeFound )
+     {
+      si.getLogNode().log(Level.ERROR, "Multiple '"+Submission.releaseDateAttribute+"' attributes are not allowed");
+      break;
+     }
+     
+     rTimeFound = true;
+     
+     String val = sa.getValue();
+     
+     if( val != null )
+     {
+      val=val.trim();
+      
+      if( val.length() > 0 )
+      {
+       Matcher mtch = rTimePattern.matcher(val);
+       
+       if( ! mtch.matches() )
+        si.getLogNode().log(Level.ERROR, "Invalid '"+Submission.releaseDateAttribute+"' attribute value. Expected date in format: YYYY-MM-DD[Thh:mm[:ss[.mmm]]]");
+       else
+       {
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+        
+        cal.set(Calendar.YEAR, Integer.parseInt(mtch.group("year")));
+        cal.set(Calendar.MONTH, Integer.parseInt(mtch.group("month"))-1);
+        cal.set(Calendar.DAY_OF_MONTH, Integer.parseInt(mtch.group("day")));
+        
+        String str = mtch.group("hour");
+        
+        if( str != null )
+         cal.set(Calendar.HOUR_OF_DAY, Integer.parseInt(str));
+ 
+        str = mtch.group("min");
+        
+        if( str != null )
+         cal.set(Calendar.MINUTE, Integer.parseInt(str));
+
+        
+        str = mtch.group("sec");
+        
+        if( str != null )
+         cal.set(Calendar.SECOND, Integer.parseInt(str));
+        
+        si.getSubmission().setRTime( cal.getTimeInMillis()/1000 );
+       }
+      }
+     }
+     
+    }
+   }
+    
    for( FileOccurrence foc : si.getFileOccurrences())
    {
     FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), usr);
@@ -290,13 +415,30 @@ public class JPASubmissionManager implements SubmissionManager
    }
    
    if( si.getOriginalSubmission() != null )
-    em.remove(si.getOriginalSubmission());
+    si.getOriginalSubmission().setVersion(- si.getOriginalSubmission().getVersion() );
 
    em.persist( si.getSubmission() );
    
   }
   
-  em.getTransaction().commit();
+  try
+  {
+   em.getTransaction().commit();
+  }
+  catch( Throwable t )
+  {
+   String err = "Database transaction failed: "+t.getMessage();
+   
+   gln.log(Level.ERROR, err);
+   
+   if( em.getTransaction().isActive() )
+    em.getTransaction().rollback();
+   
+   return gln;
+  }
+  
+   
+   em.flush();
   
   for( SubmissionInfo si : doc.getSubmissions() )
   {

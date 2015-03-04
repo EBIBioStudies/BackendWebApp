@@ -165,6 +165,8 @@ public class SubmissionListServlet extends ServiceServlet
   out.append(String.valueOf(s.getMTime()));
   out.append("\",\n\"rtime\": \"");
   out.append(String.valueOf(s.getRTime()));
+  out.append("\",\n\"version\": \"");
+  out.append(String.valueOf(s.getVersion()));
   out.append("\"\n}");
 
  }
