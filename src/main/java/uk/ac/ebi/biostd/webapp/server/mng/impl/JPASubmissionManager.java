@@ -152,8 +152,6 @@ public class JPASubmissionManager implements SubmissionManager
    return gln;
   }
   
-  em.flush();
-  
   return gln;
  }
  
@@ -438,8 +436,6 @@ public class JPASubmissionManager implements SubmissionManager
   }
   
    
-   em.flush();
-  
   for( SubmissionInfo si : doc.getSubmissions() )
   {
   

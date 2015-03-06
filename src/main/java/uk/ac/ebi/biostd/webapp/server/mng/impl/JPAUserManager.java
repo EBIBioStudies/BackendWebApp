@@ -24,8 +24,6 @@ public class JPAUserManager implements UserManager, SessionListener
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
-  System.out.println( "Entity manager open: "+em.isOpen() );
-  
   Query q = em.createQuery("select u from User u where login=?1");
 
   q.setParameter(1, uName);
