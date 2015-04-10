@@ -3,16 +3,16 @@ package uk.ac.ebi.biostd.webapp.server.export;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
-import uk.ac.ebi.biostd.out.Formatter;
+import uk.ac.ebi.biostd.out.TextStreamFormatter;
 
 public class FormattingTask
 {
- private final Formatter          formatter;
+ private final TextStreamFormatter          formatter;
  private final BlockingQueue<Object> outQueue;
  
  private final AtomicLong maxCount;
  
- public FormattingTask(Formatter formatter, BlockingQueue<Object> queue, long limit)
+ public FormattingTask(TextStreamFormatter formatter, BlockingQueue<Object> queue, long limit)
  {
   super();
   this.formatter = formatter;
@@ -36,7 +36,7 @@ public class FormattingTask
   return cnt >= 0;
  }
  
- public Formatter getFormatter()
+ public TextStreamFormatter getFormatter()
  {
   return formatter;
  }

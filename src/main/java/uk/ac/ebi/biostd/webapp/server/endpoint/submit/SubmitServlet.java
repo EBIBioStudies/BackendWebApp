@@ -1,17 +1,18 @@
 package uk.ac.ebi.biostd.webapp.server.endpoint.submit;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.io.IOUtils;
+
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.treelog.Log2JSON;
 import uk.ac.ebi.biostd.treelog.LogNode;
 import uk.ac.ebi.biostd.treelog.SimpleLogNode;
-import uk.ac.ebi.biostd.util.StringUtils;
+import uk.ac.ebi.biostd.util.DataFormat;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 
@@ -63,73 +64,54 @@ public class SubmitServlet extends ServiceServlet
 
   if( act == Action.delete )
   {
-   processDelete( request, response, sess);
+   processDelete( request, response, sess );
    return;
   }
   
-  boolean jsonReq = request.getContentType() != null && request.getContentType().startsWith("application/json");
-
-  boolean xmlReq = !jsonReq && request.getContentType() != null && request.getContentType().startsWith("text/xml");
-
-  boolean pageTabReq = !jsonReq && !xmlReq && request.getContentType() != null && request.getContentType().startsWith("application/pagetab");
+  String cType = request.getContentType();
   
-  
-  if( ! jsonReq && ! xmlReq && ! pageTabReq )
+  if( cType == null )
   {
    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-   response.getWriter().print("FAIL Invalid content type: application/json or text/xml or application/pagetab expected");
+   response.getWriter().print("FAIL 'Content-type' header missing");
    return;
   }
   
-  Charset cs = Charset.forName("utf-8");
-
-  String enc = request.getCharacterEncoding();
-
-  if(enc != null)
+  int pos = cType.indexOf(';');
+  
+  if( pos > 0 )
+   cType = cType.substring(0,pos).trim();
+  
+  DataFormat fmt = null;
+  
+  for( DataFormat f : DataFormat.values() )
   {
-   try
+   if( f.getContentType().equalsIgnoreCase(cType) )
    {
-    cs = Charset.forName(enc);
-   }
-   catch(Exception e)
-   {
+    fmt = f;
+    break;
    }
   }
+  
+  if( fmt == null )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL Content type '"+cType+"' is not supported");
+   return;
+  }
 
-  String body = StringUtils.readFully(request.getInputStream(), cs);
+  byte[] data = IOUtils.toByteArray(request.getInputStream());
 
-  if(body.length() == 0)
+
+  if( data.length == 0 )
   {
    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
    response.getWriter().print("FAIL Empty request body");
    return;
   }
 
-//  ErrorCounter ec = new ErrorCounterImpl();
-//  SimpleLogNode topLn = new SimpleLogNode(Level.SUCCESS, "Processing '"+act.name()+"' request", ec);
-//  
-//  topLn.log(Level.INFO, "Body size: "+body.length()+" Type: "+(jsonReq?"JSON":(xmlReq?"XML":"PageTab")));
-
-  LogNode topLn = null;
+  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act == Action.update, sess.getUser());
   
-  if( act == Action.create )
-  {
-   if( jsonReq )
-    topLn = BackendConfig.getServiceManager().getSubmissionManager().createJSONSubmission(body, sess.getUser() );
-   else if( xmlReq )
-    topLn = BackendConfig.getServiceManager().getSubmissionManager().createXMLSubmission(body, sess.getUser() );
-   else if( pageTabReq )
-    topLn = BackendConfig.getServiceManager().getSubmissionManager().createPageTabSubmission(body, sess.getUser() );
-  }
-  else if( act == Action.update )
-  {
-   if( jsonReq )
-    topLn = BackendConfig.getServiceManager().getSubmissionManager().updateJSONSubmission(body, sess.getUser() );
-   else if( xmlReq )
-    topLn = BackendConfig.getServiceManager().getSubmissionManager().updateXMLSubmission(body, sess.getUser() );
-   else if( pageTabReq )
-    topLn = BackendConfig.getServiceManager().getSubmissionManager().updatePageTabSubmission(body, sess.getUser() );
-  }
   
   response.setContentType("application/json");
   

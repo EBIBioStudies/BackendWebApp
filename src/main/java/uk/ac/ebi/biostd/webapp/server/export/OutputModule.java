@@ -2,12 +2,12 @@ package uk.ac.ebi.biostd.webapp.server.export;
 
 import java.io.IOException;
 
-import uk.ac.ebi.biostd.out.Formatter;
+import uk.ac.ebi.biostd.out.TextStreamFormatter;
 
 public interface OutputModule
 {
 
- Formatter getFormatter();
+ TextStreamFormatter getFormatter();
 
  Appendable getOut();
  

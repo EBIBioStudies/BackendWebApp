@@ -18,7 +18,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import uk.ac.ebi.biostd.out.Formatter;
+import uk.ac.ebi.biostd.out.TextStreamFormatter;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.export.ExporterStat;
 import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
@@ -34,7 +34,7 @@ public class FormattingOutputModule implements OutputModule
  
  private final String name;
  
- private Formatter formatter;
+ private TextStreamFormatter formatter;
 
  private final File outFile;
  private final File tmpDir;
@@ -76,7 +76,7 @@ public class FormattingOutputModule implements OutputModule
    throw new TaskConfigException("Output module '"+name+"': Formatter class '"+fmtCls+"' not found");
   }
   
-  if( ! Formatter.class.isAssignableFrom(fmtCls) )
+  if( ! TextStreamFormatter.class.isAssignableFrom(fmtCls) )
    throw new TaskConfigException("Output module '"+name+"': Class '"+fmtCls+"' doesn't implement Formatter interface");
   
   Constructor<?> ctor = null;
@@ -86,14 +86,14 @@ public class FormattingOutputModule implements OutputModule
    try
    {
     ctor = fmtCls.getConstructor(Map.class);
-    formatter = (Formatter) ctor.newInstance(cfg.getFormatterParams());
+    formatter = (TextStreamFormatter) ctor.newInstance(cfg.getFormatterParams());
    }
    catch(NoSuchMethodException e)
    {
     try
     {
      ctor = fmtCls.getConstructor();
-     formatter = (Formatter) ctor.newInstance();
+     formatter = (TextStreamFormatter) ctor.newInstance();
     }
     catch(NoSuchMethodException e1)
     {
@@ -145,7 +145,7 @@ public class FormattingOutputModule implements OutputModule
  
  
  @Override
- public Formatter getFormatter()
+ public TextStreamFormatter getFormatter()
  {
   return formatter;
  }

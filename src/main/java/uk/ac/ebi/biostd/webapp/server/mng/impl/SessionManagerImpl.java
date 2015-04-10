@@ -276,7 +276,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
    if( sess == null )
    {
     if( anonSess != null )
-     sess = anonSess;
+     return anonSess;
     
     String key = generateSessionKey("__");
 

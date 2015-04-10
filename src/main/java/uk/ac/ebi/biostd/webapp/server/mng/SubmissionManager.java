@@ -5,11 +5,13 @@ import java.util.Collection;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.treelog.LogNode;
+import uk.ac.ebi.biostd.util.DataFormat;
 
 public interface SubmissionManager
 {
  Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
-
+ 
+ /*
  LogNode createJSONSubmission(String txt, User usr);
  LogNode createXMLSubmission(String txt, User usr);
  LogNode createPageTabSubmission(String txt, User usr);
@@ -17,7 +19,11 @@ public interface SubmissionManager
  LogNode updateJSONSubmission(String txt, User usr);
  LogNode updateXMLSubmission(String txt, User usr);
  LogNode updatePageTabSubmission(String txt, User usr);
+*/
+ 
+ LogNode createSubmission(byte[] data, DataFormat fmt, String charset, boolean update, User usr);
 
+ 
  LogNode deleteSubmissionByAccession(String acc, User usr);
 
 }

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Base64.Decoder;
@@ -61,6 +62,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
@@ -381,7 +383,9 @@ public class WebdavServlet extends DefaultServlet
   
   if(usr == null)
   {
-   resp.setHeader("WWW-Authenticate", "BASIC realm=\"WebDAV login\"");
+   resp.setHeader("Cache-Control","private");
+   resp.setHeader("Expires","Thu, 01 Jan 1970 01:00:00 GMT");
+   resp.setHeader("WWW-Authenticate", "Basic realm=\"WebDAV login\"");
    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
    
    return;
@@ -799,7 +803,10 @@ public class WebdavServlet extends DefaultServlet
    return;
   }
 
-  resp.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED);
+  System.out.println( StringUtils.readFully(req.getInputStream(), Charset.forName("utf-8")));
+  System.out.println( "Mark supported: "+ req.getInputStream().markSupported() );
+  
+  resp.sendError(HttpServletResponse.SC_FORBIDDEN);
 
  }
 

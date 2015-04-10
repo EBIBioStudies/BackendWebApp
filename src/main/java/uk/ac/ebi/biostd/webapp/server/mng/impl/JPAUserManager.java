@@ -24,15 +24,24 @@ public class JPAUserManager implements UserManager, SessionListener
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
-  Query q = em.createQuery("select u from User u where login=?1");
+  try
+  {
+   em.getTransaction().begin();
+   
+   Query q = em.createQuery("select u from User u where login=?1");
 
-  q.setParameter(1, uName);
+   q.setParameter(1, uName);
 
-  @SuppressWarnings("unchecked")
-  List<User> res = q.getResultList();
+   @SuppressWarnings("unchecked")
+   List<User> res = q.getResultList();
 
-  if(res.size() != 0)
-   return res.get(0);
+   if(res.size() != 0)
+    return res.get(0);
+  }
+  finally
+  {
+   em.getTransaction().commit();
+  }
 
   return null;
 
@@ -65,6 +74,11 @@ public class JPAUserManager implements UserManager, SessionListener
   EntityTransaction trn = em.getTransaction();
   
   trn.begin();
+  
+  Query q = em.createQuery("select count(u) from User u");
+
+  if( (Long)q.getSingleResult() == 0)
+   u.setSuperuser(true);
   
   em.persist( u );
   
