@@ -70,6 +70,29 @@
     <url-pattern>/submit/*</url-pattern>
   </servlet-mapping>
   
+  <servlet>
+    <description></description>
+    <display-name>SubmissionListServlet</display-name>
+    <servlet-name>SubmissionListServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.submission.SubmissionListServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SubmissionListServlet</servlet-name>
+    <url-pattern>/sbmlist</url-pattern>
+  </servlet-mapping>
+  
+  <servlet>
+    <description></description>
+    <display-name>SubmissionServlet</display-name>
+    <servlet-name>SubmissionServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.submission.SingleSubmissionServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SubmissionServlet</servlet-name>
+    <url-pattern>/submission/*</url-pattern>
+  </servlet-mapping>
+  
+  
   <listener>
     <listener-class>uk.ac.ebi.biostd.webapp.server.WebAppInit</listener-class>
   </listener>

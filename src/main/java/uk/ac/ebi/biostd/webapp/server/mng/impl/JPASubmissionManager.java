@@ -1,10 +1,14 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
@@ -48,6 +52,7 @@ import uk.ac.ebi.biostd.treelog.LogNode.Level;
 import uk.ac.ebi.biostd.treelog.SimpleLogNode;
 import uk.ac.ebi.biostd.util.DataFormat;
 import uk.ac.ebi.biostd.util.FilePointer;
+import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
@@ -179,6 +184,37 @@ public class JPASubmissionManager implements SubmissionManager
  }
  
  
+
+ @Override
+ public Submission getSubmissionsByAccession(String acc)
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+  EntityTransaction trn = em.getTransaction();
+
+  try
+  {
+   trn.begin();
+
+   Query q = em.createNamedQuery("Submission.getByAcc");
+
+
+   @SuppressWarnings("unchecked")
+   List<Submission> res = q.getResultList();
+
+   if( res.size() > 0 )
+    return res.get(0);
+   
+   return null;
+  }
+  finally
+  {
+   trn.commit();
+  }
+  
+ }
+
+ 
  @Override
  public LogNode createSubmission( byte[] data, DataFormat type, String charset, boolean update, User usr )
  {
@@ -202,6 +238,9 @@ public class JPASubmissionManager implements SubmissionManager
   PMDoc doc = null;
   SpreadsheetReader reader = null;
 
+  FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
+
+  
   try
   {
 
@@ -297,6 +336,9 @@ public class JPASubmissionManager implements SubmissionManager
     }
    }
    
+   Path usrPath = BackendConfig.getUserDir(usr).toPath();
+
+   
    for(SubmissionInfo si : doc.getSubmissions())
    {
     si.getSubmission().setOwner(usr);
@@ -347,14 +389,27 @@ public class JPASubmissionManager implements SubmissionManager
      si.getSubmission().setVersion(1);
     }
 
+    Path relPath = null;
+    
     boolean rTimeFound = false;
-    for(SubmissionAttribute sa : si.getSubmission().getAttributes())
+    boolean rootPathFound = false;
+    
+    String rootPathAttr = null; 
+    
+    Iterator<SubmissionAttribute> saitr = si.getSubmission().getAttributes().iterator();
+    
+    while(saitr.hasNext() )
     {
+     SubmissionAttribute sa = saitr.next(); 
+     
      if(Submission.releaseDateAttribute.equals(sa.getName()))
      {
+      saitr.remove();
+      
       if(rTimeFound)
       {
        si.getLogNode().log(Level.ERROR, "Multiple '" + Submission.releaseDateAttribute + "' attributes are not allowed");
+       submOk = false;
        break;
       }
 
@@ -402,14 +457,50 @@ public class JPASubmissionManager implements SubmissionManager
       }
 
      }
+     else if( Submission.rootPathAttribute.equals(sa.getName()) )
+     {
+      saitr.remove();
+
+      if(rootPathFound)
+      {
+       si.getLogNode().log(Level.ERROR, "Multiple '" + Submission.rootPathAttribute + "' attributes are not allowed");
+       submOk = false;
+       break;
+      }
+
+      rootPathFound = true;
+      
+      rootPathAttr = sa.getValue();
+     }
     }
 
-    FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
+    if( rootPathAttr != null )
+    {
+     String path = StringUtils.stripLeadingSlashes(rootPathAttr);
 
+     if( path.length() > 0 )
+      relPath  = FileSystems.getDefault().getPath(path).normalize();
+    }
+    
+    Path basePath = usrPath;
+    
+    if( relPath != null )
+    {
+     basePath = usrPath.resolve(relPath).normalize();
+     
+     if( ! basePath.startsWith(usrPath) )
+     {
+      si.getLogNode().log(Level.ERROR, "Invalid submission root path '" + rootPathAttr + "'");
+      submOk = false;
+      break;
+     }
+
+    }
+    
     
     for(FileOccurrence foc : si.getFileOccurrences())
     {
-     FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), usr);
+     FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), basePath);
 
      if(fp != null || (update && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null))
       foc.setFilePointer(fp);
@@ -518,6 +609,27 @@ public class JPASubmissionManager implements SubmissionManager
       em.getTransaction().rollback();
 
      return gln;
+    }
+   }
+  }
+  
+  for( SubmissionInfo si : doc.getSubmissions() )
+  {
+  
+   fileMngr.createSubmissionDir( si.getSubmission() );
+   
+   if( si.getFileOccurrences() != null  )
+   {
+    for( FileOccurrence fo : si.getFileOccurrences() )
+    {
+     try
+     {
+      fileMngr.copyToSubmissionFilesDir( si.getSubmission(), fo.getFilePointer() );
+     }
+     catch( IOException e )
+     {
+      si.getLogNode().log(Level.ERROR, "File transfer error: "+fo.getFilePointer());
+     }
     }
    }
   }
@@ -1000,6 +1112,7 @@ public class JPASubmissionManager implements SubmissionManager
   
   return ((Number)q.getSingleResult()).intValue() == 0;
  }
+
 
 /*
  @Override

@@ -10,6 +10,7 @@ import uk.ac.ebi.biostd.util.DataFormat;
 public interface SubmissionManager
 {
  Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
+ Submission getSubmissionsByAccession( String acc );
  
  /*
  LogNode createJSONSubmission(String txt, User usr);

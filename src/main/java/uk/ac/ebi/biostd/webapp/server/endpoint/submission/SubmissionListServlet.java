@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.endpoint.submlist;
+package uk.ac.ebi.biostd.webapp.server.endpoint.submission;
 
 import java.io.IOException;
 import java.io.PrintWriter;

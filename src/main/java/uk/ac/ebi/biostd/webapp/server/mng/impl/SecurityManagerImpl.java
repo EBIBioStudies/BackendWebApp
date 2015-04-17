@@ -25,4 +25,10 @@ public class SecurityManagerImpl implements SecurityManager
   return sbm.getOwner().getLogin().equals( usr.getLogin() ) || usr.isSuperuser();
  }
 
+ @Override
+ public boolean mayUserReadSubmission(Submission sub, User user)
+ {
+  return sub.getOwner().getLogin().equals( user.getLogin() ) || user.isSuperuser();
+ }
+
 }
