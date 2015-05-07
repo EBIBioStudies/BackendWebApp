@@ -112,6 +112,8 @@ public class FileManagerImpl implements FileManager
  {
   byte[] buf = new byte[16384];
   
+  outFile.getParentFile().mkdirs();
+  
   try (
    InputStream fis = zf.getInputStream(ze);
    OutputStream fos = new FileOutputStream(outFile);
@@ -164,8 +166,13 @@ public class FileManagerImpl implements FileManager
    String part = relPath.getName(i).toString();
    
    if( part.length() > 4 && part.substring(part.length()-4).equalsIgnoreCase(".zip") )
-    return checkZipPath(fullPath, i+1);
-
+   {
+    FilePointer fp = checkZipPath(fullPath, fullPath.getNameCount()-relPath.getNameCount()+i+1);
+    
+    fp.setRelativePath(relPath);
+    
+    return fp;
+   }
   }
   
   return null;
@@ -185,7 +192,8 @@ public class FileManagerImpl implements FileManager
   
   intFileName = sb.toString();
   
-  Path archPath = fullPath.subpath(0, intStart);
+  Path archPath = fullPath.getRoot().resolve( fullPath.subpath(0, intStart) );
+  
   
   try ( ZipFile zf = new ZipFile(archPath.toFile()) )
   {
@@ -198,7 +206,7 @@ public class FileManagerImpl implements FileManager
     
     String zeName = ze.getName();
     
-    if( zeName.equals(intFileName) || ( zeName.length() == intFileName.length()+1 && zeName.endsWith("/") )  )
+    if( zeName.equals(intFileName) || ( zeName.length() == intFileName.length()+1 && zeName.startsWith(intFileName) && zeName.endsWith("/") )  )
     {
      FilePointer fp = new FilePointer();
      
