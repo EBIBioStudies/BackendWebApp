@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.endpoint.dir;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -44,7 +45,6 @@ public class DirServlet extends ServiceServlet
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
-  PrintWriter out = resp.getWriter();
   
   if( sess == null )
   {
@@ -54,71 +54,249 @@ public class DirServlet extends ServiceServlet
    return;
   }
   
-  out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
+  String cmd = req.getParameter("command");
   
-  User user  = sess.getUser();
+  if( cmd == null )
+   cmd = "dir";
   
-  File udir = BackendConfig.getUserDir( user );
-  
-  boolean first = true;
-  
-  if( udir.exists() )
+  switch(cmd)
   {
-   out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
+   case "dir":
+    
+     dirList( resp, sess );
+    
+    break;
+
+   case "rename":
+    
+    rename( req, resp, sess );
    
-   listDirectory( new FileNode(udir), "/User", out);
+   break;
+
+   case "delete":
+    
+    delete( req, resp, sess );
    
-   out.print("\n}");
-   
-   first = false;
+   break;
+
+    
+   default:
+    
+    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid command\"\n}");
+    return;
+
   }
   
-  Collection<UserGroup> grps = user.getGroups();
-  
-  if( grps != null && grps.size() > 0 )
+ 
+ }
+
+ private void delete(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
+ {
+  String from = req.getParameter("file");
+
+  if(from == null)
   {
-   if( ! first )
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"'file' parameter is not defined\"\n}");
+   return;
+  }
+
+  Path udir = BackendConfig.getUserDir(sess.getUser()).toPath();
+
+
+  int i = 0;
+  while(i < from.length() && (from.charAt(i) == '/' || from.charAt(i) == '\\'))
+   i++;
+
+  if(i > 0)
+   from = from.substring(i);
+  
+  Path fp = udir.resolve(from).normalize();
+  
+  if( ! fp.startsWith(udir) )
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'file' parameter value\"\n}");
+   return;
+  }
+  
+  File f = fp.toFile();
+  
+  if( ! f.exists() )
+  {
+   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File not found\"\n}");
+   return;
+  }
+  
+  if( ! f.delete() )
+  {
+   resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File delete failed\"\n}");
+   return;
+  }
+  
+  resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"File delete success\"\n}");
+ }
+ 
+ private void rename(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
+ {
+  String from = req.getParameter("from");
+
+  if(from == null)
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"'from' parameter is not defined\"\n}");
+   return;
+  }
+
+  Path udir = BackendConfig.getUserDir(sess.getUser()).toPath();
+
+
+  int i = 0;
+  while(i < from.length() && (from.charAt(i) == '/' || from.charAt(i) == '\\'))
+   i++;
+
+  if(i > 0)
+   from = from.substring(i);
+  
+  Path fp = udir.resolve(from).normalize();
+  
+  if( ! fp.startsWith(udir) )
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'from' parameter value\"\n}");
+   return;
+  }
+  
+  File f = fp.toFile();
+  
+  if( ! f.exists() )
+  {
+   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File not found\"\n}");
+   return;
+  }
+  
+  String to = req.getParameter("to");
+  
+  if(to == null)
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"'to' parameter is not defined \"\n}");
+   return;
+  }
+
+  i = 0;
+  while(i < to.length() && (to.charAt(i) == '/' || to.charAt(i) == '\\'))
+   i++;
+
+  if(i > 0)
+   to = to.substring(i);
+  
+  Path toFp = udir.resolve(to).normalize();
+  
+  if( ! toFp.startsWith(udir) )
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'to' parameter value\"\n}");
+   return;
+  }
+  
+  File toFile = toFp.toFile();
+  
+  toFile.getParentFile().mkdirs();
+  
+  if( ! f.renameTo(toFile) )
+  {
+   resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File rename failed\"\n}");
+   return;
+  }
+  
+  resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"File rename success\"\n}");
+ }
+
+ private void dirList( HttpServletResponse resp, Session sess) throws IOException
+ {
+  PrintWriter out = resp.getWriter();
+
+  out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
+
+  User user = sess.getUser();
+
+  File udir = BackendConfig.getUserDir(user);
+
+  boolean first = true;
+
+  if(udir.exists())
+  {
+   out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
+
+   listDirectory(new FileNode(udir), "/User", out);
+
+   out.print("\n}");
+
+   first = false;
+  }
+
+  Collection<UserGroup> grps = user.getGroups();
+
+  if(grps != null && grps.size() > 0)
+  {
+   if(!first)
     out.print(",\n");
 
    out.print("{\n\"name\": \"Groups\",\n \"type\": \"DIR\",\n\"path\": \"/Groups\",\n \"files\": [\n");
 
    first = true;
-   
-   for( UserGroup g : grps )
+
+   for(UserGroup g : grps)
    {
-    File gdir = BackendConfig.getGroupDir( g );
-    
-    if( gdir.exists() )
+    File gdir = BackendConfig.getGroupDir(g);
+
+    if(gdir.exists())
     {
-     if( ! first )
+     if(!first)
       out.print(",\n");
      else
       first = false;
-     
+
      String gname = StringUtils.escapeCStr(g.getName());
-     
+
      out.print("{\n\"name\": \""); // User\",\n type: \"DIR\",\npath: \"/User\",\n files: ");
      out.print(gname);
      out.print("\",\n \"type\": \"DIR\",\n\"path\": \"/Groups/"); ///User\",\n files: ");
      out.print(gname);
      out.print("\",\n \"files\": ");
-     
-     listDirectory( new FileNode(gdir), "/Groups/"+gname, out);
-     
+
+     listDirectory(new FileNode(gdir), "/Groups/" + gname, out);
+
      out.print("\n}");
     }
 
-    
    }
-   
-   out.print("\n}");
-   
-  }
-  
-  out.print("\n]\n}\n");
-  
- }
 
+   out.print("\n}");
+
+  }
+
+  out.print("\n]\n}\n");
+
+ }
+ 
  interface Node
  {
   String getName();

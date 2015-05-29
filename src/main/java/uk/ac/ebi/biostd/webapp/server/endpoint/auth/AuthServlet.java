@@ -175,6 +175,32 @@ public class AuthServlet extends HttpServlet
    
    return;
   }
+  else if( act == Action.signout )
+  {
+   prm = prms.getParameter(SessionIdParameter);
+   
+   if( prm == null )
+   {
+    prm  = getCookieSessId(request);
+    
+    if( prm == null )
+    {
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Can't find session id");
+
+     return;
+    }
+   }
+   
+   if( sessMngr.closeSession(prm) )
+   {
+    resp.respond(HttpServletResponse.SC_OK, "OK", "User logged out");
+    return;
+   }
+   
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User not logged in");
+
+   return;
+  }
   else if( act == Action.signup )
   {
    String login = prms.getParameter(UserLoginParameter);

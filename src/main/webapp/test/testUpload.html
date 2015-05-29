@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+
+<script type="text/javascript">
+
+ function onFileUploaded( ec, message )
+ {
+	 showMessage("Server returned code: "+ec+" Message: "+message);
+ }
+ 
+ function showMessage( txt )
+ {
+  document.getElementById("response").innerHTML=txt;
+ }
+ 
+</script>
+
+
+</head>
+<body>
+
+<div style="margin: 50px">
+
+<form action="../fileUpload" method="POST" enctype="multipart/form-data" target="postIFrame">
+
+<table>
+
+<tr><td>File name (optional):</td><td><input type="text" name="fileName" style="width: 200px"></td></tr>
+<tr><td>Relative path (optional):</td><td><input type="text" name="relPath" style="width: 200px"></td></tr>
+<tr><td>File:</td><td><input type="file" name="file"></td></tr>
+<tr><td></td><td></td></tr>
+<tr><td></td><td><input type="submit" name="Submit"></td></tr>
+
+</table>
+<br/>
+
+</form>
+
+<pre id="response">
+</pre>
+</div>
+
+<iframe style="display: none" name="postIFrame">
+</iframe>
+
+</body>
+
+<!-- 
+
+Public Key: 	6Lcmlv0SAAAAAHofnIcb29l1LMZsnGFcSlH8Reve
+
+Use this in the JavaScript code that is served to your users
+Private Key: 	6Lcmlv0SAAAAANysy6M8YdozfJnOQxc2JB9WaOS1 
+ -->
+</html>

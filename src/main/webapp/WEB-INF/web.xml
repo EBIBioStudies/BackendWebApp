@@ -92,6 +92,16 @@
     <url-pattern>/submission/*</url-pattern>
   </servlet-mapping>
   
+   <servlet>
+    <description></description>
+    <display-name>FileUploadServlet</display-name>
+    <servlet-name>FileUploadServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.submit.FileUploadServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>FileUploadServlet</servlet-name>
+    <url-pattern>/fileUpload</url-pattern>
+  </servlet-mapping>
   
   <listener>
     <listener-class>uk.ac.ebi.biostd.webapp.server.WebAppInit</listener-class>

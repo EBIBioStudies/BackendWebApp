@@ -3,7 +3,7 @@
 
 	<property name="build" location="build"/>
 	<property name="dist" location="dist"/>
-	<property name="webapp" location="war"/>
+	<property name="webapp" location="src/main/webapp"/>
 	<property name="src" location="src/main/java"/>
 
 	
@@ -12,7 +12,6 @@
 	<property name="deploy.pass" location="tomcat"/>
 	<property name="deploy.war" location="${build}/${war}"/>
 
-	<property name="proj.model" location="../BioSTDCoreModel"/>
 
 	
 	<path id="antCP">
@@ -21,11 +20,39 @@
 	<target name="build">
 
 		<fail unless="gwt.home">gwt.home property should point to GWT SDK</fail>
+		<fail unless="tomcat.home">tomcat.home property should point to Tomcat8</fail>
 		
 		<delete dir="${build}"/>
 
 		<mkdir dir="${build}"/>
 		<mkdir dir="${dist}"/>
+
+		<mkdir dir="${build}/WEB-INF/classes"/>
+		<mkdir dir="${build}/WEB-INF/lib"/>
+	
+		
+		<maven:dependencies filesetId="maven.classpath">
+			<maven:pom id="maven.pom" file="pom.xml" />
+		</maven:dependencies>
+		
+		<path id="master-classpath">
+			<fileset refid="maven.classpath"></fileset>
+			<filelist>
+				<file name="${gwt.home}/gwt-servlet.jar"/>
+				<file name="${gwt.home}/gwt-dev.jar"/>
+				<file name="${tomcat.home}/lib/catalina.jar"/>
+				<file name="${tomcat.home}/lib/tomcat-api.jar"/>
+				<file name="${tomcat.home}/lib/tomcat-util.jar"/>
+				<file name="${tomcat.home}/lib/tomcat-util-scan.jar"/>
+				<file name="${tomcat.home}/lib/tomcat-coyote.jar"/>
+				<file name="${tomcat.home}/bin/tomcat-juli.jar"/>
+			</filelist>
+	    </path>
+		
+		<javac  destdir="${build}/WEB-INF/classes" classpathref="master-classpath" source="1.8" target="1.8" debug="on" nowarn="on" includeAntRuntime="false">
+			<src path="${src}"/>
+			<compilerarg value="-Xlint:deprecation"/>
+		</javac>
 		
 		<copy todir="${build}">
 			<fileset dir="${webapp}" >
@@ -34,21 +61,38 @@
 			</fileset>
 		</copy>
 		
-		<maven:dependencies filesetId="maven.classpath">
-			<maven:pom id="maven.pom" file="pom.xml" />
-		</maven:dependencies>
 
 		  <java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
 		    <classpath>
 		     <pathelement location="${src}" />
-		     <pathelement location="${proj.model}/src/main/java" />
-		     <path refid="build.lib" />
+		     <path refid="master-classpath" />
+		     <file file="${gwt.home}/gwt-user.jar"/>
+			 <file file="${gwt.home}/validation-api-1.0.0.GA.jar"/>
+			 <file file="${gwt.home}/validation-api-1.0.0.GA-sources.jar"/>
 		   </classpath>
-		   <jvmarg value="-Xmx256M" />
+		   <jvmarg value="-Xmx2G" />
 		   <arg value="-war" />
 		   <arg value="${build}" />
 		   <arg value="uk.ac.ebi.biostd.BioStdWebApp" />
 		 </java>
+		
+		<copy todir="${build}/WEB-INF/lib">
+			<fileset refid="maven.classpath" />
+			<file name="${gwt.home}/gwt-servlet.jar"/>
+			<!-- This mapper strips off all leading directory information -->
+			<mapper type="flatten" />
+		</copy>
+		
+	    <tstamp>
+	        <format property="BUILDTIME" pattern="yyyy-MM-dd HH:mm z Z" locale="en,UK"/>
+	    </tstamp>
+		
+		<filter token="BUILDTIME" value="${BUILDTIME}"/>
+		 
+        <copy file="${webapp}/RELEASE.html" todir="${build}" filtering="true" overwrite="true"/>
+
+		
+		<jar jarfile="${dist}/biostudy-${DSTAMP}.war" basedir="${build}"/>
 		
 	</target>
 	

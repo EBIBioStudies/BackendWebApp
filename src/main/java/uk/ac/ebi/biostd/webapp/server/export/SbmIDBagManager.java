@@ -37,11 +37,11 @@ public class SbmIDBagManager
   
   if( since > 0 )
   {
-   idSelQuery = em.createQuery("select sbm.id from "+Submission.class.getCanonicalName()+ " sbm WHERE sbm.mTime > :upDate");
+   idSelQuery = em.createQuery("select sbm.id from "+Submission.class.getCanonicalName()+ " sbm WHERE sbm.mTime > :upDate AND sbm.version > 0");
    idSelQuery.setParameter("upDate", new Date(since));
   }
   else
-   idSelQuery = em.createQuery("select id from "+Submission.class.getCanonicalName());
+   idSelQuery = em.createQuery("select id from "+Submission.class.getCanonicalName()+ " sbm WHERE sbm.version > 0");
   
   Collection<Long> sids = idSelQuery.getResultList();
   

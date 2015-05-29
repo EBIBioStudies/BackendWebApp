@@ -5,13 +5,12 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Date;
 import java.util.Map;
-import java.util.logging.XMLFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import uk.ac.ebi.biostd.out.TextStreamFormatter;
 import uk.ac.ebi.biostd.webapp.server.export.ExporterStat;
 import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
@@ -57,7 +56,7 @@ public class EBEyeOutputModule implements OutputModule
  private final boolean publicOnly;
  private final Map<String,String> sourcesMap;
  
- private XMLFormatter ebeyeFmt;
+ private TextStreamFormatter ebeyeFmt;
  private java.util.Date startTime;
  
  private static Logger log;
@@ -131,7 +130,7 @@ public class EBEyeOutputModule implements OutputModule
  }
 
  @Override
- public XMLFormatter getFormatter()
+ public TextStreamFormatter getFormatter()
  {
   return ebeyeFmt;
  }
@@ -164,7 +163,7 @@ public class EBEyeOutputModule implements OutputModule
    smplHdrFileOut = new PrintStream(tmpHdrSmplFile, "UTF-8");
   }
    
-  ebeyeFmt = new EBeyeXMLFormatter(new OWLKeywordExpansion(efoURL), sourcesMap, publicOnly, new Date());
+//  ebeyeFmt = new EBeyeXMLFormatter(new OWLKeywordExpansion(efoURL), sourcesMap, publicOnly, new Date());
 
   
  }
@@ -172,6 +171,7 @@ public class EBEyeOutputModule implements OutputModule
  @Override
  public void finish(ExporterStat stat) throws IOException
  {
+/*
   Date endTime = new java.util.Date();
   
   String summary = stat.createReport(startTime, endTime , stat.getThreads());
@@ -216,7 +216,7 @@ public class EBEyeOutputModule implements OutputModule
     log.error("EBeye: Moving samples file failed. {} -> {} ", tmpHdrSmplFile.getAbsolutePath(), smpFile.getAbsolutePath());
 
   }
-
+*/
   
   ebeyeFmt = null;
  }

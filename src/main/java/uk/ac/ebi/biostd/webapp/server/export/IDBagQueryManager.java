@@ -51,7 +51,7 @@ public class IDBagQueryManager implements QueryManager
   if(useTransaction)
    em.getTransaction().begin();
 
-  query = em.createQuery("SELECT a FROM " + Submission.class.getCanonicalName () + " a WHERE a.id >=:id and a.id <= :endId");
+  query = em.createQuery("SELECT a FROM " + Submission.class.getCanonicalName () + " a WHERE a.id >=:id and a.id <= :endId AND a.version > 0");
  }
  
  
