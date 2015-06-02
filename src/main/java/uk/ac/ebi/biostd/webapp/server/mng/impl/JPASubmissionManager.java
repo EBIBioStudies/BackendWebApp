@@ -216,7 +216,7 @@ public class JPASubmissionManager implements SubmissionManager
 
  
  @Override
- public LogNode createSubmission( byte[] data, DataFormat type, String charset, boolean update, User usr )
+ public LogNode createSubmission( byte[] data, DataFormat type, String charset, boolean update, User usr, boolean validateOnly )
  {
   ErrorCounter ec = new ErrorCounterImpl();
 
@@ -534,16 +534,20 @@ public class JPASubmissionManager implements SubmissionManager
 
    }
 
-   if(!submOk)
+   if(!submOk || validateOnly )
    {
     SimpleLogNode.setLevels(gln);
+    
+    if( validateOnly )
+     submComplete=true;
+    
     return gln;
    }
 
    for(SubmissionInfo si : doc.getSubmissions())
    {
 
-    if(si.getAccNoPrefix() != null || si.getAccNoSuffix() != null)
+    if(!validateOnly && (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null))
     {
      while(true)
      {
@@ -581,7 +585,6 @@ public class JPASubmissionManager implements SubmissionManager
     em.persist(si.getSubmission());
 
    }
-
 
    submComplete=true;
    

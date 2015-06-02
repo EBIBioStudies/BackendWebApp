@@ -22,7 +22,7 @@ public interface SubmissionManager
  LogNode updatePageTabSubmission(String txt, User usr);
 */
  
- LogNode createSubmission(byte[] data, DataFormat fmt, String charset, boolean update, User usr);
+ LogNode createSubmission(byte[] data, DataFormat fmt, String charset, boolean update, User usr, boolean validateOnly);
 
  
  LogNode deleteSubmissionByAccession(String acc, User usr);

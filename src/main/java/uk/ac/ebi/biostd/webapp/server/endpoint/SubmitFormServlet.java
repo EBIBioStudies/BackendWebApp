@@ -65,7 +65,7 @@ public class SubmitFormServlet extends ServiceServlet
   
   byte[] bindata =  baos.toByteArray();
   
-  LogNode ln = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(bindata, null, null, false, sess.getUser());
+  LogNode ln = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(bindata, null, null, false, sess.getUser(), true);
   
   Log2JSON.convert(ln, resp.getWriter());
   

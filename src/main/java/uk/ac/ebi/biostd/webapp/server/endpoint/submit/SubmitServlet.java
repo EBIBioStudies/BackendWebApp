@@ -21,6 +21,7 @@ public class SubmitServlet extends ServiceServlet
 
  private static final long serialVersionUID = 1L;
 
+ public static final String validateOnlyParameter = "validateOnly";
 
  enum Action
  {
@@ -109,8 +110,12 @@ public class SubmitServlet extends ServiceServlet
    response.getWriter().print("FAIL Empty request body");
    return;
   }
+  
+  String vldPrm = request.getParameter(validateOnlyParameter);
+  
+  boolean validateOnly = vldPrm != null && ("true".equalsIgnoreCase(vldPrm) || "yes".equalsIgnoreCase(vldPrm) || "1".equals(vldPrm) );
 
-  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act == Action.update, sess.getUser());
+  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act == Action.update, sess.getUser(), validateOnly);
   
   
   response.setContentType("application/json");
