@@ -49,7 +49,7 @@ public class BackendConfig
   {
    workDirectory=val;
    
-   submissionsDir = new File( workDirectory, SubmissionDir );
+   submissionsDir = new File( dataDirectory, SubmissionDir );
    
    return true;
   }

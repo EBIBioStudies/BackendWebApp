@@ -15,6 +15,7 @@ import uk.ac.ebi.biostd.treelog.SimpleLogNode;
 import uk.ac.ebi.biostd.util.DataFormat;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager.Operation;
 
 public class SubmitServlet extends ServiceServlet
 {
@@ -23,12 +24,6 @@ public class SubmitServlet extends ServiceServlet
 
  public static final String validateOnlyParameter = "validateOnly";
 
- enum Action
- {
-  create,
-  update,
-  delete
- };
  
  
  @Override
@@ -41,19 +36,23 @@ public class SubmitServlet extends ServiceServlet
    return;
   }
 
-  Action act = null;
+  Operation act = null;
 
   String pi = request.getPathInfo();
 
   if(pi != null && pi.length() > 1)
   {
-   try
+   pi=pi.substring(1);
+   
+   for( Operation op : Operation.values() )
    {
-    act = Action.valueOf(pi.substring(1));
+    if( op.name().equalsIgnoreCase(pi) )
+    {
+     act = op;
+     break;
+    }
    }
-   catch(Throwable e)
-   {
-   }
+   
   }
   
   if( act == null )
@@ -63,7 +62,7 @@ public class SubmitServlet extends ServiceServlet
    return;
   }
 
-  if( act == Action.delete )
+  if( act == Operation.DELETE )
   {
    processDelete( request, response, sess );
    return;
@@ -115,7 +114,7 @@ public class SubmitServlet extends ServiceServlet
   
   boolean validateOnly = vldPrm != null && ("true".equalsIgnoreCase(vldPrm) || "yes".equalsIgnoreCase(vldPrm) || "1".equals(vldPrm) );
 
-  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act == Action.update, sess.getUser(), validateOnly);
+  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act, sess.getUser(), validateOnly);
   
   
   response.setContentType("application/json");

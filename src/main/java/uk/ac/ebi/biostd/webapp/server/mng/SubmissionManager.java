@@ -9,6 +9,14 @@ import uk.ac.ebi.biostd.util.DataFormat;
 
 public interface SubmissionManager
 {
+ enum Operation
+ {
+  CREATE,
+  UPDATE,
+  REPLACE,
+  DELETE
+ }
+ 
  Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
  Submission getSubmissionsByAccession( String acc );
  
@@ -22,7 +30,7 @@ public interface SubmissionManager
  LogNode updatePageTabSubmission(String txt, User usr);
 */
  
- LogNode createSubmission(byte[] data, DataFormat fmt, String charset, boolean update, User usr, boolean validateOnly);
+ LogNode createSubmission(byte[] data, DataFormat fmt, String charset, Operation op, User usr, boolean validateOnly);
 
  
  LogNode deleteSubmissionByAccession(String acc, User usr);

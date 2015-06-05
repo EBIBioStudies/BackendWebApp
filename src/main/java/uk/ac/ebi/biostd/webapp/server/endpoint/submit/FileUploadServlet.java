@@ -162,7 +162,7 @@ public class FileUploadServlet extends ServiceServlet
   out.append("<HTML><BODY onLoad=\"if(typeof(parent.onFileUploaded) == 'function') parent.onFileUploaded(")
   .append(String.valueOf(code) ).append(",'");
   StringUtils.appendAsCStr(out, msg);
-  out.append("'); alert(typeof(parent.onFileUploaded))\">"); //</BODY></HTML>");
+  out.append("');\">"); //</BODY></HTML>");
   
   if( code == HttpServletResponse.SC_OK )
    out.append("SUCCESS: ");

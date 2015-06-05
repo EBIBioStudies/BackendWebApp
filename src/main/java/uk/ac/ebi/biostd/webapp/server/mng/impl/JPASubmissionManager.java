@@ -216,13 +216,13 @@ public class JPASubmissionManager implements SubmissionManager
 
  
  @Override
- public LogNode createSubmission( byte[] data, DataFormat type, String charset, boolean update, User usr, boolean validateOnly )
+ public LogNode createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
  {
   ErrorCounter ec = new ErrorCounterImpl();
 
-  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, (update ? "Updating" : "Creating") + " submission(s) from " + type.name() + " source", ec);
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, op.name() + " submission(s) from " + type.name() + " source", ec);
 
-  if(!update && !BackendConfig.getServiceManager().getSecurityManager().mayUserCreateSubmission(usr))
+  if( op == Operation.CREATE && !BackendConfig.getServiceManager().getSecurityManager().mayUserCreateSubmission(usr) )
   {
    gln.log(Level.ERROR, "User has no permission to create submissions");
    return gln;
@@ -344,44 +344,70 @@ public class JPASubmissionManager implements SubmissionManager
     si.getSubmission().setOwner(usr);
 
     Set<String> globSecId = null;
-    Submission oldSbm = null;
 
     long ts = System.currentTimeMillis() / 1000;
 
     si.getSubmission().setMTime(ts);
 
-    if(update)
+    Submission oldSbm = null;
+//      getSubmissionByAcc(si.getSubmission().getAccNo(), em);
+//
+//
+//    if( oldSbm != null && op == Operation.NEW )
+//    {
+//     
+//    }
+    
+    if( op == Operation.UPDATE || op == Operation.REPLACE )
     {
      if(si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || si.getSubmission().getAccNo() == null)
      {
-      si.getLogNode().log(Level.ERROR, "Submission must have accession number for update operation");
+      si.getLogNode().log(Level.ERROR, "Submission must have accession number for "+op.name()+" operation");
       submOk = false;
       continue;
      }
 
      oldSbm = getSubmissionByAcc(si.getSubmission().getAccNo(), em);
 
-     if(oldSbm == null)
+     if( oldSbm == null )
      {
-      si.getLogNode().log(Level.ERROR, "Submission '" + si.getSubmission().getAccNo() + "' doesn't exist and can't be updated");
-      submOk = false;
-      continue;
+      if( op == Operation.REPLACE )
+      {
+       si.getLogNode().log(Level.ERROR, "Submission '" + si.getSubmission().getAccNo() + "' doesn't exist and can't be replced");
+       submOk = false;
+       continue;
+      }
+      else
+      {
+       if( !BackendConfig.getServiceManager().getSecurityManager().mayUserCreateSubmission(usr) )
+       {
+        si.getLogNode().log(Level.ERROR, "User has no permission to create submissions");
+        submOk = false;
+        continue;
+       }
+       
+       si.getSubmission().setCTime(ts);
+       si.getSubmission().setVersion(1);
+      }
      }
-
-     si.getSubmission().setCTime(oldSbm.getCTime());
-     si.setOriginalSubmission(oldSbm);
-     si.getSubmission().setVersion(oldSbm.getVersion() + 1);
-
-     if(!BackendConfig.getServiceManager().getSecurityManager().mayUserUpdateSubmission(oldSbm, usr))
+     else
      {
-      si.getLogNode().log(Level.ERROR, "Submission update is not permitted for this user");
-      submOk = false;
-      continue;
+      si.getSubmission().setCTime(oldSbm.getCTime());
+      si.setOriginalSubmission(oldSbm);
+      si.getSubmission().setVersion(oldSbm.getVersion() + 1);
+      
+      if(!BackendConfig.getServiceManager().getSecurityManager().mayUserUpdateSubmission(oldSbm, usr))
+      {
+       si.getLogNode().log(Level.ERROR, "Submission update is not permitted for this user");
+       submOk = false;
+       continue;
+      }
+      
+      globSecId = new HashSet<String>();
+      
+      collectGlobalSecIds(oldSbm.getRootSection(), globSecId);
      }
-
-     globSecId = new HashSet<String>();
-
-     collectGlobalSecIds(oldSbm.getRootSection(), globSecId);
+     
     }
     else
     {
@@ -502,7 +528,7 @@ public class JPASubmissionManager implements SubmissionManager
     {
      FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), basePath);
 
-     if(fp != null || (update && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null))
+     if(fp != null || (oldSbm != null && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null))
       foc.setFilePointer(fp);
      else
      {
@@ -511,7 +537,7 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
 
-    if(si.getAccNoPrefix() == null && si.getAccNoSuffix() == null && !update)
+    if(si.getAccNoPrefix() == null && si.getAccNoSuffix() == null && oldSbm == null )
     {
      if(!checkSubmissionIdUniq(si.getSubmission().getAccNo(), em))
      {
@@ -570,7 +596,7 @@ public class JPASubmissionManager implements SubmissionManager
       {
        String newAcc = getNextAccNo(seco.getPrefix(), seco.getSuffix(), em);
 
-       if(checkSectionIdUniq(newAcc, em))
+       if(checkSectionIdUniqTotal(newAcc, em))
        {
         seco.getSection().setAccNo(newAcc);
         break;
@@ -589,12 +615,20 @@ public class JPASubmissionManager implements SubmissionManager
    submComplete=true;
    
   }
+  catch( Throwable t )
+  {
+   gln.log(Level.ERROR, "Exception: "+t.getMessage());
+  }
   finally
   {
    if(!submOk || !submComplete)
    {
     if(em.getTransaction().isActive())
      em.getTransaction().rollback();
+    
+    gln.log(Level.ERROR, "Operation failed. Rolling transaction back");
+    
+    return gln;
    }
    else
    {
@@ -613,6 +647,8 @@ public class JPASubmissionManager implements SubmissionManager
 
      return gln;
     }
+    
+    gln.log(Level.INFO, "Database transaction successful");
    }
   }
   
@@ -628,6 +664,7 @@ public class JPASubmissionManager implements SubmissionManager
      try
      {
       fileMngr.copyToSubmissionFilesDir( si.getSubmission(), fo.getFilePointer() );
+      gln.log(Level.INFO, "File '"+fo.getFileRef().getName()+"' transfer success");
      }
      catch( IOException e )
      {
@@ -1109,6 +1146,14 @@ public class JPASubmissionManager implements SubmissionManager
  }
 
  private boolean checkSectionIdUniq(String accNo, EntityManager em)
+ {
+  Query q =  em.createNamedQuery("Section.countByAccActive");
+  q.setParameter("accNo", accNo);
+  
+  return ((Number)q.getSingleResult()).intValue() == 0;
+ }
+
+ private boolean checkSectionIdUniqTotal(String accNo, EntityManager em)
  {
   Query q =  em.createNamedQuery("Section.countByAcc");
   q.setParameter("accNo", accNo);
