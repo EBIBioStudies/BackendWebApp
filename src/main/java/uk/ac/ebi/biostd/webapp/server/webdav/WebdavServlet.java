@@ -348,7 +348,7 @@ public class WebdavServlet extends DefaultServlet
   
   File dataRoot = new File(wr.getCanonicalPath());
   
-  File usrRoot = new File( dataRoot, BackendConfig.UsersDir+"/"+usr.getId() );
+  File usrRoot = BackendConfig.getUserDir(usr);
 
   usrRoot.mkdirs();
   

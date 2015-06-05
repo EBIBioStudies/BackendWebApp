@@ -18,7 +18,6 @@ import org.apache.catalina.webresources.EmptyResource;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
-import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public class VirtualWebResourceRoot implements WebResourceRoot
 {
@@ -39,8 +38,8 @@ public class VirtualWebResourceRoot implements WebResourceRoot
   if( mountPath.endsWith("/") )
    mountPath=mountPath.substring(0,mountPath.length()-1);
   
-  userDir = BackendConfig.UsersDir;
-  groupDir = BackendConfig.GroupsDir;
+  userDir = "Users";
+  groupDir = "Groups";
   
   if( ! userDir.startsWith("/") )
    userDir = "/"+userDir;

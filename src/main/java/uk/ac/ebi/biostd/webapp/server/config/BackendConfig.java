@@ -9,6 +9,7 @@ import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
+import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 
 
 public class BackendConfig
@@ -16,19 +17,22 @@ public class BackendConfig
  public static final String SessionCookie = "BIOSTDSESS";   //think about security issues on system that ignore file name cases
  
  public static final String SessionDir = "sessions";
- public static final String UsersDir = "Users";
- public static final String GroupsDir = "Groups";
- public static final String SubmissionDir = "Submissions";
+
  public static final String SubmissionFilesDir = "Files";
  
- public static final String WorkdirParameter       = "workdir";
- public static final String DataDirParameter       = "datadir";
+ public static final String WorkdirParameter       = "workDir";
+
+ public static final String UserDirParameter       = "userDir";
+ public static final String GroupDirParameter      = "groupDir";
+ public static final String SubmissionDirParameter = "submissionDir";
+ public static final String SubmissionHistoryDirParameter      = "submissionHistoryDir";
+
+ 
  public static final String DataMountPathParameter = "dataMountPath";
  public static final String RecapchaPrivateKeyParameter = "recapcha_private_key";
  
  public static final int maxPageTabSize=5000000;
  
- private static String dataDirectory;
  private static String dataMountPath;
  private static String workDirectory;
  private static String recapchaPrivateKey;
@@ -40,6 +44,7 @@ public class BackendConfig
  private static File usersDir;
  private static File groupsDir;
  private static File submissionsDir;
+ private static File submissionsHistoryDir;
 
  
  public static boolean readParameter(String param, String val) throws ServiceConfigException
@@ -49,20 +54,37 @@ public class BackendConfig
   {
    workDirectory=val;
    
-   submissionsDir = new File( dataDirectory, SubmissionDir );
-   
    return true;
   }
   
-  if( DataDirParameter.equals(param) )
+  if( SubmissionDirParameter.equals(param) )
   {
-   dataDirectory=val;
-   
-   usersDir = new File( dataDirectory, UsersDir );
-   groupsDir = new File( dataDirectory, GroupsDir );
-   
+   submissionsDir = new File( val );
+
    return true;
   }
+  
+  if( SubmissionHistoryDirParameter.equals(param) )
+  {
+   submissionsHistoryDir = new File( val );
+
+   return true;
+  }
+
+  if( UserDirParameter.equals(param) )
+  {
+   usersDir = new File( val );
+
+   return true;
+  }
+
+  if( GroupDirParameter.equals(param) )
+  {
+   groupsDir = new File( val );
+
+   return true;
+  }
+
 
   if( DataMountPathParameter.equals(param) )
   {
@@ -85,6 +107,11 @@ public class BackendConfig
  public static String getWorkDirectory()
  {
   return workDirectory;
+ }
+ 
+ public static void setWorkDirectory( String dir )
+ {
+  workDirectory=dir;
  }
 
  public static ServiceManager getServiceManager()
@@ -109,32 +136,63 @@ public class BackendConfig
  }
 
 
- public static String getDataDirectory()
- {
-  return dataDirectory;
- }
-
-
  public static String getDataMountPath()
  {
   return dataMountPath;
  }
 
-
+ public static File getUsersDir()
+ {
+  return usersDir;
+ }
+ 
  public static File getUserDir(User user)
  {
   return new File(usersDir,String.valueOf( user.getId() ));
  }
  
 
- public static File getSubmissionDir(Submission sbm)
+ public static File getGroupsDir()
  {
-  return new File(submissionsDir,String.valueOf( sbm.getId() ));
+  return groupsDir;
+ }
+ 
+ public static File getGroupDir( UserGroup g )
+ {
+  return new File(groupsDir,String.valueOf( g.getId() ));
  }
 
- public static File getGroupDir(UserGroup grp)
+ 
+ public static File getSubmissionsDir()
  {
-  return new File(groupsDir,String.valueOf( grp.getId() ));
+  return submissionsDir;
+ }
+ 
+ public static File getSubmissionDir(Submission sbm)
+ {
+  return new File(submissionsDir,AccNoUtil.encode( sbm.getAccNo() ) );
+ }
+ 
+
+ public static File getSubmissionFilesDir(Submission sbm)
+ {
+  return new File( getSubmissionDir(sbm), SubmissionFilesDir );
+ }
+
+ public static File getSubmissionsHistoryDir()
+ {
+  return submissionsHistoryDir;
+ }
+ 
+ public static File getSubmissionHistoryDir(Submission sbm)
+ {
+  return new File(submissionsDir,AccNoUtil.encode( sbm.getAccNo() )+".ver"+( -sbm.getVersion() ) );
+ }
+ 
+
+ public static File getSubmissionHistoryFilesDir(Submission sbm)
+ {
+  return new File( getSubmissionDir(sbm), SubmissionFilesDir );
  }
 
 
@@ -144,10 +202,6 @@ public class BackendConfig
  }
 
 
- public static File getSubmissionFilesDir(Submission sbm)
- {
-  return new File( getSubmissionDir(sbm), SubmissionFilesDir );
- }
 
 
 

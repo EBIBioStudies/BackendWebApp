@@ -56,6 +56,7 @@ import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
+import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 
 public class JPASubmissionManager implements SubmissionManager
 {
@@ -357,6 +358,33 @@ public class JPASubmissionManager implements SubmissionManager
 //    {
 //     
 //    }
+    
+    if( si.getAccNoPrefix() != null )
+    {
+     if(  ! AccNoUtil.checkAccNoStr(si.getAccNoPrefix()) )
+     {
+      si.getLogNode().log(Level.ERROR, "Submission accssesion number prefix contains invalid characters");
+      submOk = false;
+     }
+    }
+    
+    if( si.getAccNoSuffix() != null )
+    {
+     if(  ! AccNoUtil.checkAccNoStr(si.getAccNoSuffix()) )
+     {
+      si.getLogNode().log(Level.ERROR, "Submission accssesion number suffix contains invalid characters");
+      submOk = false;
+     }
+    }
+    
+    if( si.getAccNoPrefix() == null && si.getAccNoSuffix() == null )
+    {
+     if(  ! AccNoUtil.checkAccNoStr(si.getSubmission().getAccNo() ) )
+     {
+      si.getLogNode().log(Level.ERROR, "Submission accssesion number contains invalid characters");
+      submOk = false;
+     }
+    }
     
     if( op == Operation.UPDATE || op == Operation.REPLACE )
     {
@@ -702,6 +730,7 @@ public class JPASubmissionManager implements SubmissionManager
   return new String(data,cs);
  }
 
+ 
 /*
  private LogNode createSubmission( String txt, SourceType type, boolean update, User usr )
  {
