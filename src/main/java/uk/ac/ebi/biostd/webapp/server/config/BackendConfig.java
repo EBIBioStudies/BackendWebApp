@@ -1,6 +1,8 @@
 package uk.ac.ebi.biostd.webapp.server.config;
 
-import java.io.File;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.persistence.EntityManagerFactory;
 
@@ -14,17 +16,26 @@ import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 
 public class BackendConfig
 {
+ public static Path getSubmissionsTransactionPath()
+ {
+  return submissionsTransactionPath;
+ }
+
+
  public static final String SessionCookie = "BIOSTDSESS";   //think about security issues on system that ignore file name cases
  
  public static final String SessionDir = "sessions";
 
+ public static final String SubmissionHistoryPostfix = "#ver";
  public static final String SubmissionFilesDir = "Files";
+ public static final String UsersDir = "Users";
+ public static final String GroupsDir = "Groups";
  
  public static final String WorkdirParameter       = "workDir";
 
- public static final String UserDirParameter       = "userDir";
- public static final String GroupDirParameter      = "groupDir";
+ public static final String UserGroupDirParameter       = "userGroupDir";
  public static final String SubmissionDirParameter = "submissionDir";
+ public static final String SubmissionTransactionDirParameter = "submissionTransactionDir";
  public static final String SubmissionHistoryDirParameter      = "submissionHistoryDir";
 
  
@@ -34,57 +45,80 @@ public class BackendConfig
  public static final int maxPageTabSize=5000000;
  
  private static String dataMountPath;
- private static String workDirectory;
  private static String recapchaPrivateKey;
 
+ private static long instanceId;
+ private static AtomicInteger sequence;
 
  private static ServiceManager defaultServiceManager;
  private static EntityManagerFactory emf;
 
- private static File usersDir;
- private static File groupsDir;
- private static File submissionsDir;
- private static File submissionsHistoryDir;
 
+ private static Path workDirectory;
+ private static Path userGroupPath;
+ private static Path usersPath;
+ private static Path groupsPath;
+ private static Path submissionsPath;
+ private static Path submissionsHistoryPath;
+ private static Path submissionsTransactionPath;
+ 
+ public static void init( int contextHash )
+ {
+  instanceId = System.currentTimeMillis() ^ contextHash;
+  sequence = new AtomicInteger();
+ }
+ 
+ public static long getInstanceId()
+ {
+  return instanceId;
+ }
+ 
+ public static int getSeqNumber()
+ {
+  return sequence.getAndIncrement();
+ }
  
  public static boolean readParameter(String param, String val) throws ServiceConfigException
  {
   
   if( WorkdirParameter.equals(param) )
   {
-   workDirectory=val;
+   workDirectory=FileSystems.getDefault().getPath(val);
    
    return true;
   }
   
   if( SubmissionDirParameter.equals(param) )
   {
-   submissionsDir = new File( val );
+   submissionsPath = FileSystems.getDefault().getPath(val);
 
    return true;
   }
   
   if( SubmissionHistoryDirParameter.equals(param) )
   {
-   submissionsHistoryDir = new File( val );
-
+   submissionsHistoryPath = FileSystems.getDefault().getPath(val);
+ 
    return true;
   }
-
-  if( UserDirParameter.equals(param) )
+  
+  if( SubmissionTransactionDirParameter.equals(param) )
   {
-   usersDir = new File( val );
-
+   submissionsTransactionPath = FileSystems.getDefault().getPath(val);
+ 
    return true;
   }
 
-  if( GroupDirParameter.equals(param) )
+
+  if( UserGroupDirParameter.equals(param) )
   {
-   groupsDir = new File( val );
+   userGroupPath = FileSystems.getDefault().getPath(val);
 
+   usersPath = userGroupPath.resolve(UsersDir);
+   groupsPath = userGroupPath.resolve(GroupsDir);
+   
    return true;
   }
-
 
   if( DataMountPathParameter.equals(param) )
   {
@@ -104,14 +138,14 @@ public class BackendConfig
  }
 
  
- public static String getWorkDirectory()
+ public static Path getWorkDirectory()
  {
   return workDirectory;
  }
  
  public static void setWorkDirectory( String dir )
  {
-  workDirectory=dir;
+  workDirectory=FileSystems.getDefault().getPath(dir);
  }
 
  public static ServiceManager getServiceManager()
@@ -141,58 +175,60 @@ public class BackendConfig
   return dataMountPath;
  }
 
- public static File getUsersDir()
+ public static Path getUserGroupPath()
  {
-  return usersDir;
- }
- 
- public static File getUserDir(User user)
- {
-  return new File(usersDir,String.valueOf( user.getId() ));
- }
- 
-
- public static File getGroupsDir()
- {
-  return groupsDir;
- }
- 
- public static File getGroupDir( UserGroup g )
- {
-  return new File(groupsDir,String.valueOf( g.getId() ));
+  return userGroupPath;
  }
 
  
- public static File getSubmissionsDir()
+ public static Path getUsersPath()
  {
-  return submissionsDir;
- }
- 
- public static File getSubmissionDir(Submission sbm)
- {
-  return new File(submissionsDir,AccNoUtil.encode( sbm.getAccNo() ) );
- }
- 
-
- public static File getSubmissionFilesDir(Submission sbm)
- {
-  return new File( getSubmissionDir(sbm), SubmissionFilesDir );
+  return usersPath;
  }
 
- public static File getSubmissionsHistoryDir()
+ public static Path getUserDirPath(User user)
  {
-  return submissionsHistoryDir;
+  return usersPath.resolve( String.valueOf( user.getId() ));
  }
- 
- public static File getSubmissionHistoryDir(Submission sbm)
- {
-  return new File(submissionsDir,AccNoUtil.encode( sbm.getAccNo() )+".ver"+( -sbm.getVersion() ) );
- }
- 
 
- public static File getSubmissionHistoryFilesDir(Submission sbm)
+ 
+ public static Path getGroupsPath()
  {
-  return new File( getSubmissionDir(sbm), SubmissionFilesDir );
+  return groupsPath;
+ }
+
+ public static Path getGroupDirPath( UserGroup g )
+ {
+  return groupsPath.resolve( String.valueOf( g.getId() ) );
+ }
+
+ 
+ public static Path getSubmissionsPath()
+ {
+  return submissionsPath;
+ }
+
+ 
+ public static Path getSubmissionPath(Submission sbm)
+ {
+  return submissionsPath.resolve(AccNoUtil.encode( sbm.getAccNo() ));
+ }
+
+
+ public static Path getSubmissionFilesPath(Submission sbm)
+ {
+  return getSubmissionPath(sbm).resolve( SubmissionFilesDir );
+ }
+
+
+ public static Path getSubmissionsHistoryPath()
+ {
+  return submissionsHistoryPath;
+ }
+ 
+ public static Path getSubmissionHistoryPath(Submission sbm)
+ {
+  return submissionsHistoryPath.resolve(AccNoUtil.encode( sbm.getAccNo() )+SubmissionHistoryPostfix+( sbm.getVersion() ));
  }
 
 
@@ -202,7 +238,9 @@ public class BackendConfig
  }
 
 
-
-
+ public static boolean isLinkingAllowed()
+ {
+  return true;
+ }
 
 }

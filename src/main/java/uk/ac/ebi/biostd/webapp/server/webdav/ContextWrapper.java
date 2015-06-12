@@ -51,11 +51,11 @@ public class ContextWrapper implements Context
  private String docBase;
 
  
- 
- public ContextWrapper(Context context)
+ public ContextWrapper(Context context, String docBase)
  {
   super();
   this.context = context;
+  this.docBase = docBase;
  }
 
  @Override

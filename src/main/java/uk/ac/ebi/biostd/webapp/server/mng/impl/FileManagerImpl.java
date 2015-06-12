@@ -6,74 +6,231 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.util.FilePointer;
-import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 
 public class FileManagerImpl implements FileManager
 {
+ private static Logger log;
 
+ public FileManagerImpl()
+ {
+  if( log == null )
+   log = LoggerFactory.getLogger(getClass());
+ }
  
  @Override
  public FilePointer checkFileExist(String name, User usr)
  {
-  return checkFileExist(name, BackendConfig.getUserDir(usr).toPath());
+  return checkFileExist(name, BackendConfig.getUserDirPath(usr));
  }
 
  @Override
  public FilePointer checkFileExist(String name, Submission sbm)
  {
-  File f = new File( BackendConfig.getSubmissionFilesDir(sbm), name );
+  Path  p = BackendConfig.getSubmissionFilesPath(sbm).resolve(name);
   
-  if( ! f.exists() || ! f.isFile() )
+  if( ! Files.exists(p) || ! Files.isRegularFile(p) )
    return null;
   
   FilePointer fp = new FilePointer();
   
-  fp.setFullPath(f.toPath());
+  fp.setFullPath(p);
   
   return fp;
  }
 
  @Override
- public File createSubmissionDir(Submission submission)
+ public void moveDirectory( Path src, Path dst ) throws IOException
  {
-  File sbmFileDir = BackendConfig.getSubmissionFilesDir(submission);
-  
-  sbmFileDir.mkdirs();
-  
-  return BackendConfig.getSubmissionDir(submission);
+  Files.move(src, dst);
  }
+ 
+ @Override
+ public void moveToHistory( Submission submission ) throws IOException
+ {
+  Path origDir = BackendConfig.getSubmissionPath(submission);
+  Path histDir = BackendConfig.getSubmissionHistoryPath(submission);
+  
+  if( Files.exists(histDir) )
+   throw new IOException("moveToHistory: Destination directory (file) exists: "+histDir);
+  
+  try
+  {
+   Files.move(origDir, histDir);
+   return;
+  }
+  catch(Exception e )
+  {}
+  
+  try
+  {
+   copyDirectory( origDir, histDir );
+  }
+  catch( IOException e )
+  {
+   try
+   {
+    deleteDirectory( histDir );
+   }
+   catch( IOException de )
+   {
+    log.error("moveToHistory: Rolling back error: "+de.getMessage());
+   }
+   
+   throw e;
+  }
+  
+  deleteDirectory( origDir );
+ }
+ 
+ @Override
+ public void deleteDirectory(Path origDir) throws IOException
+ {
+  Files.walkFileTree(origDir, new SimpleFileVisitor<Path>()
+  {
+
+   @Override
+   public FileVisitResult postVisitDirectory(Path dir, IOException ex ) throws IOException
+   {
+    if( ex != null )
+     throw ex;
+    
+    Files.delete(dir);
+
+    return FileVisitResult.CONTINUE;
+   }
+   
+   @Override
+   public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
+   {
+    Files.delete(file);
+    
+    return FileVisitResult.CONTINUE;
+   }
+
+  });
+ }
+
+ @Override
+ public void copyDirectory(final Path srcDir, final Path dstDir) throws IOException
+ {
+  Files.walkFileTree(srcDir, new SimpleFileVisitor<Path>()
+  {
+
+   @Override
+   public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException
+   {
+    Path rel = srcDir.relativize(dir);
+    
+    Files.createDirectory(dstDir.resolve(rel));
+
+    return FileVisitResult.CONTINUE;
+   }
+   
+   @Override
+   public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
+   {
+    Path rel = srcDir.relativize(file);
+    
+    Files.copy(file, dstDir.resolve(rel) );
+    
+    return FileVisitResult.CONTINUE;
+   }
+
+  });
+  
+ }
+ 
+ @Override
+ public void linkOrCopyDirectory(final Path srcDir, final Path dstDir) throws IOException
+ {
+  Files.walkFileTree(srcDir, new SimpleFileVisitor<Path>()
+  {
+
+   @Override
+   public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException
+   {
+    Path rel = srcDir.relativize(dir);
+    
+    Files.createDirectory(dstDir.resolve(rel));
+
+    return FileVisitResult.CONTINUE;
+   }
+   
+   @Override
+   public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
+   {
+    Path rel = srcDir.relativize(file);
+    Path dst = dstDir.resolve(rel);
+    
+    if( BackendConfig.isLinkingAllowed() )
+    {
+     try
+     {
+      Files.createLink(dst, file);
+     }
+     catch( IOException e )
+     {
+      Files.copy( file, dst );
+     }
+    }
+    else
+     Files.copy( file, dst );
+    
+    
+    return FileVisitResult.CONTINUE;
+   }
+
+  });
+  
+ }
+
+// @Override
+// public File createSubmissionDir(Submission submission)
+// {
+//  File sbmFileDir = BackendConfig.getSubmissionFilesDir(submission);
+//  
+//  sbmFileDir.mkdirs();
+//  
+//  return BackendConfig.getSubmissionDir(submission);
+// }
 
  
  @Override
  public void copyToSubmissionFilesDir(Submission submission, FilePointer fp) throws IOException
  {
-  File sbmFile = BackendConfig.getSubmissionFilesDir(submission);
+  Path sbmFile = BackendConfig.getSubmissionFilesPath(submission);
   
-
 
   if( fp.getArchivePath() == null )
   {
-   File outFile = new File( sbmFile, fp.getRelativePath().toString() );
+   Path outFile = sbmFile.resolve( fp.getRelativePath() );
 
    if( fp.isDirectory() )
    {
-    outFile.mkdirs();
-    FileUtil.copyDirectory(fp.getFullPath().toFile(), outFile );
+    Files.createDirectories(outFile);
+    copyDirectory(fp.getFullPath(), outFile);
    }
    else
    {
-    outFile.getParentFile().mkdirs();
-    FileUtil.copyFile(fp.getFullPath().toFile(), outFile );
+    Files.createDirectories(outFile.getParent());
+    Files.copy(fp.getFullPath(), outFile);
    }
   }
   else
@@ -84,7 +241,8 @@ public class FileManagerImpl implements FileManager
     {
      Enumeration<? extends ZipEntry> eset = zf.entries();
      
-     File outDir = new File( sbmFile, fp.getRelativePath().toString() );
+     Path outDir = sbmFile.resolve( fp.getRelativePath() );
+//     File outDir = new File( sbmFile, fp.getRelativePath().toString() );
      
      while( eset.hasMoreElements() )
      {
@@ -92,15 +250,17 @@ public class FileManagerImpl implements FileManager
       
       if( ze.getName().startsWith(fp.getArchiveInternalPath()) && ! ze.isDirectory() )
       {
-       File outFile = new File( outDir, ze.getName().substring(fp.getArchiveInternalPath().length()) );
+       //File outFile = new File( outDir, ze.getName().substring(fp.getArchiveInternalPath().length()) );
+       Path outFile = outDir.resolve(ze.getName().substring(fp.getArchiveInternalPath().length()) );
        copyZipEntry(zf, ze, outFile );
       }
      }
     }
     else
     {
-     File outFile = new File( sbmFile, fp.getRelativePath().toString() );
-     outFile.getParentFile().mkdirs();
+     
+     Path outFile = sbmFile.resolve( fp.getRelativePath() );
+     Files.createDirectories(outFile.getParent());
 
      copyZipEntry(zf, zf.getEntry( fp.getArchiveInternalPath() ), outFile);
     }
@@ -127,12 +287,26 @@ public class FileManagerImpl implements FileManager
 
  }
  
- @Override
- public File createSubmissionDirFile(Submission submission, String srcFileName)
+ private void copyZipEntry( ZipFile zf, ZipEntry ze, Path outFile ) throws IOException
  {
-  return new File( BackendConfig.getSubmissionDir(submission), srcFileName );
- }
+  byte[] buf = new byte[16384];
+  
+  Files.createDirectories(outFile.getParent());
+  
 
+  try (
+   InputStream fis = zf.getInputStream(ze);
+   OutputStream fos = Files.newOutputStream(outFile); 
+  )
+  {
+  
+   int nread;
+   while( (nread=fis.read(buf) ) > 0 )
+    fos.write(buf, 0, nread);
+  }
+
+ }
+ 
  @Override
  public FilePointer checkFileExist(String name, Path basePath)
  {
@@ -226,6 +400,71 @@ public class FileManagerImpl implements FileManager
   
   
   return null;
+ }
+
+
+ @Override
+ public void linkOrCopy(Path origDir, FilePointer fp) throws IOException
+ {
+  Path outPath = origDir.resolve(fp.getRelativePath());
+
+  if( fp.getArchivePath() == null )
+  {
+//   File outFile = new File( sbmFile, fp.getRelativePath().toString() );
+
+   if( fp.isDirectory() )
+   {
+    Files.createDirectories( outPath.getParent() );
+
+    if( BackendConfig.isLinkingAllowed() )
+     linkOrCopyDirectory(fp.getFullPath(), outPath);
+    else
+     copyDirectory(fp.getFullPath(), outPath);
+    
+   }
+   else
+   {
+    Files.createDirectories(outPath.getParent());
+
+    if( BackendConfig.isLinkingAllowed() )
+    {
+     try
+     {
+      Files.createLink(outPath, fp.getFullPath());
+     }
+     catch(IOException e)
+     {
+      Files.copy(fp.getFullPath(), outPath);
+     }
+    }
+    else
+     Files.copy(fp.getFullPath(), outPath);
+     
+   }
+  }
+  else
+  {
+   try ( ZipFile zf = new ZipFile(fp.getArchivePath().toFile()) )
+   {
+    if( fp.isDirectory() )
+    {
+     Enumeration<? extends ZipEntry> eset = zf.entries();
+     
+     while( eset.hasMoreElements() )
+     {
+      ZipEntry ze  = eset.nextElement();
+      
+      if( ze.getName().startsWith(fp.getArchiveInternalPath()) && ! ze.isDirectory() )
+      {
+       Path outFile = outPath.resolve(ze.getName().substring(fp.getArchiveInternalPath().length()));
+       copyZipEntry( zf, ze, outFile );
+      }
+     }
+    }
+    else
+     copyZipEntry(zf, zf.getEntry( fp.getArchiveInternalPath() ), outPath);
+   }
+  }
  }
 
 

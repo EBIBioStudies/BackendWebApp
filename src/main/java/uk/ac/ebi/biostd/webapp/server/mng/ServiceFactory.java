@@ -1,6 +1,8 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.FileManagerImpl;
@@ -19,32 +21,48 @@ public class ServiceFactory
   if( BackendConfig.getWorkDirectory() == null )
    throw new ServiceInitExceprion("Service init error: work directory parameter is not defined");
   
-  File wd = new File( BackendConfig.getWorkDirectory() );
+  Path wd  = BackendConfig.getWorkDirectory() ;
   
-  if( wd.exists() )
+  if( Files.exists(wd) )
   {
-   if( ! wd.isDirectory() )
+   if( ! Files.isDirectory( wd ) )
     throw new ServiceInitExceprion("Service init error: work directory path '"+BackendConfig.getWorkDirectory()+"' should point to directory");
    
-   if( ! wd.canWrite() )
+   if( ! Files.isWritable(wd) )
     throw new ServiceInitExceprion("Service init error: work directory '"+BackendConfig.getWorkDirectory()+"' is not writable");
   }
   else
   {
-   if( ! wd.mkdirs() )
-    throw new ServiceInitExceprion("Service init error: can't create work directory '"+BackendConfig.getWorkDirectory()+"'");
+   try
+   {
+    Files.createDirectories(wd);
+   }
+   catch(IOException e)
+   {
+    throw new ServiceInitExceprion("Service init error: can't create work directory '"+wd+"'");
+   }
   }
   
-  File sessDir = new File(wd, ServiceConfig.SessionDir);
+  Path sessDir = wd.resolve(ServiceConfig.SessionDir);
   
-  if( ! sessDir.exists() && ! sessDir.mkdirs() )
-   throw new ServiceInitExceprion("Service init error: can't create session directory '"+BackendConfig.getWorkDirectory()+"/"+BackendConfig.SessionDir+"'");
+  if( Files.notExists(sessDir) )
+  {
+   try
+   {
+    Files.createDirectories(sessDir);
+   }
+   catch(IOException e)
+   {
+    throw new ServiceInitExceprion("Service init error: can't create session directory '"+sessDir+"'");
+   }
+  }
+  
  
   ServiceManagerImpl svc  = new ServiceManagerImpl();
 
   
   svc.setUserManager( new JPAUserManager( ) );
-  svc.setSessionManager( new SessionManagerImpl(sessDir) );
+  svc.setSessionManager( new SessionManagerImpl(sessDir.toFile()) );
   svc.setSubmissionManager( new JPASubmissionManager(BackendConfig.getEntityManagerFactory()));
   svc.setSecurityManager(new SecurityManagerImpl() );
   svc.setFileManager( new FileManagerImpl() );

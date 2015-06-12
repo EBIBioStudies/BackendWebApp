@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.endpoint.dir;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,6 +11,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -104,7 +106,7 @@ public class DirServlet extends ServiceServlet
    return;
   }
 
-  Path udir = BackendConfig.getUserDir(sess.getUser()).toPath();
+  Path udir = BackendConfig.getUserDirPath(sess.getUser());
 
 
   int i = 0;
@@ -157,7 +159,7 @@ public class DirServlet extends ServiceServlet
    return;
   }
 
-  Path udir = BackendConfig.getUserDir(sess.getUser()).toPath();
+  Path udir = BackendConfig.getUserDirPath(sess.getUser());
 
 
   int i = 0;
@@ -237,15 +239,15 @@ public class DirServlet extends ServiceServlet
 
   User user = sess.getUser();
 
-  File udir = BackendConfig.getUserDir(user);
+  Path udir = BackendConfig.getUserDirPath(user);
 
   boolean first = true;
 
-  if(udir.exists())
+  if( Files.exists( udir ) )
   {
    out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
 
-   listDirectory(new FileNode(udir), "/User", out);
+   listDirectory( new FileNode(udir), "/User", out);
 
    out.print("\n}");
 
@@ -265,9 +267,9 @@ public class DirServlet extends ServiceServlet
 
    for(UserGroup g : grps)
    {
-    File gdir = BackendConfig.getGroupDir(g);
+    Path gdir = BackendConfig.getGroupDirPath(g);
 
-    if(gdir.exists())
+    if( Files.exists( gdir ))
     {
      if(!first)
       out.print(",\n");
@@ -282,7 +284,7 @@ public class DirServlet extends ServiceServlet
      out.print(gname);
      out.print("\",\n \"files\": ");
 
-     listDirectory(new FileNode(gdir), "/Groups/" + gname, out);
+     listDirectory( new FileNode(gdir), "/Groups/" + gname, out);
 
      out.print("\n}");
     }
@@ -301,16 +303,16 @@ public class DirServlet extends ServiceServlet
  {
   String getName();
   boolean isDirectory();
-  long getSize();
-  Collection<Node> getSubnodes();
-  File getFile();
+  long getSize() throws IOException;
+  Collection<Node> getSubnodes() throws IOException;
+  Path getFile();
  }
  
  private static class FileNode implements Node
  {
-  File file;
+  Path file;
   
-  FileNode( File f )
+  FileNode( Path f )
   {
    file=f;
   }
@@ -318,36 +320,38 @@ public class DirServlet extends ServiceServlet
   @Override
   public String getName()
   {
-   return file.getName();
+   return file.getFileName().toString();
   }
 
   @Override
   public boolean isDirectory()
   {
-   return file.isDirectory();
+   return Files.isDirectory( file );
   }
 
   @Override
-  public long getSize()
+  public long getSize() throws IOException
   {
-   return file.length();
+   return Files.size( file );
   }
 
   @Override
-  public Collection<Node> getSubnodes()
+  public Collection<Node> getSubnodes() throws IOException
   {
-   File[] list = file.listFiles();
    
-   ArrayList<Node> sbn = new ArrayList<DirServlet.Node>(list.length);
+   try( Stream<Path> list = Files.list( file ) )
+   {
+    ArrayList<Node> sbn = new ArrayList<DirServlet.Node>();
+    
+    list.forEach( f -> sbn.add( new FileNode(f) ) );
+
+    return sbn;
+   }
    
-   for( File f : list )
-    sbn.add( new FileNode(f) );
-   
-   return sbn;
   }
 
   @Override
-  public File getFile()
+  public Path getFile()
   {
    return file;
   }
@@ -393,7 +397,7 @@ public class DirServlet extends ServiceServlet
    {
     out.append("ARCHIVE\",\n\"files\":");
     
-    listDirectory( listZipArchive(f.getFile(), npath), npath, out);
+    listDirectory( listZipArchive(f.getFile().toFile(), npath), npath, out);
    }
    else
     out.append("FILE\"");
@@ -431,7 +435,7 @@ public class DirServlet extends ServiceServlet
    return null;
   }
   @Override
-  public File getFile()
+  public Path getFile()
   {
    return null;
   }
@@ -459,7 +463,7 @@ public class DirServlet extends ServiceServlet
    return 0;
   }
   @Override
-  public File getFile()
+  public Path getFile()
   {
    return null;
   }
@@ -475,7 +479,7 @@ public class DirServlet extends ServiceServlet
   }
  }
  
- private ZDir listZipArchive(File f, String npath) throws IOException
+ private ZDir listZipArchive( File f, String npath) throws IOException
  {
   ZDir root = new ZDir();
   

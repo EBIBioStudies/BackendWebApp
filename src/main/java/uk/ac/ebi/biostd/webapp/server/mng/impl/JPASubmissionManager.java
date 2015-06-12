@@ -4,7 +4,11 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashSet;
@@ -60,6 +64,24 @@ import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 
 public class JPASubmissionManager implements SubmissionManager
 {
+ private enum SubmissionDirState
+ {
+  ABSENT,
+  LINKED,
+  COPIED,
+  HOME
+ }
+ 
+ private static class FileTransactionUnit
+ {
+  Path submissionPath;
+  Path historyPath;
+  Path submissionPathTmp;
+  Path historyPathTmp;
+
+  SubmissionDirState state;
+ }
+ 
  private static Logger log;
  
  static enum SourceType
@@ -68,6 +90,9 @@ public class JPASubmissionManager implements SubmissionManager
   JSON,
   PageTab
  }
+
+ private static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
+ private static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
  
  private ParserConfig parserCfg;
@@ -129,6 +154,14 @@ public class JPASubmissionManager implements SubmissionManager
   ErrorCounter ec = new ErrorCounterImpl();
   SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Deleting submission '"+acc+"'", ec);
 
+  FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
+  
+  Path origDir = null;
+  Path histDir = null;
+  Path histDirTmp = null;
+  
+  int dirOp = 0; // 0 - not changed, 1 - moved, 2 - copied, 3 = error
+  
   try
   {
    em.getTransaction().begin();
@@ -159,26 +192,102 @@ public class JPASubmissionManager implements SubmissionManager
     return gln;
    }
 
+   origDir = BackendConfig.getSubmissionPath(sbm);
+
+   if(Files.exists(origDir))
+   {
+    histDir = BackendConfig.getSubmissionHistoryPath(sbm);
+    histDirTmp = histDir.resolveSibling(histDir.getFileName() + "#tmp");
+
+    try
+    {
+     fileMngr.moveDirectory(origDir, histDirTmp); // trying to submission directory to the history dir
+     dirOp = 1;
+    }
+    catch(Exception e)
+    {
+     // If we can't move the directory we have to make a copy of it
+
+     try
+     {
+      fileMngr.copyDirectory(origDir, histDirTmp);
+      dirOp=2;
+     }
+     catch(Exception ex1)
+     {
+      log.error("Can't copy directory " + origDir + " to " + histDirTmp + " : " + ex1.getMessage());
+      gln.log(Level.ERROR, "File operation error. Contact system administrator");
+      
+      dirOp = 3;
+      
+      return gln; // Bad. We have to break the operation
+     }
+
+    }
+   }
+   
    sbm.setMTime(System.currentTimeMillis() / 1000);
    sbm.setVersion(-sbm.getVersion());
   }
   finally
   {
+   boolean trnOk=true;
+   
    try
    {
-    em.getTransaction().commit();
+    if( dirOp != 3 )
+     em.getTransaction().commit();
+    else
+    {
+     em.getTransaction().rollback();
+     trnOk = false;
+    }
    }
    catch(Throwable t)
    {
+    trnOk = false;
+    
     String err = "Database transaction failed: " + t.getMessage();
 
     gln.log(Level.ERROR, err);
 
     if(em.getTransaction().isActive())
      em.getTransaction().rollback();
-
-    return gln;
    }
+   
+   if( trnOk )
+    gln.log(Level.INFO, "Transaction successful");
+   else
+   {
+    if( dirOp == 1 )
+    {
+     try
+     {
+      fileMngr.moveDirectory(histDirTmp, origDir );
+     }
+     catch(IOException e)
+     {
+      log.error("Delete opration rollback (move dir) failed: "+e);
+      e.printStackTrace();
+      
+      gln.log(Level.ERROR, "Severe server problem. Please inform system administrator. The database may be inconsistent");
+     }
+
+    }
+    else if( dirOp == 2 )
+    {
+     try
+     {
+      fileMngr.deleteDirectory(histDirTmp);
+     }
+     catch(IOException e)
+     {
+      log.error("Delete opration rollback (del dir) failed: "+e);
+      e.printStackTrace();
+     }
+    }
+   }
+
   }
   
   return gln;
@@ -217,7 +326,7 @@ public class JPASubmissionManager implements SubmissionManager
 
  
  @Override
- public LogNode createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
+ public synchronized LogNode createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
  {
   ErrorCounter ec = new ErrorCounterImpl();
 
@@ -240,8 +349,10 @@ public class JPASubmissionManager implements SubmissionManager
   SpreadsheetReader reader = null;
 
   FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
+  Path trnPath = BackendConfig.getSubmissionsTransactionPath().resolve(BackendConfig.getInstanceId()+"#"+BackendConfig.getSeqNumber());
 
-  
+  List<FileTransactionUnit> trans = null;
+
   try
   {
 
@@ -337,7 +448,7 @@ public class JPASubmissionManager implements SubmissionManager
     }
    }
    
-   Path usrPath = BackendConfig.getUserDir(usr).toPath();
+   Path usrPath = BackendConfig.getUserDirPath(usr);
 
    
    for(SubmissionInfo si : doc.getSubmissions())
@@ -598,6 +709,7 @@ public class JPASubmissionManager implements SubmissionManager
     return gln;
    }
 
+  
    for(SubmissionInfo si : doc.getSubmissions())
    {
 
@@ -642,10 +754,20 @@ public class JPASubmissionManager implements SubmissionManager
 
    submComplete=true;
    
+   trans = new ArrayList<JPASubmissionManager.FileTransactionUnit>( doc.getSubmissions().size() );
+   
+   if( ! prepareFileTransaction(fileMngr, trans, doc.getSubmissions(), trnPath) )
+   {
+    gln.log(Level.ERROR, "File operation failed. Contact system administrator");
+    submOk = false;
+   }
+   
   }
   catch( Throwable t )
   {
    gln.log(Level.ERROR, "Exception: "+t.getMessage());
+
+   t.printStackTrace();
   }
   finally
   {
@@ -654,7 +776,10 @@ public class JPASubmissionManager implements SubmissionManager
     if(em.getTransaction().isActive())
      em.getTransaction().rollback();
     
-    gln.log(Level.ERROR, "Operation failed. Rolling transaction back");
+    gln.log(Level.ERROR, "Submit/Update operation failed. Rolling transaction back");
+    
+    if( trans != null )
+     rollbackFileTransaction(fileMngr, trans, trnPath);
     
     return gln;
    }
@@ -663,15 +788,37 @@ public class JPASubmissionManager implements SubmissionManager
     try
     {
      em.getTransaction().commit();
+     
+     try
+     {
+      commitFileTransaction(fileMngr, trans, trnPath);
+     }
+     catch( IOException ioe )
+     {
+      String err = "File transaction commit failed: " + ioe.getMessage();
+
+      gln.log(Level.ERROR, err);
+      log.error(err);
+      
+      ioe.printStackTrace();
+      
+      return gln;
+     }
     }
     catch(Throwable t)
     {
      String err = "Database transaction commit failed: " + t.getMessage();
 
      gln.log(Level.ERROR, err);
+     log.error(err);
 
+     t.printStackTrace();
+     
      if(em.getTransaction().isActive())
       em.getTransaction().rollback();
+
+     if( trans != null )
+      rollbackFileTransaction(fileMngr, trans, trnPath);
 
      return gln;
     }
@@ -680,31 +827,229 @@ public class JPASubmissionManager implements SubmissionManager
    }
   }
   
-  for( SubmissionInfo si : doc.getSubmissions() )
-  {
   
-   fileMngr.createSubmissionDir( si.getSubmission() );
-   
-   if( si.getFileOccurrences() != null  )
+  return gln;
+ }
+ 
+ private void rollbackFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans,  Path trnPath )
+ {
+  for(FileTransactionUnit ftu : trans)
+  {
+   try
    {
-    for( FileOccurrence fo : si.getFileOccurrences() )
+    if(ftu.historyPathTmp != null)
+    {
+     if(Files.isSymbolicLink(ftu.submissionPath))
+     {
+      Files.delete(ftu.submissionPath);
+      Files.move(ftu.historyPathTmp, ftu.submissionPath);
+     }
+     else
+     {
+      fileMngr.deleteDirectory(ftu.historyPathTmp);
+     }
+    }
+
+    if(ftu.submissionPathTmp != null)
+    {
+     fileMngr.deleteDirectory(ftu.submissionPathTmp);
+    }
+   }
+   catch(Exception e)
+   {
+    log.error("File operation error: " + e.getMessage());
+    e.printStackTrace();
+   }
+  }
+  
+  try
+  {
+   fileMngr.deleteDirectory(trnPath);
+  }
+  catch(Exception e)
+  {
+   log.error("Can't delete transaction directory: '"+trnPath+"' "+ e.getMessage());
+   e.printStackTrace();
+  }
+  
+ }
+ 
+ private void commitFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans,  Path trnPath ) throws IOException
+ {
+  for(FileTransactionUnit ftu : trans)
+  {
+
+   Path dirToDel = null;
+   
+   if( ftu.state == SubmissionDirState.COPIED )
+   {
+    Files.move(ftu.historyPathTmp, ftu.historyPath);
+
+    dirToDel = ftu.submissionPathTmp.getParent().resolve(ftu.submissionPath.getFileName() + "~");
+    Files.move(ftu.submissionPath, dirToDel);
+   }
+   else if( ftu.state == SubmissionDirState.HOME )
+    Files.move(ftu.submissionPath, ftu.historyPath);
+   else if( ftu.state == SubmissionDirState.LINKED )
+   {
+    Files.move(ftu.historyPathTmp, ftu.historyPath);
+    Files.delete(ftu.submissionPath);
+   }
+   
+
+   if( ftu.submissionPathTmp != null )
+    Files.move(ftu.submissionPathTmp, ftu.submissionPath);
+
+   if(dirToDel != null)
+   {
+    try
+    {
+     fileMngr.deleteDirectory(dirToDel);
+    }
+    catch(Exception ex3)
+    {
+     log.error("Can't delete directory of dirsymlink: " + dirToDel + " " + ex3.getMessage());
+    }
+   }
+
+  }
+
+  try
+  {
+   Files.delete(trnPath);
+  }
+  catch(Exception ex4)
+  {
+   log.error("Can't delete directory : " + trnPath + " " + ex4.getMessage());
+  }
+  
+ }
+ 
+ private boolean prepareFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans, Collection<SubmissionInfo> subs, Path trnPath )
+ {
+
+  for( SubmissionInfo si : subs )
+  {
+   
+   FileTransactionUnit ftu = new FileTransactionUnit();
+   trans.add(ftu);
+
+   
+   Path origDir = BackendConfig.getSubmissionPath( si.getSubmission() );
+   ftu.submissionPath = origDir;
+
+   ftu.state =SubmissionDirState.ABSENT;
+   
+   if(si.getOriginalSubmission() != null)
+   {
+    Path histDir = BackendConfig.getSubmissionHistoryPath(si.getOriginalSubmission());
+
+
+    if(Files.exists(origDir))
+    {
+     ftu.historyPath = histDir;
+
+     Path histDirTmp = histDir.resolveSibling(histDir.getFileName() + "#tmp");
+
+     try
+     {
+      fileMngr.moveDirectory(origDir, histDirTmp); // trying to submission directory to the history dir
+      ftu.historyPathTmp = histDirTmp;
+
+      try
+      {
+       Files.createSymbolicLink(origDir, histDirTmp); //to provide access to the submission before the commit
+       ftu.state =SubmissionDirState.LINKED;
+      }
+      catch(Exception ex2)
+      {
+       fileMngr.moveDirectory(histDirTmp, origDir); //if we can't make a symbolic link (FAT?) let's return the directory back
+       ftu.historyPathTmp = null; // Signaling that the directory was not neither moved nor copied
+       ftu.state =SubmissionDirState.HOME;
+      }
+     }
+     catch(Exception e)
+     {
+      // If we can't move the directory we have to make a copy of it
+
+      try
+      {
+       fileMngr.copyDirectory(origDir, histDirTmp);
+       ftu.historyPathTmp = histDirTmp;
+       ftu.state =SubmissionDirState.COPIED;
+      }
+      catch(Exception ex1)
+      {
+       log.error("Can't copy directory " + origDir + " to " + histDirTmp + " : " + ex1.getMessage());
+
+       return false; // Bad. We have to break the operation
+      }
+
+     }
+    }
+
+   }
+
+   if( si.getFileOccurrences().size() == 0 )
+    continue;
+
+   
+   Path trnSbmPath = trnPath.resolve(si.getSubmission().getAccNo());
+
+   try
+   {
+    Files.createDirectories(trnSbmPath);
+    ftu.submissionPathTmp = trnSbmPath;
+   }
+   catch(IOException e1)
+   {
+    log.error("Create submission transaction dir (" + trnSbmPath + ") error. " + e1.getMessage());
+    e1.printStackTrace();
+
+    return false;
+   }
+
+   try
+   {
+    if(BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(si.getSubmission()))
+     Files.setPosixFilePermissions(trnSbmPath, rwxrwxr_x);
+    else
+     Files.setPosixFilePermissions(trnSbmPath, rwxrwx___);
+   }
+   catch(UnsupportedOperationException ex)
+   {
+   }
+   catch(IOException e1)
+   {
+    log.error("Submission dir (" + trnSbmPath + ") set permissions error. " + e1.getMessage());
+    e1.printStackTrace();
+
+    return false;
+   }
+
+   Path sbmFilesPath = trnSbmPath.resolve(BackendConfig.SubmissionFilesDir);
+
+   if(si.getFileOccurrences() != null)
+   {
+    for(FileOccurrence fo : si.getFileOccurrences())
     {
      try
      {
-      fileMngr.copyToSubmissionFilesDir( si.getSubmission(), fo.getFilePointer() );
-      gln.log(Level.INFO, "File '"+fo.getFileRef().getName()+"' transfer success");
+      fileMngr.linkOrCopy(sbmFilesPath, fo.getFilePointer());
+      si.getLogNode().log(Level.INFO, "File '" + fo.getFileRef().getName() + "' transfer success");
      }
-     catch( IOException e )
+     catch(IOException e)
      {
-      si.getLogNode().log(Level.ERROR, "File transfer error: "+fo.getFilePointer());
+      log.error("File " + fo.getFilePointer() + " transfer error: " + e.getMessage());
+      return false;
      }
     }
    }
   }
-
-  return gln;
+  
+  return true;
  }
- 
+
  private String convertToText( byte[] data, String charset, LogNode ln )
  {
   Charset cs = null;
@@ -1162,7 +1507,12 @@ public class JPASubmissionManager implements SubmissionManager
  
   q.setParameter("accNo", accNo);
   
-  return (Submission)q.getSingleResult();
+  List<?> res = q.getResultList();
+  
+  if( res.size() == 0 )
+   return null;
+  
+  return (Submission)res.get(0);
  }
 
 

@@ -31,4 +31,10 @@ public class SecurityManagerImpl implements SecurityManager
   return sub.getOwner().getLogin().equals( user.getLogin() ) || user.isSuperuser();
  }
 
+ @Override
+ public boolean mayEveryoneReadSubmission(Submission submission)
+ {
+  return submission.getRTime() < System.currentTimeMillis();
+ }
+
 }

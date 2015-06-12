@@ -81,7 +81,7 @@ public class FileUploadServlet extends ServiceServlet
   
   User user  = sess.getUser();
   
-  File udir = BackendConfig.getUserDir( user );
+  Path udir = BackendConfig.getUserDirPath( user );
   
   int pos = fileName.lastIndexOf('/');
   
@@ -104,16 +104,14 @@ public class FileUploadServlet extends ServiceServlet
   }
 
   
-  Path uDirPath = udir.toPath();
-  
-  Path fPath = uDirPath;
+  Path fPath = udir;
   
   if( relPath != null )
    fPath = fPath.resolve(relPath);
   
   fPath = fPath.resolve(fileName).normalize();
   
-  if( ! fPath.startsWith(uDirPath) )
+  if( ! fPath.startsWith(udir) )
   {
    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid relative path", resp);
    return;

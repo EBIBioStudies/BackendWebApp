@@ -1,8 +1,9 @@
 package uk.ac.ebi.biostd.webapp.server;
 
-import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Enumeration;
@@ -354,6 +355,8 @@ public class WebAppInit implements ServletContextListener
  {
   ServletContext ctx = ctxEv.getServletContext();
   
+  BackendConfig.init( ctx.getContextPath().hashCode() );
+  
   ParamPool config = null;
 
   ResourceBundle rb = null;
@@ -385,41 +388,39 @@ public class WebAppInit implements ServletContextListener
    throw new RuntimeException("Can't find WebResourceRoot. Not Tomcat 8?");
   }
   
-  String val = BackendConfig.getWorkDirectory();
+  Path dir = BackendConfig.getWorkDirectory();
   
-  if( val == null )
+  if( dir == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+BackendConfig.WorkdirParameter+" parameter is not set");
    throw new RuntimeException("Invalid configuration");
   }
   
-  if( ! checkDirectory(new File(val)) )
-   throw new RuntimeException("Directory access error: "+val);
+  if( ! checkDirectory(dir) )
+   throw new RuntimeException("Directory access error: "+dir);
   
-  File dir = BackendConfig.getUsersDir();
+
+  
+  dir = BackendConfig.getUserGroupPath();
   
   if( dir == null )
   {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.UserDirParameter+" parameter is not set");
+   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.UserGroupDirParameter+" parameter is not set");
    throw new RuntimeException("Invalid configuration");
   }
   
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+val);
+   throw new RuntimeException("Directory access error: "+dir);
 
-  dir = BackendConfig.getGroupsDir();
+  if( ! checkDirectory( BackendConfig.getUsersPath() ) )
+   throw new RuntimeException("Directory access error: "+BackendConfig.getUsersPath() );
+
+  if( ! checkDirectory( BackendConfig.getGroupsPath() ) )
+   throw new RuntimeException("Directory access error: "+BackendConfig.getGroupsPath() );
+
   
-  if( dir == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.GroupDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-  
-  if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+val);
 
-
-  dir = BackendConfig.getSubmissionsDir();
+  dir = BackendConfig.getSubmissionsPath();
   
   if( dir == null )
   {
@@ -428,10 +429,10 @@ public class WebAppInit implements ServletContextListener
   }
   
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+val);
+   throw new RuntimeException("Directory access error: "+dir);
 
   
-  dir = BackendConfig.getSubmissionsHistoryDir();
+  dir = BackendConfig.getSubmissionsHistoryPath();
   
   if( dir == null )
   {
@@ -440,16 +441,57 @@ public class WebAppInit implements ServletContextListener
   }
   
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+val);
+   throw new RuntimeException("Directory access error: "+dir);
 
+  
+  dir = BackendConfig.getSubmissionsTransactionPath();
+  
+  if( dir == null )
+  {
+   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.SubmissionTransactionDirParameter+" parameter is not set");
+   throw new RuntimeException("Invalid configuration");
+  }
+
+  if( ! checkDirectory(dir) )
+   throw new RuntimeException("Directory access error: "+dir);
+
+  
+  Path sbmTestDir = BackendConfig.getSubmissionsPath().resolve("~tmp");
+  try
+  {
+   Path trnTestDir = BackendConfig.getSubmissionsTransactionPath().resolve("~tmp");
+   
+   Files.createDirectory(sbmTestDir);
+   Files.deleteIfExists(trnTestDir);
+   Files.move(sbmTestDir, trnTestDir);
+   Files.delete(trnTestDir);
+  }
+  catch(IOException e1)
+  {
+   try
+   {
+    Files.deleteIfExists(sbmTestDir);
+   }
+   catch(IOException e)
+   {
+   }
+  
+   log.error("Submission transaction directory: test oparation failed: "+e1.getMessage());
+   log.error("Submission transaction directory should be on the same physical drive with submissions directory");
+
+   throw new RuntimeException("Invalid configuration");
+  }
+
+  String dataDir = BackendConfig.getUserGroupPath().toString();
   String dataMount = BackendConfig.getDataMountPath();
+  
 
   if( dataMount == null )
    throw new RuntimeException(BackendConfig.DataMountPathParameter+" parameter is not set");
   
-  resRoot.createWebResourceSet(ResourceSetType.POST, dataMount, null, "/");
+  resRoot.createWebResourceSet(ResourceSetType.POST, dataMount, dataDir, null, "/");
   
-  StandardRoot davRoot = new StandardRoot( new ContextWrapper(resRoot.getContext() ) );
+  StandardRoot davRoot = new StandardRoot( new ContextWrapper(resRoot.getContext(), dataDir ) );
   davRoot.setCachingAllowed(false);
   
   try
@@ -474,27 +516,31 @@ public class WebAppInit implements ServletContextListener
   
  }
 
- private boolean checkDirectory(File file)
+ private boolean checkDirectory(Path file)
  {
-  if( file.exists() )
+  if( Files.exists( file ) )
   {
-   if( ! file.isDirectory() )
+   if( ! Files.isDirectory( file ) )
    {
-    log.error("Path "+file.getAbsolutePath()+" is not a directory");
+    log.error("Path "+file+" is not a directory");
     return false;
    }
    
-   if( ! Files.isWritable(file.toPath()) )
+   if( ! Files.isWritable(file) )
    {
-    log.error("Directory "+file.getAbsolutePath()+" is not writable");
+    log.error("Directory "+file+" is not writable");
     return false;
    }
   }
   else
   {
-   if( ! file.mkdirs() )
+   try
    {
-    log.error("Can't create directory: "+file.getAbsolutePath());
+    Files.createDirectories( file );
+   }
+   catch(IOException e)
+   {
+    log.error("Can't create directory: "+file );
     return false;
    }
   }
