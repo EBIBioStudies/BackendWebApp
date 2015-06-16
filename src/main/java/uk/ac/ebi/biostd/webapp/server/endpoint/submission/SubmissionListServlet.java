@@ -157,8 +157,8 @@ public class SubmissionListServlet extends ServiceServlet
   out.append( String.valueOf(s.getId()) );
   out.append("\",\n\"accno\": \"");
   StringUtils.appendAsCStr(out, s.getAccNo() );
-  out.append("\",\n\"description\": \"");
-  StringUtils.appendAsCStr(out, s.getDescription() );
+  out.append("\",\n\"title\": \"");
+  StringUtils.appendAsCStr(out, s.getTitle() );
   out.append("\",\n\"ctime\": \"");
   out.append(String.valueOf(s.getCTime()));
   out.append("\",\n\"mtime\": \"");

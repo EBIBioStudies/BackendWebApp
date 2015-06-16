@@ -8,9 +8,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -636,7 +638,15 @@ public class JPASubmissionManager implements SubmissionManager
       rootPathFound = true;
       
       rootPathAttr = sa.getValue();
+      si.getSubmission().setRootPath(rootPathAttr);
      }
+     else if( Submission.titleAttribute.equals(sa.getName()) )
+     {
+      saitr.remove();
+
+      si.getSubmission().setTitle( sa.getValue() );
+     }
+
     }
 
     if( rootPathAttr != null )
@@ -712,7 +722,8 @@ public class JPASubmissionManager implements SubmissionManager
   
    for(SubmissionInfo si : doc.getSubmissions())
    {
-
+    Submission subm =  si.getSubmission();   
+    
     if(!validateOnly && (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null))
     {
      while(true)
@@ -721,11 +732,14 @@ public class JPASubmissionManager implements SubmissionManager
 
       if(checkSubmissionIdUniq(newAcc, em))
       {
-       si.getSubmission().setAccNo(newAcc);
+       subm.setAccNo(newAcc);
        break;
       }
      }
     }
+    
+    if( subm.getTitle() == null )
+     subm.setTitle( subm.getAccNo()+" "+SimpleDateFormat.getDateTimeInstance().format( new Date(subm.getCTime()) ) );
 
     for(SectionOccurrence seco : si.getGlobalSections())
     {
@@ -748,7 +762,7 @@ public class JPASubmissionManager implements SubmissionManager
     if(si.getOriginalSubmission() != null)
      si.getOriginalSubmission().setVersion(-si.getOriginalSubmission().getVersion());
 
-    em.persist(si.getSubmission());
+    em.persist(subm);
 
    }
 

@@ -73,6 +73,10 @@ public class WebAppInit implements ServletContextListener
 
  private Timer timer;
  
+ private Map<String, Object> dbConfig = new HashMap<String, Object>();
+ private TaskConfig taskConfig = null;
+
+ 
  public WebAppInit()
  {
   if( log == null )
@@ -103,20 +107,9 @@ public class WebAppInit implements ServletContextListener
  private void readConfig( ParamPool config ) throws ServiceInitExceprion
  {
 
-  //  java.util.logging.Logger.getLogger("org.hibernate.SQL").setLevel(Level.FINEST);
 
   log.info("Initializing BioStudies web app");
 
-  Map<String, Object> dbConfig = new HashMap<String, Object>();
-  TaskConfig taskConfig = null;
-  
-//  Map<String, Map<String, Object>> profMap = new HashMap<>();
-//  Map<String, TaskConfig> tasksMap = new HashMap<>();
-
-
-//  Matcher serviceMtch = Pattern.compile("^" + ServiceParamPrefix + "(\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
-//  Matcher dbMtch = Pattern.compile("^" + DBParamPrefix + "(\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
-//  Matcher taskMtch = Pattern.compile("^"+TaskParamPrefix+"(\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
   Matcher outMtch = Pattern.compile("^"+OutputParamPrefix+"(?:\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
 
   boolean confOk = true;
@@ -190,31 +183,6 @@ public class WebAppInit implements ServletContextListener
    throw new RuntimeException("BioStudies webapp initialization failed");
   }
 
-  BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig));
-
-  BackendConfig.setServiceManager( ServiceFactory.createService( ) );
-  
-  TaskInfo tinf = null;
-  
-  try
-  {
-   tinf = createTask(taskConfig);
-  }
-  catch( TaskConfigException e )
-  {
-   log.error("Configuration error : "+e.getMessage());
-   throw new RuntimeException("BioStd webapp initialization failed");
-  }
-
-  if(tinf.getTimeZero() >= 0)
-  {
-   if(timer == null)
-    timer = new Timer("Timer", true);
-
-   timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), dayInMills);
-
-   log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically");
-  }
  }
  
  private TaskInfo createTask(TaskConfig tc) throws TaskConfigException
@@ -231,23 +199,6 @@ public class WebAppInit implements ServletContextListener
    EntityManagerFactory emf = BackendConfig.getEntityManagerFactory();
    
    
-//   if( tc.getInvokeHour() >= 0 )
-//   {
-//    cal.set( Calendar.HOUR_OF_DAY, tc.getInvokeHour() );
-//    cal.set( Calendar.MINUTE, tc.getInvokeMin() );
-//    
-//    long delta = cal.getTimeInMillis() - ctime;
-//    
-//    long perdInMills = tc.getPeriodHours()*60*60*1000; 
-//    
-//    if( delta > 0 )
-//     tinf.setTimeZero(ctime+(delta/perdInMills)*perdInMills+perdInMills);
-//    else
-//     tinf.setTimeZero(cal.getTimeInMillis()+(-delta/perdInMills)*perdInMills+perdInMills);
-//     
-//    
-//   } 
-    
    if( tc.getInvokeHour() >= 0 )
     tinf.setTimeZero( getAdjustedDelay(tc.getInvokeHour(), tc.getInvokeMin() ) );
    else
@@ -482,6 +433,35 @@ public class WebAppInit implements ServletContextListener
    throw new RuntimeException("Invalid configuration");
   }
 
+  
+  
+  BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig));
+
+  BackendConfig.setServiceManager( ServiceFactory.createService( ) );
+  
+  TaskInfo tinf = null;
+  
+  try
+  {
+   tinf = createTask(taskConfig);
+  }
+  catch( TaskConfigException e )
+  {
+   log.error("Configuration error : "+e.getMessage());
+   throw new RuntimeException("BioStd webapp initialization failed");
+  }
+
+  if(tinf.getTimeZero() >= 0)
+  {
+   if(timer == null)
+    timer = new Timer("Timer", true);
+
+   timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), dayInMills);
+
+   log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically");
+  }
+  
+  
   String dataDir = BackendConfig.getUserGroupPath().toString();
   String dataMount = BackendConfig.getDataMountPath();
   
