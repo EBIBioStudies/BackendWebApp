@@ -26,6 +26,12 @@ public class BackendConfig
  
  public static final String SessionDir = "sessions";
 
+ public static final String GuestsGroup = "@Guests";
+ public static final String EveryoneGroup = "@Everyone";
+ public static final String AuthenticatedGroup = "@Authenticated";
+
+ public static final String PublicTag = "Public";
+ 
  public static final String SubmissionHistoryPostfix = "#ver";
  public static final String SubmissionFilesDir = "Files";
  public static final String UsersDir = "Users";
@@ -37,12 +43,17 @@ public class BackendConfig
  public static final String SubmissionDirParameter = "submissionDir";
  public static final String SubmissionTransactionDirParameter = "submissionTransactionDir";
  public static final String SubmissionHistoryDirParameter      = "submissionHistoryDir";
+ public static final String AllowFileLinksParameter      = "allowFileLinks";
+ public static final String PublicFTPDirParameter      = "publicFTPDir";
+ public static final String DefaultSubmissionAccPrefixParameter      = "defaultSubmissionAccNoPrefix";
+ public static final String DefaultSubmissionAccSuffixParameter      = "defaultSubmissionAccNoSuffix";
 
  
  public static final String DataMountPathParameter = "dataMountPath";
  public static final String RecapchaPrivateKeyParameter = "recapcha_private_key";
  
  public static final int maxPageTabSize=5000000;
+
  
  private static String dataMountPath;
  private static String recapchaPrivateKey;
@@ -61,6 +72,12 @@ public class BackendConfig
  private static Path submissionsPath;
  private static Path submissionsHistoryPath;
  private static Path submissionsTransactionPath;
+ private static Path publicFTPPath;
+
+ private static String defaultSubmissionAccPrefix = null;
+ private static String defaultSubmissionAccSuffix = null;
+ 
+ private static boolean fileLinkAllowed=true;
  
  public static void init( int contextHash )
  {
@@ -80,6 +97,23 @@ public class BackendConfig
  
  public static boolean readParameter(String param, String val) throws ServiceConfigException
  {
+  val = val.trim();
+  param = param.trim();
+  
+  if( DefaultSubmissionAccPrefixParameter.equals(param) )
+  {
+   defaultSubmissionAccPrefix=val;
+   
+   return true;
+  }
+
+  if( DefaultSubmissionAccSuffixParameter.equals(param) )
+  {
+   defaultSubmissionAccSuffix=val;
+   
+   return true;
+  }
+
   
   if( WorkdirParameter.equals(param) )
   {
@@ -109,6 +143,13 @@ public class BackendConfig
    return true;
   }
 
+  if( PublicFTPDirParameter.equals(param) )
+  {
+   publicFTPPath = FileSystems.getDefault().getPath(val);
+ 
+   return true;
+  }
+
 
   if( UserGroupDirParameter.equals(param) )
   {
@@ -130,6 +171,11 @@ public class BackendConfig
   {
    recapchaPrivateKey=val;
    return true;
+  }
+
+  if( AllowFileLinksParameter.equals(param) )
+  {
+   fileLinkAllowed = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
   }
 
   
@@ -240,7 +286,27 @@ public class BackendConfig
 
  public static boolean isLinkingAllowed()
  {
-  return true;
+  return fileLinkAllowed;
+ }
+
+ public static Path getPublicFTPPath()
+ {
+  return publicFTPPath;
+ }
+
+ public static void setPublicFTPPath(Path publicFTPPath)
+ {
+  BackendConfig.publicFTPPath = publicFTPPath;
+ }
+
+ public static String getDefaultSubmissionAccPrefix()
+ {
+  return defaultSubmissionAccPrefix;
+ }
+
+ public static String getDefaultSubmissionAccSuffix()
+ {
+  return defaultSubmissionAccSuffix;
  }
 
 }

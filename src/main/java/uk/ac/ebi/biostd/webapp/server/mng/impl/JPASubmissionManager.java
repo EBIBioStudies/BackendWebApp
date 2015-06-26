@@ -2,6 +2,7 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -51,6 +52,10 @@ import uk.ac.ebi.biostd.in.pagetab.XLSpreadsheetReader;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionAttribute;
+import uk.ac.ebi.biostd.out.cell.CellFormatter;
+import uk.ac.ebi.biostd.out.cell.XSVCellStream;
+import uk.ac.ebi.biostd.out.json.JSONFormatter;
+import uk.ac.ebi.biostd.out.pageml.PageMLFormatter;
 import uk.ac.ebi.biostd.treelog.ErrorCounter;
 import uk.ac.ebi.biostd.treelog.ErrorCounterImpl;
 import uk.ac.ebi.biostd.treelog.LogNode;
@@ -164,6 +169,8 @@ public class JPASubmissionManager implements SubmissionManager
   
   int dirOp = 0; // 0 - not changed, 1 - moved, 2 - copied, 3 = error
   
+  boolean trnOk=true;
+
   try
   {
    em.getTransaction().begin();
@@ -233,7 +240,6 @@ public class JPASubmissionManager implements SubmissionManager
   }
   finally
   {
-   boolean trnOk=true;
    
    try
    {
@@ -265,7 +271,7 @@ public class JPASubmissionManager implements SubmissionManager
     {
      try
      {
-      fileMngr.moveDirectory(histDirTmp, origDir );
+      fileMngr.moveDirectory( histDirTmp, origDir );
      }
      catch(IOException e)
      {
@@ -292,6 +298,25 @@ public class JPASubmissionManager implements SubmissionManager
 
   }
   
+  if( trnOk && BackendConfig.getPublicFTPPath() != null )
+  {
+   Path ftpPath = BackendConfig.getPublicFTPPath().resolve(acc);
+   
+   if( Files.exists(ftpPath) )
+   {
+    try
+    {
+     fileMngr.deleteDirectory(ftpPath);
+    }
+    catch(Exception e)
+    {
+     log.error("Can't delete public ftp directory "+ftpPath+" Error: "+e.getMessage());
+     e.printStackTrace();
+     gln.log(Level.WARN, "Public FTP directory was not deleted");
+    }
+   }
+  }
+  
   return gln;
  }
  
@@ -310,7 +335,8 @@ public class JPASubmissionManager implements SubmissionManager
 
    Query q = em.createNamedQuery("Submission.getByAcc");
 
-
+   q.setParameter("accNo", acc);
+   
    @SuppressWarnings("unchecked")
    List<Submission> res = q.getResultList();
 
@@ -455,66 +481,78 @@ public class JPASubmissionManager implements SubmissionManager
    
    for(SubmissionInfo si : doc.getSubmissions())
    {
-    si.getSubmission().setOwner(usr);
-
-    Set<String> globSecId = null;
-
-    long ts = System.currentTimeMillis() / 1000;
-
-    si.getSubmission().setMTime(ts);
-
-    Submission oldSbm = null;
-//      getSubmissionByAcc(si.getSubmission().getAccNo(), em);
-//
-//
-//    if( oldSbm != null && op == Operation.NEW )
-//    {
-//     
-//    }
+    Submission submission = si.getSubmission();
     
-    if( si.getAccNoPrefix() != null )
+    submission.setOwner(usr);
+
+    try
     {
-     if(  ! AccNoUtil.checkAccNoStr(si.getAccNoPrefix()) )
-     {
-      si.getLogNode().log(Level.ERROR, "Submission accssesion number prefix contains invalid characters");
-      submOk = false;
-     }
+     si.setAccNoPrefix( checkAccNoPart(si.getAccNoPrefix()) );
+    }
+    catch(Exception e)
+    {
+     si.getLogNode().log(Level.ERROR, "Submission accession number prefix contains invalid characters");
+     submOk = false;
     }
     
-    if( si.getAccNoSuffix() != null )
+    try
     {
-     if(  ! AccNoUtil.checkAccNoStr(si.getAccNoSuffix()) )
-     {
-      si.getLogNode().log(Level.ERROR, "Submission accssesion number suffix contains invalid characters");
-      submOk = false;
-     }
+     si.setAccNoSuffix( checkAccNoPart(si.getAccNoSuffix()) );
     }
+    catch(Exception e)
+    {
+     si.getLogNode().log(Level.ERROR, "Submission accession number prefix contains invalid characters");
+     submOk = false;
+    }
+
     
     if( si.getAccNoPrefix() == null && si.getAccNoSuffix() == null )
     {
-     if(  ! AccNoUtil.checkAccNoStr(si.getSubmission().getAccNo() ) )
+     try
+     {
+      submission.setAccNo( checkAccNoPart(submission.getAccNo()) );
+     }
+     catch(Exception e)
      {
       si.getLogNode().log(Level.ERROR, "Submission accssesion number contains invalid characters");
       submOk = false;
      }
+    
+     if( submission.getAccNo() == null )
+     {
+      si.setAccNoPrefix( BackendConfig.getDefaultSubmissionAccPrefix() );
+      si.setAccNoSuffix( BackendConfig.getDefaultSubmissionAccSuffix() );
+     }
     }
+
+     
+    
+    Set<String> globSecId = null;
+
+    long ts = System.currentTimeMillis() / 1000;
+
+    submission.setMTime(ts);
+
+    Submission oldSbm = null;
+
+    
     
     if( op == Operation.UPDATE || op == Operation.REPLACE )
     {
-     if(si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || si.getSubmission().getAccNo() == null)
+     if( (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || submission.getAccNo() == null ) && op == Operation.REPLACE )
      {
       si.getLogNode().log(Level.ERROR, "Submission must have accession number for "+op.name()+" operation");
       submOk = false;
       continue;
      }
 
-     oldSbm = getSubmissionByAcc(si.getSubmission().getAccNo(), em);
+     oldSbm = getSubmissionByAcc(submission.getAccNo(), em);
 
      if( oldSbm == null )
      {
       if( op == Operation.REPLACE )
       {
-       si.getLogNode().log(Level.ERROR, "Submission '" + si.getSubmission().getAccNo() + "' doesn't exist and can't be replced");
+       si.getLogNode().log(Level.ERROR, "Submission '" + submission.getAccNo() + "' doesn't exist and can't be replced");
        submOk = false;
        continue;
       }
@@ -527,15 +565,15 @@ public class JPASubmissionManager implements SubmissionManager
         continue;
        }
        
-       si.getSubmission().setCTime(ts);
-       si.getSubmission().setVersion(1);
+       submission.setCTime(ts);
+       submission.setVersion(1);
       }
      }
      else
      {
-      si.getSubmission().setCTime(oldSbm.getCTime());
+      submission.setCTime(oldSbm.getCTime());
       si.setOriginalSubmission(oldSbm);
-      si.getSubmission().setVersion(oldSbm.getVersion() + 1);
+      submission.setVersion(oldSbm.getVersion() + 1);
       
       if(!BackendConfig.getServiceManager().getSecurityManager().mayUserUpdateSubmission(oldSbm, usr))
       {
@@ -552,8 +590,8 @@ public class JPASubmissionManager implements SubmissionManager
     }
     else
     {
-     si.getSubmission().setCTime(ts);
-     si.getSubmission().setVersion(1);
+     submission.setCTime(ts);
+     submission.setVersion(1);
     }
 
     Path relPath = null;
@@ -563,7 +601,7 @@ public class JPASubmissionManager implements SubmissionManager
     
     String rootPathAttr = null; 
     
-    Iterator<SubmissionAttribute> saitr = si.getSubmission().getAttributes().iterator();
+    Iterator<SubmissionAttribute> saitr = submission.getAttributes().iterator();
     
     while(saitr.hasNext() )
     {
@@ -618,7 +656,7 @@ public class JPASubmissionManager implements SubmissionManager
          if(str != null)
           cal.set(Calendar.SECOND, Integer.parseInt(str));
 
-         si.getSubmission().setRTime(cal.getTimeInMillis() / 1000);
+         submission.setRTime(cal.getTimeInMillis() / 1000);
         }
        }
       }
@@ -638,13 +676,13 @@ public class JPASubmissionManager implements SubmissionManager
       rootPathFound = true;
       
       rootPathAttr = sa.getValue();
-      si.getSubmission().setRootPath(rootPathAttr);
+      submission.setRootPath(rootPathAttr);
      }
      else if( Submission.titleAttribute.equals(sa.getName()) )
      {
       saitr.remove();
 
-      si.getSubmission().setTitle( sa.getValue() );
+      submission.setTitle( sa.getValue() );
      }
 
     }
@@ -686,18 +724,54 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
 
-    if(si.getAccNoPrefix() == null && si.getAccNoSuffix() == null && oldSbm == null )
+    if(si.getAccNoPrefix() == null && si.getAccNoSuffix() == null && oldSbm == null && submission.getAccNo() != null )
     {
-     if(!checkSubmissionIdUniq(si.getSubmission().getAccNo(), em))
+     if(!checkSubmissionIdUniq(submission.getAccNo(), em))
      {
-      si.getLogNode().log(Level.ERROR, "Submission accession number '" + si.getSubmission().getAccNo() + "' is already taken by another submission");
+      si.getLogNode().log(Level.ERROR, "Submission accession number '" + submission.getAccNo() + "' is already taken by another submission");
       submOk = false;
      }
     }
 
     for(SectionOccurrence seco : si.getGlobalSections())
     {
-     if(seco.getPrefix() == null && seco.getSuffix() == null && (globSecId == null || !globSecId.contains(seco.getSection().getAccNo())))
+     try
+     {
+      seco.setPrefix( checkAccNoPart(seco.getPrefix()) );
+     }
+     catch(Exception e)
+     {
+      seco.getSecLogNode().log(Level.ERROR, "Section accession number prefix contains invalid characters");
+      submOk = false;
+     }
+     
+     try
+     {
+      seco.setSuffix( checkAccNoPart(seco.getSuffix()) );
+     }
+     catch(Exception e)
+     {
+      seco.getSecLogNode().log(Level.ERROR, "Section accession number prefix contains invalid characters");
+      submOk = false;
+     }
+
+     
+     if( seco.getSuffix() == null && seco.getPrefix() == null )
+     {
+      try
+      {
+       seco.getSection().setAccNo( checkAccNoPart(seco.getSection().getAccNo()) );
+      }
+      catch(Exception e)
+      {
+       seco.getSecLogNode().log(Level.ERROR, "Section accssesion number contains invalid characters");
+       submOk = false;
+      }
+
+     }
+
+     
+     if(seco.getPrefix() == null && seco.getSuffix() == null && seco.getSection().getAccNo() != null && (globSecId == null || !globSecId.contains(seco.getSection().getAccNo())))
      {
       if(!checkSectionIdUniq(seco.getSection().getAccNo(), em))
       {
@@ -724,7 +798,7 @@ public class JPASubmissionManager implements SubmissionManager
    {
     Submission subm =  si.getSubmission();   
     
-    if(!validateOnly && (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null))
+    if(!validateOnly && (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || subm.getAccNo() == null ))
     {
      while(true)
      {
@@ -733,6 +807,7 @@ public class JPASubmissionManager implements SubmissionManager
       if(checkSubmissionIdUniq(newAcc, em))
       {
        subm.setAccNo(newAcc);
+       si.getLogNode().log(Level.INFO, "Submission generated accNo: "+newAcc);
        break;
       }
      }
@@ -743,7 +818,7 @@ public class JPASubmissionManager implements SubmissionManager
 
     for(SectionOccurrence seco : si.getGlobalSections())
     {
-     if(seco.getPrefix() != null || seco.getSuffix() != null)
+     if(!validateOnly && (seco.getPrefix() != null || seco.getSuffix() != null || seco.getSection().getAccNo() == null ) )
      {
 
       while(true)
@@ -753,6 +828,7 @@ public class JPASubmissionManager implements SubmissionManager
        if(checkSectionIdUniqTotal(newAcc, em))
        {
         seco.getSection().setAccNo(newAcc);
+        seco.getSecLogNode().log(Level.INFO, "Section generated accNo: "+newAcc);
         break;
        }
       }
@@ -841,8 +917,68 @@ public class JPASubmissionManager implements SubmissionManager
    }
   }
   
+  if( trans != null && BackendConfig.getPublicFTPPath() != null )
+   copyToPublicFTP( fileMngr, doc.getSubmissions(), gln );
   
   return gln;
+ }
+ 
+ private String checkAccNoPart( String acc ) throws Exception
+ {
+  if( acc == null )
+   return null;
+  
+  acc = acc.trim();
+  
+  if( acc.length() == 0 )
+   return null;
+  
+  if(  ! AccNoUtil.checkAccNoStr(acc) )
+   throw new Exception("Invalid characters");
+  
+  return acc;
+ }
+ 
+ private void copyToPublicFTP( FileManager fileMngr, List<SubmissionInfo> list, LogNode gln )
+ {
+  for(SubmissionInfo si : list)
+  {
+   Path sourceDir = BackendConfig.getSubmissionFilesPath(si.getSubmission());
+   Path targetDir = BackendConfig.getPublicFTPPath().resolve(si.getSubmission().getAccNo());
+
+   try
+   {
+
+    if(Files.exists(targetDir))
+     fileMngr.deleteDirectory(targetDir);
+
+    if(Files.exists(sourceDir))
+    {
+     fileMngr.copyDirectory(sourceDir, targetDir);
+
+     try
+     {
+      if(BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(si.getSubmission()))
+       Files.setPosixFilePermissions(targetDir, rwxrwxr_x);
+      else
+       Files.setPosixFilePermissions(targetDir, rwxrwx___);
+     }
+     catch(UnsupportedOperationException e)
+     {
+     }
+     catch (IOException e) 
+     {
+      e.printStackTrace();
+     }
+    }
+   }
+   catch(IOException e)
+   {
+    si.getLogNode().log(Level.WARN, "Submission files were not copied to public FTP directory due to error");
+    log.error("Coping to FTP directory error: "+e.getMessage());
+    e.printStackTrace();
+   }
+  }
  }
  
  private void rollbackFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans,  Path trnPath )
@@ -1004,9 +1140,6 @@ public class JPASubmissionManager implements SubmissionManager
 
    }
 
-   if( si.getFileOccurrences().size() == 0 )
-    continue;
-
    
    Path trnSbmPath = trnPath.resolve(si.getSubmission().getAccNo());
 
@@ -1058,6 +1191,43 @@ public class JPASubmissionManager implements SubmissionManager
       return false;
      }
     }
+   }
+  
+   PMDoc doc = new PMDoc();
+   doc.addSubmission(si);
+   
+   try( PrintStream out = new PrintStream( trnSbmPath.resolve(si.getSubmission().getAccNo()+".xml").toFile() ) )
+   {
+    new PageMLFormatter(out).format(doc);
+   }
+   catch (Exception e) 
+   {
+    si.getLogNode().log(Level.ERROR,"Can't generate XML source file");
+    log.error("Can't generate XML source file: "+e.getMessage());
+    e.printStackTrace();
+   }
+   
+   
+   try( PrintStream out = new PrintStream( trnSbmPath.resolve(si.getSubmission().getAccNo()+".json").toFile() ) )
+   {
+    new JSONFormatter(out).format(doc);
+   }
+   catch (Exception e) 
+   {
+    si.getLogNode().log(Level.ERROR,"Can't generate JSON source file");
+    log.error("Can't generate JSON source file: "+e.getMessage());
+    e.printStackTrace();
+   }
+
+   try( PrintStream out = new PrintStream( trnSbmPath.resolve(si.getSubmission().getAccNo()+".pagetab.tsv").toFile() ) )
+   {
+    new CellFormatter( XSVCellStream.getTSVCellStream(out) ).format(doc);
+   }
+   catch (Exception e) 
+   {
+    si.getLogNode().log(Level.ERROR,"Can't generate Page-Tab source file");
+    log.error("Can't generate Page-Tab source file: "+e.getMessage());
+    e.printStackTrace();
    }
   }
   
@@ -1468,6 +1638,15 @@ public class JPASubmissionManager implements SubmissionManager
    gen.setPrefix(prefix);
    gen.setSuffix(suffix);
    
+   Counter cnt = new Counter();
+   cnt.setMaxCount(0);
+   cnt.setName(""+prefix+"000"+suffix);
+   
+   em.persist(cnt);
+   
+   gen.setCounter(cnt );
+   
+   
    em.persist(gen);
   }
   else if( genList.size() == 1 )
@@ -1481,6 +1660,7 @@ public class JPASubmissionManager implements SubmissionManager
   {
    cnt = new Counter();
    cnt.setMaxCount(0);
+   cnt.setName(""+prefix+"000"+suffix);
    
    em.persist(cnt);
    

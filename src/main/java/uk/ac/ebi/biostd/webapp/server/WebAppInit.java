@@ -166,7 +166,7 @@ public class WebAppInit implements ServletContextListener
      }
      catch(TaskConfigException e)
      {
-      log.error("Invalid parameter value: " + key + "=" + val);
+      log.error("Parameter read error: "+e.getMessage());
       confOk = false;
      }
     }
@@ -203,6 +203,8 @@ public class WebAppInit implements ServletContextListener
     tinf.setTimeZero( getAdjustedDelay(tc.getInvokeHour(), tc.getInvokeMin() ) );
    else
     tinf.setTimeZero(-1);
+   
+   tinf.setPeriod( tc.getInvokePeriodMins() );
    
    List<OutputModule> mods = new ArrayList<>(tc.getOutputModulesConfig().size() );
    
@@ -300,9 +302,20 @@ public class WebAppInit implements ServletContextListener
   return adjustedDelay;
  }
  
- 
  @Override
  public void contextInitialized(ServletContextEvent ctxEv)
+ {
+  try
+  {
+   contextInitializedUnsafe(ctxEv);
+  }
+  catch(Throwable e)
+  {
+   e.printStackTrace();
+  }
+ }
+ 
+ public void contextInitializedUnsafe(ServletContextEvent ctxEv)
  {
   ServletContext ctx = ctxEv.getServletContext();
   
@@ -456,9 +469,9 @@ public class WebAppInit implements ServletContextListener
    if(timer == null)
     timer = new Timer("Timer", true);
 
-   timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), dayInMills);
+   timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), tinf.getPeriod()*60*1000);
 
-   log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically");
+   log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically ("+tinf.getPeriod()+"m)");
   }
   
   

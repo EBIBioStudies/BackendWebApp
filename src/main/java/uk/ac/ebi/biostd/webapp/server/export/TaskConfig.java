@@ -27,7 +27,7 @@ public class TaskConfig
  private Integer     threads;
  private int         hour=-1;
  private int         min=0;
- private int         period=24;
+ private int         period=24*60;
 
 
 
@@ -120,15 +120,27 @@ public class TaskConfig
   }
   else if( TaskInvokeTimeParameter.equals(pName) )
   {
-   int colPos = pVal.indexOf(':');
+   String tmStr = pVal;
    
-   String hourStr = pVal;
+   int pos = tmStr.lastIndexOf('/');
+   
+   String prdStr = null;
+   
+   if( pos >= 0 )
+   {
+    prdStr = tmStr.substring(pos+1).trim();
+    tmStr = tmStr.substring(0,pos);    
+   }
+   
+   int colPos = tmStr.indexOf(':');
+   
+   String hourStr = tmStr;
    String minStr = null;
    
    if( colPos >= 0  )
    {
-    hourStr = pVal.substring(0,colPos);
-    minStr = pVal.substring(colPos+1);
+    hourStr = tmStr.substring(0,colPos);
+    minStr = tmStr.substring(colPos+1);
    }
    
    try
@@ -137,12 +149,12 @@ public class TaskConfig
    }
    catch( Exception e )
    {
-    throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal);
+    throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Hours must be a number");
    }
    
    if( hour < 0 || hour > 23 )
    {
-    throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal);
+    throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Hours must be a number between 0 and 23");
    }
    
    if( minStr != null )
@@ -153,14 +165,48 @@ public class TaskConfig
     }
     catch( Exception e )
     {
-     throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal);
+     throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Minutes must be a number");
     }
     
     if( min < 0 || min > 59 )
     {
-     throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal);
+     throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Minutes must be a number between 0 and 59 ");
     }
    }
+   
+   if( prdStr != null && prdStr.length() > 0 )
+   {
+    int mult=1;
+    
+    char lastChar = prdStr.charAt(prdStr.length()-1);
+    
+    if( ! Character.isDigit(lastChar) )
+    {
+     if( lastChar == 'm' || lastChar == 'M' )
+      mult=1;
+     else if( lastChar == 'h' || lastChar == 'H' )
+      mult=60;
+     else if( lastChar == 'd' || lastChar == 'D' )
+      mult=60*24;
+     else
+      throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Period can ends with 'm','h' or 'd'");
+     
+     prdStr = prdStr.substring(0,prdStr.length()-1);
+    }
+
+    try
+    {
+     period = Integer.parseInt(prdStr);
+     period *= mult;
+    }
+    catch(Exception e)
+    {
+     throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Period must be number (can ends with 'm','h' or 'd'");
+    }
+    
+   }
+   
+   
   }
   else
    return false;
@@ -203,6 +249,11 @@ public class TaskConfig
  public int getInvokeMin()
  {
   return min;
+ }
+ 
+ public int getInvokePeriodMins()
+ {
+  return period;
  }
 
  public int getThreadTTL(int def)

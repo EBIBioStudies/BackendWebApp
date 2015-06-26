@@ -7,6 +7,7 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.webapp.server.DBInitializer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
@@ -28,9 +29,9 @@ public class JPAUserManager implements UserManager, SessionListener
   {
    em.getTransaction().begin();
    
-   Query q = em.createQuery("select u from User u where login=?1");
+   Query q = em.createNamedQuery("User.getByLogin");
 
-   q.setParameter(1, uName);
+   q.setParameter("login", uName);
 
    @SuppressWarnings("unchecked")
    List<User> res = q.getResultList();
@@ -52,9 +53,9 @@ public class JPAUserManager implements UserManager, SessionListener
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
-  Query q = em.createQuery("select u from User u where email=?");
+  Query q = em.createNamedQuery("User.getByEMail");
 
-  q.setParameter(1, prm);
+  q.setParameter("enail", prm);
 
   @SuppressWarnings("unchecked")
   List<User> res = q.getResultList();
@@ -67,19 +68,23 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
  @Override
- public void addUser(User u)
+ public synchronized void addUser(User u)
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
   
   EntityTransaction trn = em.getTransaction();
   
-  trn.begin();
   
-  Query q = em.createQuery("select count(u) from User u");
+  Query q = em.createNamedQuery("User.getCount");
 
   if( (Long)q.getSingleResult() == 0)
+  {
+   DBInitializer.init();
    u.setSuperuser(true);
+  }
   
+  trn.begin();
+
   em.persist( u );
   
   trn.commit();
