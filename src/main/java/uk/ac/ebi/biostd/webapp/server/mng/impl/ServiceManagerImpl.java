@@ -1,9 +1,18 @@
-package uk.ac.ebi.biostd.webapp.server.mng;
+package uk.ac.ebi.biostd.webapp.server.mng.impl;
+
+import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
+import uk.ac.ebi.biostd.webapp.server.mng.ReleaseManager;
+import uk.ac.ebi.biostd.webapp.server.mng.RemoteRequestManager;
+import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
+import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
+import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 
 public class ServiceManagerImpl implements ServiceManager
 {
-
 
  private String serviceName;
  
@@ -14,6 +23,7 @@ public class ServiceManagerImpl implements ServiceManager
  private SubmissionManager submissionManager;
  private FileManager fileManager;
  private SecurityManager authzManager;
+ private ReleaseManager releaser;
  
  @Override
  public UserManager getUserManager()
@@ -97,6 +107,17 @@ public class ServiceManagerImpl implements ServiceManager
  public void setSecurityManager(SecurityManager authzManager)
  {
   this.authzManager = authzManager;
+ }
+
+ @Override
+ public ReleaseManager getReleaseManager()
+ {
+  return releaser;
+ }
+
+ public void setReleaseManager(ReleaseManager releaser)
+ {
+  this.releaser = releaser;
  }
  
 

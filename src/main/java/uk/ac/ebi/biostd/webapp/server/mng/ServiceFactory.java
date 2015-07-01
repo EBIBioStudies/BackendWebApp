@@ -6,9 +6,11 @@ import java.nio.file.Path;
 
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.FileManagerImpl;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.JPAReleaser;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPASubmissionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPAUserManager;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.SecurityManagerImpl;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.ServiceManagerImpl;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.SessionManagerImpl;
 
 public class ServiceFactory
@@ -66,6 +68,7 @@ public class ServiceFactory
   svc.setSubmissionManager( new JPASubmissionManager(BackendConfig.getEntityManagerFactory()));
   svc.setSecurityManager(new SecurityManagerImpl() );
   svc.setFileManager( new FileManagerImpl() );
+  svc.setReleaseManager( new JPAReleaser() );
   
   return svc;
   

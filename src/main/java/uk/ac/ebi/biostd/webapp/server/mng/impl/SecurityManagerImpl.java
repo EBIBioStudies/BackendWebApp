@@ -2,7 +2,9 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
@@ -36,7 +38,11 @@ public class SecurityManagerImpl implements SecurityManager
  private User anonUser;
 
  private Collection<ACR> systemACR;
+ private Map<Long, UserGroup> groupMap = new HashMap<Long, UserGroup>();
+ private Map<Long, User> userMap = new HashMap<Long, User>();
  
+
+
  public SecurityManagerImpl()
  {
   if( log == null )
@@ -50,12 +56,13 @@ public class SecurityManagerImpl implements SecurityManager
   EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
   try
   {
-   
    systemACR = new ArrayList<ACR>();
+   Map<Long, PermissionProfile> profMap = new HashMap<Long, PermissionProfile>();
    
-   boolean listValid = true;
+   groupMap.clear();
+   userMap.clear();
 
-   Query q = em.createQuery("SELECT acr FROM SystemPermGrpACR");
+   Query q = em.createQuery("SELECT acr FROM SystemPermGrpACR acr");
    
    @SuppressWarnings("unchecked")
    List<SystemPermGrpACR> spgACRs = q.getResultList();
@@ -64,14 +71,17 @@ public class SecurityManagerImpl implements SecurityManager
    if( spgACRs.size() > 0 )
    {
     for( SystemPermGrpACR acr : spgACRs )
-     listValid = listValid && traverseGroup(acr.getSubject(), true);
+    {
+     SystemPermGrpACR nr = new SystemPermGrpACR();
+     nr.setAllow( acr.isAllow() );
+     nr.setId( acr.getId() );
+     nr.setSubject( detachGroup(acr.getSubject(), true) );
+     
+     systemACR.add(nr);
+    }
    }
    
-   if( listValid )
-    systemACR.addAll(spgACRs);
-   
-   
-   q = em.createQuery("SELECT acr FROM SystemPermUsrACR");
+   q = em.createQuery("SELECT acr FROM SystemPermUsrACR acr");
    
    @SuppressWarnings("unchecked")
    List<SystemPermUsrACR> spuACRs = q.getResultList();
@@ -80,14 +90,18 @@ public class SecurityManagerImpl implements SecurityManager
    if( spuACRs.size() > 0 )
    {
     for( SystemPermUsrACR acr : spuACRs )
-     listValid = listValid && acr.getSubject() != null;
+    {
+     SystemPermUsrACR nr = new SystemPermUsrACR();
+     nr.setAllow( acr.isAllow() );
+     nr.setId( acr.getId() );
+     nr.setSubject( detachUser(acr.getSubject()) );
+     
+     systemACR.add(nr);
+    }
    }
    
-   if( listValid )
-    systemACR.addAll(spuACRs);
    
-   
-   q = em.createQuery("SELECT acr FROM SystemProfUsrACR");
+   q = em.createQuery("SELECT acr FROM SystemProfUsrACR acr");
    
    @SuppressWarnings("unchecked")
    List<SystemProfUsrACR> spruACRs = q.getResultList();
@@ -97,17 +111,17 @@ public class SecurityManagerImpl implements SecurityManager
    {
     for( SystemProfUsrACR acr : spruACRs )
     {
-     listValid = listValid && acr.getSubject() != null;
-    
-     listValid = listValid && traverseProfile( acr.getProfile() );
+     SystemProfUsrACR nr = new SystemProfUsrACR();
+     nr.setId( acr.getId() );
+     nr.setProfile( detachProfile(acr.getProfile(), profMap ) );
+     nr.setSubject( detachUser(acr.getSubject()) );
+     
+     systemACR.add(nr);
     }
    }
+  
    
-   if( listValid )
-    systemACR.addAll(spruACRs);
-   
-   
-   q = em.createQuery("SELECT acr FROM SystemProfGrpACR");
+   q = em.createQuery("SELECT acr FROM SystemProfGrpACR acr");
    
    @SuppressWarnings("unchecked")
    List<SystemProfGrpACR> sprgACRs = q.getResultList();
@@ -117,32 +131,35 @@ public class SecurityManagerImpl implements SecurityManager
    {
     for( SystemProfGrpACR acr : sprgACRs )
     {
-     listValid = listValid && traverseGroup(acr.getSubject(), true);
-     listValid = listValid && traverseProfile( acr.getProfile() );
+     SystemProfGrpACR nr = new SystemProfGrpACR();
+     nr.setId( acr.getId() );
+     nr.setProfile( detachProfile(acr.getProfile(), profMap ) );
+     nr.setSubject( detachGroup(acr.getSubject(), true) );
+     
+     systemACR.add(nr);
     }
    }
    
-   if( listValid )
-    systemACR.addAll(sprgACRs);
-   
-   q = em.createNativeQuery("User.getByLogin");
-   q.setParameter("login", BuiltInUsers.Guest.getUserName());
-   
-   @SuppressWarnings("unchecked")
-   List<User> res = q.getResultList();
-   
-   if( res.size() == 0 )
+   for( User u : userMap.values() )
    {
-    log.error("Can't get anonymous ("+BuiltInUsers.Guest.getUserName()+") user");
-    
-    listValid = false;
-   }
-   else
-   {
-    anonUser = res.get(0);
-    listValid = listValid && traverseUser(anonUser);
+    if( BuiltInUsers.Guest.getUserName().equals(u.getLogin() ) )
+     anonUser = u;
    }
    
+   if( anonUser == null )
+   {
+
+    q = em.createNamedQuery("User.getByLogin");
+    q.setParameter("login", BuiltInUsers.Guest.getUserName());
+
+    @SuppressWarnings("unchecked")
+    List<User> res = q.getResultList();
+
+    if(res.size() == 0)
+     log.error("Can't get anonymous (" + BuiltInUsers.Guest.getUserName() + ") user");
+    else
+     anonUser = detachUser(res.get(0));
+   }
   }
   catch( Exception e )
   {
@@ -156,73 +173,129 @@ public class SecurityManagerImpl implements SecurityManager
    
  }
  
- private boolean traverseUser( User u ) // to pull user structure from the DB. We need this to overcome lazy loading
+ private User detachUser( User u ) // to pull user structure from the DB. We need this to overcome lazy loading
  {
-  boolean ok = true;
+  User du = userMap.get(u.getId());
   
-  if( u.getLogin() == null )
-   ok = false;
+  if( du != null )
+   return du;
   
-  if( u.getGroups() != null && u.getGroups().size() > 0  )
+  du = new User();
+  
+  du.setEmail( u.getEmail() );
+  du.setFullName( u.getFullName() );
+  du.setId( u.getId() );
+  du.setLogin( u.getLogin() );
+  du.setSuperuser( du.isSuperuser() );
+ 
+  userMap.put(du.getId(), du);
+
+  if( u.getGroups() != null  )
   {
+   Collection<UserGroup> grps = new ArrayList<UserGroup>( u.getGroups().size() );
+   
    for( UserGroup g : u.getGroups() )
-    ok = ok && traverseGroup(g, false);
+    grps.add( detachGroup(g, false) );
+
+   du.setGroups(grps);
   }
   
-  return ok;
+  
+  return du;
  }
  
- private boolean traverseProfile( PermissionProfile pr ) // to pull profile structure from the DB. We need this to overcome lazy loading
+ private PermissionProfile detachProfile( PermissionProfile pr, Map<Long, PermissionProfile> pmap ) // to pull profile structure from the DB. We need this to overcome lazy loading
  {
-  boolean ok = true;
+  PermissionProfile np=pmap.get(pr.getId());
+  
+  if( np != null )
+   return np;
 
-  ok = pr.getId() != 0;
+  np = new PermissionProfile();
+  
+  np.setId( pr.getId() );
+  np.setDescription( pr.getDescription() );
+  
+  pmap.put(np.getId(), np);
   
   if( pr.getPermissions() != null && pr.getPermissions().size() > 0 )
   {
+   Collection<Permission> pms = new ArrayList<Permission>(pr.getPermissions().size()); 
+   
    for( Permission pm : pr.getPermissions() )
    {
-    if( pm.getAction() == null )
-     ok = false;
+    Permission npm = new Permission();
+    npm.setAction( pm.getAction());
+    npm.setAllow(pm.isAllow());
+    npm.setId( pm.getId() );
+    
+    pms.add( npm );
    }
+   
+   np.setPermissions(pms);
   }
   
   if( pr.getProfiles() != null && pr.getProfiles().size() > 0 )
   {
+   Collection<PermissionProfile> pps = new ArrayList<PermissionProfile>( pr.getProfiles().size() );
+   
    for( PermissionProfile pp : pr.getProfiles() )
-    ok = ok && traverseProfile(pp);
+    pps.add( detachProfile(pp, pmap) );
+   
+   np.setProfiles(pps);
   }
   
-  return ok;
+  return np;
  }
  
- private boolean traverseGroup( UserGroup g, boolean ldUsr ) // to pull group structure from the DB. We need this to overcome lazy loading
+ private UserGroup detachGroup( UserGroup g, boolean ldUsr ) // to pull group structure from the DB. We need this to overcome lazy loading
  {
-  boolean ok = true;
+  UserGroup ug = groupMap.get(g.getId());
   
-  if( g.getName() == null )
-   ok = false;
+  if( ug != null )
+   return ug;
   
-  if( g.getUsers() != null && g.getGroups().size() > 0 && ldUsr )
+  ug = new UserGroup();
+  
+  ug.setDescription( g.getDescription() );
+  ug.setId( g.getId() );
+  ug.setName( g.getName() );
+  ug.setOwner( detachUser(g.getOwner()) );
+  ug.setProject( ug.isProject() );
+  
+  groupMap.put( ug.getId(), ug);
+
+  
+  if( g.getUsers() != null && g.getUsers().size() > 0 && ldUsr )
   {
+   Collection<User> usrs = new ArrayList<User>( g.getUsers().size() );
+   
    for( User u : g.getUsers() )
-    if( u.getLogin() == null )
-     ok = false;
+    usrs.add( detachUser(u) );
+
+   ug.setUsers(usrs);
   }
 
   if( g.getGroups() != null && g.getGroups().size() > 0 )
   {
+   Collection<UserGroup> grps = new ArrayList<UserGroup>( g.getGroups().size() );
+
    for( UserGroup sg : g.getGroups() )
-    ok = ok && traverseGroup(sg, ldUsr);
+    grps.add( detachGroup(sg, ldUsr) );
+   
+   ug.setGroups( grps );
   }
   
-  return ok;
+  return ug;
  }
  
  
  @Override
  public boolean mayUserCreateSubmission(User usr)
  {
+  if( usr.isSuperuser() )
+   return true;
+  
   boolean allow = false;
   
   for( ACR acr : systemACR )
@@ -279,6 +352,9 @@ public class SecurityManagerImpl implements SecurityManager
  private boolean checkObjectPermission( SecurityObject obj, User usr, SystemAction act )
  {
   boolean allow = false;
+  
+  if( obj.getAccessTags() == null )
+   return false;
   
   for( AccessTag atg : obj.getAccessTags() )
   {

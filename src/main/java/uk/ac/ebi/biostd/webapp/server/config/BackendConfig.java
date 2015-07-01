@@ -2,6 +2,9 @@ package uk.ac.ebi.biostd.webapp.server.config;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.persistence.EntityManagerFactory;
@@ -26,6 +29,10 @@ public class BackendConfig
  
  public static final String SessionDir = "sessions";
 
+ public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
+ public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
+
+ 
  public static final String GuestsGroup = "@Guests";
  public static final String EveryoneGroup = "@Everyone";
  public static final String AuthenticatedGroup = "@Authenticated";

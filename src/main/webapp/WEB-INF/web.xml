@@ -103,6 +103,27 @@
     <url-pattern>/fileUpload</url-pattern>
   </servlet-mapping>
   
+   <servlet>
+    <description></description>
+    <display-name>AccessTagsServlet</display-name>
+    <servlet-name>AccessTagsServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.auth.AccessTagsServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AccessTagsServlet</servlet-name>
+    <url-pattern>/checkAccess</url-pattern>
+  </servlet-mapping>
+  
+  <filter>
+   <filter-name>CorsFilter</filter-name>
+   <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>
+  </filter>
+
+ <filter-mapping>
+  <filter-name>CorsFilter</filter-name>
+  <url-pattern>/*</url-pattern>
+ </filter-mapping>
+  
   <listener>
     <listener-class>uk.ac.ebi.biostd.webapp.server.WebAppInit</listener-class>
   </listener>

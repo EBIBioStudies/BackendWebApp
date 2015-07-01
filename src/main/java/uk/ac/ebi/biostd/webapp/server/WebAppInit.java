@@ -14,6 +14,7 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.TimeZone;
 import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,6 +71,7 @@ public class WebAppInit implements ServletContextListener
  private Logger log = null;
 
  private static final long dayInMills = TimeUnit.DAYS.toMillis(1);
+ private static final long hourInMills = TimeUnit.HOURS.toMillis(1);
 
  private Timer timer;
  
@@ -452,6 +454,19 @@ public class WebAppInit implements ServletContextListener
 
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
   
+  timer = new Timer("Timer", true);
+  
+  long now = System.currentTimeMillis();
+  
+  timer.scheduleAtFixedRate( new TimerTask()
+  {
+   @Override
+   public void run()
+   {
+    BackendConfig.getServiceManager().getReleaseManager().doHourlyCheck();
+   }
+  }, hourInMills-(now % hourInMills) , hourInMills);
+  
   TaskInfo tinf = null;
   
   try
@@ -474,6 +489,7 @@ public class WebAppInit implements ServletContextListener
    log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically ("+tinf.getPeriod()+"m)");
   }
   
+
   
   String dataDir = BackendConfig.getUserGroupPath().toString();
   String dataMount = BackendConfig.getDataMountPath();

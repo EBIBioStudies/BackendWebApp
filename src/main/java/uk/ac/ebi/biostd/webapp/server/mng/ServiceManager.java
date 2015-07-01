@@ -18,5 +18,7 @@ public interface ServiceManager
  FileManager getFileManager();
  
  SecurityManager getSecurityManager();
+ 
+ ReleaseManager getReleaseManager();
 
 }

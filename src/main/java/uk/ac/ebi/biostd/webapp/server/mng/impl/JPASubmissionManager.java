@@ -7,8 +7,6 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -34,6 +32,7 @@ import org.odftoolkit.simple.SpreadsheetDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.idgen.Counter;
 import uk.ac.ebi.biostd.idgen.IdGen;
@@ -98,8 +97,6 @@ public class JPASubmissionManager implements SubmissionManager
   PageTab
  }
 
- private static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
- private static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
  
  private ParserConfig parserCfg;
@@ -656,7 +653,31 @@ public class JPASubmissionManager implements SubmissionManager
          if(str != null)
           cal.set(Calendar.SECOND, Integer.parseInt(str));
 
-         submission.setRTime(cal.getTimeInMillis() / 1000);
+         submission.setRTime( cal.getTimeInMillis() / 1000 );
+
+         if( cal.getTimeInMillis() < System.currentTimeMillis() )
+         {
+          boolean pub=false;
+          
+          if( submission.getAccessTags() != null )
+          {
+           for( AccessTag t : submission.getAccessTags() )
+           {
+            if( t.getName().equals( BackendConfig.PublicTag ) )
+            {
+             pub=true;
+             break;
+            }
+           }
+           
+          }
+
+          if( !pub )
+           submission.addAccessTag( getPublicTag(em) );
+          
+          submission.setRTime( System.currentTimeMillis() / 1000 );
+         }
+         
         }
        }
       }
@@ -708,6 +729,20 @@ public class JPASubmissionManager implements SubmissionManager
       break;
      }
 
+    }
+    
+    
+    if( submission.getAccessTags() != null )
+    {
+     for( AccessTag t : submission.getAccessTags() )
+     {
+      if( t.getName().equals( BackendConfig.PublicTag ) )
+      {
+       submission.setRTime(System.currentTimeMillis() / 1000 );
+       submission.setReleased(true);
+       break;
+      }
+     }
     }
     
     
@@ -855,9 +890,12 @@ public class JPASubmissionManager implements SubmissionManager
   }
   catch( Throwable t )
   {
-   gln.log(Level.ERROR, "Exception: "+t.getMessage());
+   gln.log(Level.ERROR, "Internal server error");
 
    t.printStackTrace();
+   log.error("Exception during submission process: "+t.getMessage());
+   
+   submOk = false;
   }
   finally
   {
@@ -923,6 +961,14 @@ public class JPASubmissionManager implements SubmissionManager
   return gln;
  }
  
+ private AccessTag getPublicTag( EntityManager em )
+ {
+  Query q = em.createNamedQuery("AccessTag.getByName");
+  q.setParameter("name", BackendConfig.PublicTag);
+  
+  return (AccessTag)q.getSingleResult();
+ }
+ 
  private String checkAccNoPart( String acc ) throws Exception
  {
   if( acc == null )
@@ -959,9 +1005,9 @@ public class JPASubmissionManager implements SubmissionManager
      try
      {
       if(BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(si.getSubmission()))
-       Files.setPosixFilePermissions(targetDir, rwxrwxr_x);
+       Files.setPosixFilePermissions(targetDir, BackendConfig.rwxrwxr_x);
       else
-       Files.setPosixFilePermissions(targetDir, rwxrwx___);
+       Files.setPosixFilePermissions(targetDir, BackendConfig.rwxrwx___);
      }
      catch(UnsupportedOperationException e)
      {
@@ -1159,9 +1205,9 @@ public class JPASubmissionManager implements SubmissionManager
    try
    {
     if(BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(si.getSubmission()))
-     Files.setPosixFilePermissions(trnSbmPath, rwxrwxr_x);
+     Files.setPosixFilePermissions(trnSbmPath, BackendConfig.rwxrwxr_x);
     else
-     Files.setPosixFilePermissions(trnSbmPath, rwxrwx___);
+     Files.setPosixFilePermissions(trnSbmPath, BackendConfig.rwxrwx___);
    }
    catch(UnsupportedOperationException ex)
    {
