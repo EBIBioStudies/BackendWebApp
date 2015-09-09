@@ -66,7 +66,10 @@ public class ServiceFactory
   svc.setUserManager( new JPAUserManager( ) );
   svc.setSessionManager( new SessionManagerImpl(sessDir.toFile()) );
   svc.setSubmissionManager( new JPASubmissionManager(BackendConfig.getEntityManagerFactory()));
+  
   svc.setSecurityManager(new SecurityManagerImpl() );
+  svc.getSecurityManager().init();
+  
   svc.setFileManager( new FileManagerImpl() );
   svc.setReleaseManager( new JPAReleaser() );
   

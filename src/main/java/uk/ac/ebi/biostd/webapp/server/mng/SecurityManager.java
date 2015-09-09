@@ -14,5 +14,7 @@ public interface SecurityManager
 
  boolean mayEveryoneReadSubmission(Submission submission);
 
+ void init();
+
 
 }

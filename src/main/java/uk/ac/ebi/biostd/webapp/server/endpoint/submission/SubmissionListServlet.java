@@ -153,7 +153,7 @@ public class SubmissionListServlet extends ServiceServlet
 
  private void exportSubmission(Submission s, Appendable out) throws IOException
  {
-  out.append("{\n\"id:\": \"");
+  out.append("{\n\"id\": \"");
   out.append( String.valueOf(s.getId()) );
   out.append("\",\n\"accno\": \"");
   StringUtils.appendAsCStr(out, s.getAccNo() );

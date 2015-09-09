@@ -5,6 +5,7 @@ import java.util.Collection;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.treelog.LogNode;
+import uk.ac.ebi.biostd.treelog.SubmissionReport;
 import uk.ac.ebi.biostd.util.DataFormat;
 
 public interface SubmissionManager
@@ -30,7 +31,7 @@ public interface SubmissionManager
  LogNode updatePageTabSubmission(String txt, User usr);
 */
  
- LogNode createSubmission(byte[] data, DataFormat fmt, String charset, Operation op, User usr, boolean validateOnly);
+ SubmissionReport createSubmission(byte[] data, DataFormat fmt, String charset, Operation op, User usr, boolean validateOnly);
 
  
  LogNode deleteSubmissionByAccession(String acc, User usr);

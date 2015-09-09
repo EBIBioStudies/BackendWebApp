@@ -55,7 +55,7 @@ public class JPAUserManager implements UserManager, SessionListener
 
   Query q = em.createNamedQuery("User.getByEMail");
 
-  q.setParameter("enail", prm);
+  q.setParameter("email", prm);
 
   @SuppressWarnings("unchecked")
   List<User> res = q.getResultList();
@@ -81,6 +81,7 @@ public class JPAUserManager implements UserManager, SessionListener
   {
    DBInitializer.init();
    u.setSuperuser(true);
+   BackendConfig.getServiceManager().getSecurityManager().init();
   }
   
   trn.begin();

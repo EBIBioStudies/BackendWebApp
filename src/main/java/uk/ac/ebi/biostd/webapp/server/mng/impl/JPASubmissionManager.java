@@ -9,16 +9,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -36,9 +31,11 @@ import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.idgen.Counter;
 import uk.ac.ebi.biostd.idgen.IdGen;
+import uk.ac.ebi.biostd.in.AccessionMapping;
 import uk.ac.ebi.biostd.in.PMDoc;
 import uk.ac.ebi.biostd.in.ParserConfig;
 import uk.ac.ebi.biostd.in.ParserException;
+import uk.ac.ebi.biostd.in.SubmissionMapping;
 import uk.ac.ebi.biostd.in.json.JSONReader;
 import uk.ac.ebi.biostd.in.pagetab.CSVTSVSpreadsheetReader;
 import uk.ac.ebi.biostd.in.pagetab.FileOccurrence;
@@ -50,7 +47,7 @@ import uk.ac.ebi.biostd.in.pagetab.SubmissionInfo;
 import uk.ac.ebi.biostd.in.pagetab.XLSpreadsheetReader;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
-import uk.ac.ebi.biostd.model.SubmissionAttribute;
+import uk.ac.ebi.biostd.model.SubmissionAttributeException;
 import uk.ac.ebi.biostd.out.cell.CellFormatter;
 import uk.ac.ebi.biostd.out.cell.XSVCellStream;
 import uk.ac.ebi.biostd.out.json.JSONFormatter;
@@ -60,6 +57,7 @@ import uk.ac.ebi.biostd.treelog.ErrorCounterImpl;
 import uk.ac.ebi.biostd.treelog.LogNode;
 import uk.ac.ebi.biostd.treelog.LogNode.Level;
 import uk.ac.ebi.biostd.treelog.SimpleLogNode;
+import uk.ac.ebi.biostd.treelog.SubmissionReport;
 import uk.ac.ebi.biostd.util.DataFormat;
 import uk.ac.ebi.biostd.util.FilePointer;
 import uk.ac.ebi.biostd.util.StringUtils;
@@ -67,6 +65,7 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
+import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 
 public class JPASubmissionManager implements SubmissionManager
 {
@@ -101,7 +100,6 @@ public class JPASubmissionManager implements SubmissionManager
  
  private ParserConfig parserCfg;
  
- private Pattern rTimePattern;
  
  public JPASubmissionManager(EntityManagerFactory emf)
  {
@@ -114,7 +112,7 @@ public class JPASubmissionManager implements SubmissionManager
   
   parserCfg.setMultipleSubmissions(true);
   
-  rTimePattern = Pattern.compile(Submission.releaseDateFormat);
+//  rTimePattern = Pattern.compile(Submission.releaseDateFormat);
  }
 
  
@@ -144,10 +142,18 @@ public class JPASubmissionManager implements SubmissionManager
 
    return res;
   }
+  catch( Throwable t )
+  {
+   t.printStackTrace();
+   log.error("DB error: "+t.getMessage());
+  }
   finally
   {
-   trn.commit();
+   if( trn.isActive() )
+    trn.commit();
   }
+  
+  return null;
  }
 
  @Override
@@ -349,18 +355,34 @@ public class JPASubmissionManager implements SubmissionManager
   
  }
 
- 
  @Override
- public synchronized LogNode createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
+ public synchronized SubmissionReport createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
+ {
+  try
+  {
+   return createSubmissionUnsafe(data, type, charset, op, usr, validateOnly);
+  }
+  catch(Throwable e)
+  {
+   ExceptionUtil.unroll(e).printStackTrace();
+   throw e;
+  }
+ }
+ 
+ private synchronized SubmissionReport createSubmissionUnsafe( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
  {
   ErrorCounter ec = new ErrorCounterImpl();
 
   SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, op.name() + " submission(s) from " + type.name() + " source", ec);
 
+  SubmissionReport res = new SubmissionReport();
+  
+  res.setLog(gln);
+  
   if( op == Operation.CREATE && !BackendConfig.getServiceManager().getSecurityManager().mayUserCreateSubmission(usr) )
   {
    gln.log(Level.ERROR, "User has no permission to create submissions");
-   return gln;
+   return res;
   }
 
   gln.log(Level.INFO, "Processing '" + type.name() + "' data. Body size: " + data.length);
@@ -389,7 +411,7 @@ public class JPASubmissionManager implements SubmissionManager
 
      gln.log(Level.ERROR, "XML submission are not supported yet");
 
-     return gln;
+     return res;
 
     case json:
 
@@ -444,7 +466,7 @@ public class JPASubmissionManager implements SubmissionManager
      
      gln.log(Level.ERROR, "Unsupported file type: " + type.name());
      SimpleLogNode.setLevels(gln);
-     return gln;
+     return res;
 
    }
 
@@ -453,7 +475,7 @@ public class JPASubmissionManager implements SubmissionManager
    if(gln.getLevel() == Level.ERROR)
    {
     submOk = false;
-    return gln;
+    return res;
    }
 
    if(reader != null)
@@ -469,12 +491,20 @@ public class JPASubmissionManager implements SubmissionManager
      gln.log(Level.ERROR, "Parser exception: " + e.getMessage());
      SimpleLogNode.setLevels(gln);
      submOk = false;
-     return gln;
+     return res;
     }
    }
    
    Path usrPath = BackendConfig.getUserDirPath(usr);
 
+   
+   if( doc.getSubmissions() == null || doc.getSubmissions().size() == 0 )
+   {
+    gln.log(Level.ERROR, "There are no submissions in the document");    
+    SimpleLogNode.setLevels(gln);
+    submOk = false;
+    return res;
+   }
    
    for(SubmissionInfo si : doc.getSubmissions())
    {
@@ -591,123 +621,45 @@ public class JPASubmissionManager implements SubmissionManager
      submission.setVersion(1);
     }
 
-    Path relPath = null;
+   
     
-    boolean rTimeFound = false;
-    boolean rootPathFound = false;
-    
-    String rootPathAttr = null; 
-    
-    Iterator<SubmissionAttribute> saitr = submission.getAttributes().iterator();
-    
-    while(saitr.hasNext() )
+    try
     {
-     SubmissionAttribute sa = saitr.next(); 
+     submission.normalizeAttributes();
+    }
+    catch(SubmissionAttributeException e)
+    {
+     si.getLogNode().log(Level.ERROR, e.getMessage());
+     submOk = false;
+    }
+    
+    if( submission.getRTime()*1000 < System.currentTimeMillis() )
+    {
+     boolean pub=false;
      
-     if(Submission.releaseDateAttribute.equals(sa.getName()))
+     if( submission.getAccessTags() != null )
      {
-      saitr.remove();
-      
-      if(rTimeFound)
+      for( AccessTag t : submission.getAccessTags() )
       {
-       si.getLogNode().log(Level.ERROR, "Multiple '" + Submission.releaseDateAttribute + "' attributes are not allowed");
-       submOk = false;
-       break;
-      }
-
-      rTimeFound = true;
-
-      String val = sa.getValue();
-
-      if(val != null)
-      {
-       val = val.trim();
-
-       if(val.length() > 0)
+       if( t.getName().equals( BackendConfig.PublicTag ) )
        {
-        Matcher mtch = rTimePattern.matcher(val);
-
-        if(!mtch.matches())
-         si.getLogNode().log(Level.ERROR,
-           "Invalid '" + Submission.releaseDateAttribute + "' attribute value. Expected date in format: YYYY-MM-DD[Thh:mm[:ss[.mmm]]]");
-        else
-        {
-         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
-
-         cal.set(Calendar.YEAR, Integer.parseInt(mtch.group("year")));
-         cal.set(Calendar.MONTH, Integer.parseInt(mtch.group("month")) - 1);
-         cal.set(Calendar.DAY_OF_MONTH, Integer.parseInt(mtch.group("day")));
-
-         String str = mtch.group("hour");
-
-         if(str != null)
-          cal.set(Calendar.HOUR_OF_DAY, Integer.parseInt(str));
-
-         str = mtch.group("min");
-
-         if(str != null)
-          cal.set(Calendar.MINUTE, Integer.parseInt(str));
-
-         str = mtch.group("sec");
-
-         if(str != null)
-          cal.set(Calendar.SECOND, Integer.parseInt(str));
-
-         submission.setRTime( cal.getTimeInMillis() / 1000 );
-
-         if( cal.getTimeInMillis() < System.currentTimeMillis() )
-         {
-          boolean pub=false;
-          
-          if( submission.getAccessTags() != null )
-          {
-           for( AccessTag t : submission.getAccessTags() )
-           {
-            if( t.getName().equals( BackendConfig.PublicTag ) )
-            {
-             pub=true;
-             break;
-            }
-           }
-           
-          }
-
-          if( !pub )
-           submission.addAccessTag( getPublicTag(em) );
-          
-          submission.setRTime( System.currentTimeMillis() / 1000 );
-         }
-         
-        }
+        pub=true;
+        break;
        }
       }
-
-     }
-     else if( Submission.rootPathAttribute.equals(sa.getName()) )
-     {
-      saitr.remove();
-
-      if(rootPathFound)
-      {
-       si.getLogNode().log(Level.ERROR, "Multiple '" + Submission.rootPathAttribute + "' attributes are not allowed");
-       submOk = false;
-       break;
-      }
-
-      rootPathFound = true;
       
-      rootPathAttr = sa.getValue();
-      submission.setRootPath(rootPathAttr);
-     }
-     else if( Submission.titleAttribute.equals(sa.getName()) )
-     {
-      saitr.remove();
-
-      submission.setTitle( sa.getValue() );
      }
 
+     if( !pub )
+      submission.addAccessTag( getPublicTag(em) );
+     
+     submission.setRTime( System.currentTimeMillis() / 1000 );
     }
+    
+    Path relPath = null;
+    String rootPathAttr = submission.getRootPath();
 
+    
     if( rootPathAttr != null )
     {
      String path = StringUtils.stripLeadingSlashes(rootPathAttr);
@@ -745,17 +697,19 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
     
-    
-    for(FileOccurrence foc : si.getFileOccurrences())
+    if( si.getFileOccurrences() != null )
     {
-     FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), basePath);
-
-     if(fp != null || (oldSbm != null && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null))
-      foc.setFilePointer(fp);
-     else
+     for(FileOccurrence foc : si.getFileOccurrences())
      {
-      foc.getLogNode().log(Level.ERROR, "File reference '" + foc.getFileRef().getName() + "' can't be resolved. Check files in the user directory");
-      submOk = false;
+      FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), basePath);
+
+      if(fp != null || (oldSbm != null && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null))
+       foc.setFilePointer(fp);
+      else
+      {
+       foc.getLogNode().log(Level.ERROR, "File reference '" + foc.getFileRef().getName() + "' can't be resolved. Check files in the user directory");
+       submOk = false;
+      }
      }
     }
 
@@ -768,50 +722,52 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
 
-    for(SectionOccurrence seco : si.getGlobalSections())
+    if( si.getGlobalSections() != null )
     {
-     try
-     {
-      seco.setPrefix( checkAccNoPart(seco.getPrefix()) );
-     }
-     catch(Exception e)
-     {
-      seco.getSecLogNode().log(Level.ERROR, "Section accession number prefix contains invalid characters");
-      submOk = false;
-     }
-     
-     try
-     {
-      seco.setSuffix( checkAccNoPart(seco.getSuffix()) );
-     }
-     catch(Exception e)
-     {
-      seco.getSecLogNode().log(Level.ERROR, "Section accession number prefix contains invalid characters");
-      submOk = false;
-     }
-
-     
-     if( seco.getSuffix() == null && seco.getPrefix() == null )
+     for(SectionOccurrence seco : si.getGlobalSections())
      {
       try
       {
-       seco.getSection().setAccNo( checkAccNoPart(seco.getSection().getAccNo()) );
+       seco.setPrefix(checkAccNoPart(seco.getPrefix()));
       }
       catch(Exception e)
       {
-       seco.getSecLogNode().log(Level.ERROR, "Section accssesion number contains invalid characters");
+       seco.getSecLogNode().log(Level.ERROR, "Section accession number prefix contains invalid characters");
        submOk = false;
       }
 
-     }
-
-     
-     if(seco.getPrefix() == null && seco.getSuffix() == null && seco.getSection().getAccNo() != null && (globSecId == null || !globSecId.contains(seco.getSection().getAccNo())))
-     {
-      if(!checkSectionIdUniq(seco.getSection().getAccNo(), em))
+      try
       {
-       seco.getSecLogNode().log(Level.ERROR, "Section accession number '" + seco.getSection().getAccNo() + "' is taken by another section");
+       seco.setSuffix(checkAccNoPart(seco.getSuffix()));
+      }
+      catch(Exception e)
+      {
+       seco.getSecLogNode().log(Level.ERROR, "Section accession number prefix contains invalid characters");
        submOk = false;
+      }
+
+      if(seco.getSuffix() == null && seco.getPrefix() == null)
+      {
+       try
+       {
+        seco.getSection().setAccNo(checkAccNoPart(seco.getSection().getAccNo()));
+       }
+       catch(Exception e)
+       {
+        seco.getSecLogNode().log(Level.ERROR, "Section accssesion number contains invalid characters");
+        submOk = false;
+       }
+
+      }
+
+      if(seco.getPrefix() == null && seco.getSuffix() == null && seco.getSection().getAccNo() != null
+        && (globSecId == null || !globSecId.contains(seco.getSection().getAccNo())))
+      {
+       if(!checkSectionIdUniq(seco.getSection().getAccNo(), em))
+       {
+        seco.getSecLogNode().log(Level.ERROR, "Section accession number '" + seco.getSection().getAccNo() + "' is taken by another section");
+        submOk = false;
+       }
       }
      }
     }
@@ -825,13 +781,23 @@ public class JPASubmissionManager implements SubmissionManager
     if( validateOnly )
      submComplete=true;
     
-    return gln;
+    return res;
    }
 
   
+   int sbmNo=0;
+   
    for(SubmissionInfo si : doc.getSubmissions())
    {
+    sbmNo++;
+    
     Submission subm =  si.getSubmission();   
+
+    SubmissionMapping sMap = new SubmissionMapping();
+    sMap.getSubmissionMapping().setOrigAcc(si.getAccNoOriginal());
+    sMap.getSubmissionMapping().setPosition( new int[]{sbmNo} );
+    
+    res.addSubmissionMapping(sMap);
     
     if(!validateOnly && (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || subm.getAccNo() == null ))
     {
@@ -843,6 +809,9 @@ public class JPASubmissionManager implements SubmissionManager
       {
        subm.setAccNo(newAcc);
        si.getLogNode().log(Level.INFO, "Submission generated accNo: "+newAcc);
+       
+       sMap.getSubmissionMapping().setAssignedAcc(subm.getAccNo());
+       
        break;
       }
      }
@@ -851,21 +820,43 @@ public class JPASubmissionManager implements SubmissionManager
     if( subm.getTitle() == null )
      subm.setTitle( subm.getAccNo()+" "+SimpleDateFormat.getDateTimeInstance().format( new Date(subm.getCTime()) ) );
 
-    for(SectionOccurrence seco : si.getGlobalSections())
+    if( si.getGlobalSections() != null  )
     {
-     if(!validateOnly && (seco.getPrefix() != null || seco.getSuffix() != null || seco.getSection().getAccNo() == null ) )
+     for(SectionOccurrence seco : si.getGlobalSections())
      {
-
-      while(true)
+      if(!validateOnly && (seco.getPrefix() != null || seco.getSuffix() != null || seco.getSection().getAccNo() == null))
       {
-       String newAcc = getNextAccNo(seco.getPrefix(), seco.getSuffix(), em);
-
-       if(checkSectionIdUniqTotal(newAcc, em))
+       String localId = seco.getLocalId();
+       
+       while(true)
        {
-        seco.getSection().setAccNo(newAcc);
-        seco.getSecLogNode().log(Level.INFO, "Section generated accNo: "+newAcc);
-        break;
+        String newAcc = getNextAccNo(seco.getPrefix(), seco.getSuffix(), em);
+
+        if(checkSectionIdUniqTotal(newAcc, em))
+        {
+         seco.getSection().setAccNo(newAcc);
+         seco.getSecLogNode().log(Level.INFO, "Section generated accNo: " + newAcc);
+         break;
+        }
        }
+       
+       AccessionMapping secMap = new AccessionMapping();
+       
+       secMap.setAssignedAcc(seco.getSection().getAccNo());
+       secMap.setOrigAcc(localId);
+       
+       int[] pth = new int[seco.getPath().size()+1];
+       
+       int i=0;
+       
+       pth[i++] = sbmNo;
+       
+       for( SectionOccurrence ptoc : seco.getPath() )
+        pth[i++]=ptoc.getPosition();
+       
+       secMap.setPosition(pth);
+       
+       sMap.addSectionMapping( secMap );
       }
      }
     }
@@ -909,7 +900,7 @@ public class JPASubmissionManager implements SubmissionManager
     if( trans != null )
      rollbackFileTransaction(fileMngr, trans, trnPath);
     
-    return gln;
+    return res;
    }
    else
    {
@@ -917,20 +908,23 @@ public class JPASubmissionManager implements SubmissionManager
     {
      em.getTransaction().commit();
      
-     try
+     if( trans != null )
      {
-      commitFileTransaction(fileMngr, trans, trnPath);
-     }
-     catch( IOException ioe )
-     {
-      String err = "File transaction commit failed: " + ioe.getMessage();
+      try
+      {
+       commitFileTransaction(fileMngr, trans, trnPath);
+      }
+      catch(IOException ioe)
+      {
+       String err = "File transaction commit failed: " + ioe.getMessage();
 
-      gln.log(Level.ERROR, err);
-      log.error(err);
-      
-      ioe.printStackTrace();
-      
-      return gln;
+       gln.log(Level.ERROR, err);
+       log.error(err);
+
+       ioe.printStackTrace();
+
+       return res;
+      }
      }
     }
     catch(Throwable t)
@@ -948,7 +942,7 @@ public class JPASubmissionManager implements SubmissionManager
      if( trans != null )
       rollbackFileTransaction(fileMngr, trans, trnPath);
 
-     return gln;
+     return res;
     }
     
     gln.log(Level.INFO, "Database transaction successful");
@@ -958,7 +952,7 @@ public class JPASubmissionManager implements SubmissionManager
   if( trans != null && BackendConfig.getPublicFTPPath() != null )
    copyToPublicFTP( fileMngr, doc.getSubmissions(), gln );
   
-  return gln;
+  return res;
  }
  
  private AccessTag getPublicTag( EntityManager em )

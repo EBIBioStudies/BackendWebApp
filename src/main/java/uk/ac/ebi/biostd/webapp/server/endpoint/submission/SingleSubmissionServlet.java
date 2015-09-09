@@ -46,6 +46,9 @@ public class SingleSubmissionServlet extends ServiceServlet
   
   String acc = req.getPathInfo();
   
+  if( acc == null )
+   acc = req.getParameter("accno");
+  
   if( acc == null || acc.length() < 1 )
   {
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);

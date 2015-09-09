@@ -47,7 +47,11 @@ public class SecurityManagerImpl implements SecurityManager
  {
   if( log == null )
    log = LoggerFactory.getLogger(getClass());
-
+ }
+ 
+ @Override
+ public void init()
+ {
   loadCache();
  }
  
@@ -76,6 +80,7 @@ public class SecurityManagerImpl implements SecurityManager
      nr.setAllow( acr.isAllow() );
      nr.setId( acr.getId() );
      nr.setSubject( detachGroup(acr.getSubject(), true) );
+     nr.setAction( acr.getAction() );
      
      systemACR.add(nr);
     }
@@ -95,6 +100,7 @@ public class SecurityManagerImpl implements SecurityManager
      nr.setAllow( acr.isAllow() );
      nr.setId( acr.getId() );
      nr.setSubject( detachUser(acr.getSubject()) );
+     nr.setAction( acr.getAction() );
      
      systemACR.add(nr);
     }
@@ -156,7 +162,7 @@ public class SecurityManagerImpl implements SecurityManager
     List<User> res = q.getResultList();
 
     if(res.size() == 0)
-     log.error("Can't get anonymous (" + BuiltInUsers.Guest.getUserName() + ") user");
+     log.warn("Can't get anonymous (" + BuiltInUsers.Guest.getUserName() + ") user. Database is not initialized?");
     else
      anonUser = detachUser(res.get(0));
    }

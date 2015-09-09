@@ -121,7 +121,7 @@ public class AccessTagsServlet extends HttpServlet
    StringBuilder allow = new StringBuilder();
    StringBuilder deny = new StringBuilder();
    
-   allow.append('~').append(u.getLogin()).append(',');
+   allow.append('~').append(u.getLogin()).append(';');
    
    q = em.createQuery("SELECT t FROM AccessTag t");
    
@@ -130,9 +130,9 @@ public class AccessTagsServlet extends HttpServlet
     Permit p = t.checkDelegatePermission(SystemAction.READ, u);
     
     if( p == Permit.ALLOW )
-     allow.append(t.getName()).append(',');
+     allow.append(t.getName()).append(';');
     else if( p == Permit.DENY )
-     deny.append(t.getName()).append(',');
+     deny.append(t.getName()).append(';');
    }
    
    allow.setLength( allow.length()-1);

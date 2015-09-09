@@ -9,9 +9,11 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
 
 import uk.ac.ebi.biostd.authz.Session;
-import uk.ac.ebi.biostd.treelog.Log2JSON;
+import uk.ac.ebi.biostd.treelog.JSON4Log;
+import uk.ac.ebi.biostd.treelog.JSON4Report;
 import uk.ac.ebi.biostd.treelog.LogNode;
 import uk.ac.ebi.biostd.treelog.SimpleLogNode;
+import uk.ac.ebi.biostd.treelog.SubmissionReport;
 import uk.ac.ebi.biostd.util.DataFormat;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
@@ -114,19 +116,27 @@ public class SubmitServlet extends ServiceServlet
   
   boolean validateOnly = vldPrm != null && ("true".equalsIgnoreCase(vldPrm) || "yes".equalsIgnoreCase(vldPrm) || "1".equals(vldPrm) );
 
-  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act, sess.getUser(), validateOnly);
+  SubmissionReport res = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act, sess.getUser(), validateOnly);
   
+  LogNode topLn = res.getLog();
+  
+  SimpleLogNode.setLevels(topLn);
+
+//  if( topLn.getLevel().getPriority() >= Level.ERROR.getPriority() )
+//   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
   
   response.setContentType("application/json");
   
-  SimpleLogNode.setLevels(topLn);
-  Log2JSON.convert(topLn, response.getWriter());
+  JSON4Report.convert(res, response.getWriter());
   
  }
  
  public void processDelete(HttpServletRequest request, HttpServletResponse response, Session sess) throws IOException
  {
-  String sbmAcc = request.getParameter("id");
+  String sbmAcc = request.getParameter("accno");
+  
+  if(sbmAcc == null )
+   sbmAcc = request.getParameter("id");
   
   if(sbmAcc == null )
   {
@@ -140,7 +150,7 @@ public class SubmitServlet extends ServiceServlet
   LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().deleteSubmissionByAccession(sbmAcc, sess.getUser());
   
   SimpleLogNode.setLevels(topLn);
-  Log2JSON.convert(topLn, response.getWriter());
+  JSON4Log.convert(topLn, response.getWriter());
 
  }
 

@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 
 import uk.ac.ebi.biostd.authz.Session;
-import uk.ac.ebi.biostd.treelog.Log2JSON;
+import uk.ac.ebi.biostd.treelog.JSON4Log;
 import uk.ac.ebi.biostd.treelog.LogNode;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager.Operation;
@@ -66,9 +66,9 @@ public class SubmitFormServlet extends ServiceServlet
   
   byte[] bindata =  baos.toByteArray();
   
-  LogNode ln = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(bindata, null, null, Operation.CREATE, sess.getUser(), true);
+  LogNode ln = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(bindata, null, null, Operation.CREATE, sess.getUser(), true).getLog();
   
-  Log2JSON.convert(ln, resp.getWriter());
+  JSON4Log.convert(ln, resp.getWriter());
   
  }
 

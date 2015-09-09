@@ -129,50 +129,56 @@ public class TaskConfig
    if( pos >= 0 )
    {
     prdStr = tmStr.substring(pos+1).trim();
-    tmStr = tmStr.substring(0,pos);    
+    tmStr = tmStr.substring(0,pos).trim();    
    }
    
-   int colPos = tmStr.indexOf(':');
-   
-   String hourStr = tmStr;
-   String minStr = null;
-   
-   if( colPos >= 0  )
+   if( ! tmStr.equals("*") )
    {
-    hourStr = tmStr.substring(0,colPos);
-    minStr = tmStr.substring(colPos+1);
-   }
-   
-   try
-   {
-    hour = Integer.parseInt(hourStr);
-   }
-   catch( Exception e )
-   {
-    throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Hours must be a number");
-   }
-   
-   if( hour < 0 || hour > 23 )
-   {
-    throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Hours must be a number between 0 and 23");
-   }
-   
-   if( minStr != null )
-   {
+    int colPos = tmStr.indexOf(':');
+
+    String hourStr = tmStr;
+    String minStr = null;
+
+    if(colPos >= 0)
+    {
+     hourStr = tmStr.substring(0, colPos);
+     minStr = tmStr.substring(colPos + 1);
+    }
+
     try
     {
-     min = Integer.parseInt(minStr);
+     hour = Integer.parseInt(hourStr);
     }
-    catch( Exception e )
+    catch(Exception e)
     {
-     throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Minutes must be a number");
+     throw new TaskConfigException("Task '" + taskName + "' Invalid parameter value: " + pName + "=" + pVal + " Hours must be a number");
     }
-    
-    if( min < 0 || min > 59 )
+
+    if(hour < 0 || hour > 23)
     {
-     throw new TaskConfigException("Task '"+taskName+"' Invalid parameter value: "+pName+"="+pVal+" Minutes must be a number between 0 and 59 ");
+     throw new TaskConfigException("Task '" + taskName + "' Invalid parameter value: " + pName + "=" + pVal + " Hours must be a number between 0 and 23");
+    }
+
+    if(minStr != null)
+    {
+     try
+     {
+      min = Integer.parseInt(minStr);
+     }
+     catch(Exception e)
+     {
+      throw new TaskConfigException("Task '" + taskName + "' Invalid parameter value: " + pName + "=" + pVal + " Minutes must be a number");
+     }
+
+     if(min < 0 || min > 59)
+     {
+      throw new TaskConfigException("Task '" + taskName + "' Invalid parameter value: " + pName + "=" + pVal
+        + " Minutes must be a number between 0 and 59 ");
+     }
     }
    }
+   else
+    min = -1;
    
    if( prdStr != null && prdStr.length() > 0 )
    {
