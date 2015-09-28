@@ -1127,6 +1127,8 @@ public class JPASubmissionManager implements SubmissionManager
    
    Path origDir = BackendConfig.getSubmissionPath( si.getSubmission() );
    ftu.submissionPath = origDir;
+   
+   si.getSubmission().setRelPath(BackendConfig.getSubmissionRelativePath(si.getSubmission()));
 
    ftu.state =SubmissionDirState.ABSENT;
    
@@ -1143,7 +1145,8 @@ public class JPASubmissionManager implements SubmissionManager
 
      try
      {
-      fileMngr.moveDirectory(origDir, histDirTmp); // trying to submission directory to the history dir
+      Files.createDirectories(histDirTmp);
+      fileMngr.moveDirectory(origDir, histDirTmp); // trying to move submission directory to the history dir
       ftu.historyPathTmp = histDirTmp;
 
       try
@@ -1224,6 +1227,8 @@ public class JPASubmissionManager implements SubmissionManager
      {
       fileMngr.linkOrCopy(sbmFilesPath, fo.getFilePointer());
       si.getLogNode().log(Level.INFO, "File '" + fo.getFileRef().getName() + "' transfer success");
+      
+      fo.getFileRef().setSize( fo.getFilePointer().getSize() );
      }
      catch(IOException e)
      {

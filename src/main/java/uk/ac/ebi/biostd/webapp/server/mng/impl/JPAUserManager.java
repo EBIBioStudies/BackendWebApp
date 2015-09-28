@@ -7,6 +7,7 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserData;
 import uk.ac.ebi.biostd.webapp.server.DBInitializer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
@@ -100,6 +101,38 @@ public class JPAUserManager implements UserManager, SessionListener
  @Override
  public void sessionClosed(User u)
  {
+ }
+
+ @Override
+ public UserData getUserData(User user, String key)
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  Query q = em.createNamedQuery("UserData.get");
+  
+  q.setParameter("uid", user.getId());
+  q.setParameter("key", key);
+
+  List<UserData> res = q.getResultList();
+  
+  if( res.size() == 0 )
+   return null;
+ 
+  return res.get(0);
+ }
+ 
+ @Override
+ public void storeUserData(UserData ud )
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+
+  trn.begin();
+
+  em.merge( ud );
+  
+  trn.commit();
  }
 
 }

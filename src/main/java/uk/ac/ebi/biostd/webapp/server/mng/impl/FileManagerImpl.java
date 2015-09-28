@@ -331,6 +331,7 @@ public class FileManagerImpl implements FileManager
    fp.setFullPath(fullPath);
    fp.setRelativePath(relPath);
    fp.setDirectory( f.isDirectory() );
+   fp.setSize( f.length() );
    
    return fp;
   }
@@ -388,6 +389,8 @@ public class FileManagerImpl implements FileManager
      fp.setArchiveInternalPath(zeName);
      fp.setFullPath(fullPath);
      fp.setDirectory(ze.isDirectory());
+
+     fp.setSize( ze.getSize() );
      
      return fp;
     }

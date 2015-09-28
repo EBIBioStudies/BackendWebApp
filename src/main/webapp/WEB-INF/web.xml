@@ -71,6 +71,18 @@
   </servlet-mapping>
   
   <servlet>
+    <description>Stores and retrieves user defined data</description>
+    <display-name>UserDataServlet</display-name>
+    <servlet-name>UserDataServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.userdata.UserDataServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>UserDataServlet</servlet-name>
+    <url-pattern>/userdata/*</url-pattern>
+  </servlet-mapping>
+  
+  
+  <servlet>
     <description></description>
     <display-name>SubmissionListServlet</display-name>
     <servlet-name>SubmissionListServlet</servlet-name>

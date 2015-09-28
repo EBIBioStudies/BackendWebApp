@@ -201,7 +201,7 @@ public class WebAppInit implements ServletContextListener
    EntityManagerFactory emf = BackendConfig.getEntityManagerFactory();
    
    if( tc.getInvokeMin() < 0 )
-    tinf.setTimeZero( tinf.getPeriod()*60*1000 );
+    tinf.setTimeZero( tc.getInvokePeriodMins()*60*1000 );
    else if( tc.getInvokeHour() >= 0 )
     tinf.setTimeZero( getAdjustedDelay(tc.getInvokeHour(), tc.getInvokeMin() ) );
    else

@@ -261,10 +261,14 @@ public class BackendConfig
   return submissionsPath;
  }
 
+ public static String getSubmissionRelativePath( Submission sbm )
+ {
+  return AccNoUtil.getPartitionedPath( sbm.getAccNo() );
+ }
  
  public static Path getSubmissionPath(Submission sbm)
  {
-  return submissionsPath.resolve(AccNoUtil.encode( sbm.getAccNo() ));
+  return submissionsPath.resolve( getSubmissionRelativePath(sbm) );
  }
 
 
@@ -281,7 +285,7 @@ public class BackendConfig
  
  public static Path getSubmissionHistoryPath(Submission sbm)
  {
-  return submissionsHistoryPath.resolve(AccNoUtil.encode( sbm.getAccNo() )+SubmissionHistoryPostfix+( sbm.getVersion() ));
+  return submissionsHistoryPath.resolve( getSubmissionRelativePath(sbm) + SubmissionHistoryPostfix +  sbm.getVersion() );
  }
 
 
