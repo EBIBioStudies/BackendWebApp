@@ -13,6 +13,9 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 
 public class UserDataServlet extends ServiceServlet
 {
+
+ private static final long serialVersionUID = 1L;
+
  public static final String keyParameter = "key";
  public static final String dataParameter = "data";
  public static final String opParameter = "op";

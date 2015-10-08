@@ -21,6 +21,7 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.NoResultException;
 import javax.persistence.Query;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.odftoolkit.simple.SpreadsheetDocument;
@@ -633,7 +634,7 @@ public class JPASubmissionManager implements SubmissionManager
      submOk = false;
     }
     
-    if( submission.getRTime()*1000 < System.currentTimeMillis() )
+    if( submission.isRTimeSet() && submission.getRTime()*1000 < System.currentTimeMillis() )
     {
      boolean pub=false;
      
@@ -1128,6 +1129,16 @@ public class JPASubmissionManager implements SubmissionManager
    Path origDir = BackendConfig.getSubmissionPath( si.getSubmission() );
    ftu.submissionPath = origDir;
    
+   try
+   {
+    Files.createDirectories(origDir.getParent());
+   }
+   catch(IOException e2)
+   {
+    log.error("Can't create directory: " + origDir.getParent());
+    return false; // Bad. We have to break the operation
+   }
+   
    si.getSubmission().setRelPath(BackendConfig.getSubmissionRelativePath(si.getSubmission()));
 
    ftu.state =SubmissionDirState.ABSENT;
@@ -1167,6 +1178,7 @@ public class JPASubmissionManager implements SubmissionManager
 
       try
       {
+       Files.createDirectories(histDirTmp);
        fileMngr.copyDirectory(origDir, histDirTmp);
        ftu.historyPathTmp = histDirTmp;
        ftu.state =SubmissionDirState.COPIED;
@@ -1181,6 +1193,24 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
 
+   }
+   else if( Files.exists( origDir ) )
+   {
+    log.warn("Directory " + origDir + " exists unexpectedly");
+
+    try
+    {
+     if(Files.isDirectory(origDir))
+      FileUtils.deleteDirectory(origDir.toFile());
+     else
+      Files.delete(origDir);
+    }
+    catch(IOException e)
+    {
+     e.printStackTrace();
+     log.error("Can't remove file/directory: " + origDir);
+     return false;
+    }
    }
 
    
