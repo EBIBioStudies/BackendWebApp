@@ -11,8 +11,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
@@ -30,9 +32,11 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.db.TagResolver;
 import uk.ac.ebi.biostd.idgen.Counter;
 import uk.ac.ebi.biostd.idgen.IdGen;
 import uk.ac.ebi.biostd.in.AccessionMapping;
+import uk.ac.ebi.biostd.in.ElementPointer;
 import uk.ac.ebi.biostd.in.PMDoc;
 import uk.ac.ebi.biostd.in.ParserConfig;
 import uk.ac.ebi.biostd.in.ParserException;
@@ -97,7 +101,10 @@ public class JPASubmissionManager implements SubmissionManager
   PageTab
  }
 
-
+ private Set<String> lockedSmbIds = new HashSet<String>();
+ private Set<String> lockedSecIds = new HashSet<String>();
+ 
+ private boolean shutDownManager = false;
  
  private ParserConfig parserCfg;
  
@@ -357,7 +364,7 @@ public class JPASubmissionManager implements SubmissionManager
  }
 
  @Override
- public synchronized SubmissionReport createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
+ public SubmissionReport createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
  {
   try
   {
@@ -370,7 +377,151 @@ public class JPASubmissionManager implements SubmissionManager
   }
  }
  
- private synchronized SubmissionReport createSubmissionUnsafe( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
+ private PMDoc parseDocument(byte[] data, DataFormat type, String charset, TagResolver tagRslv, LogNode gln)
+ {
+  PMDoc doc = null;
+  SpreadsheetReader reader = null;
+
+  switch(type)
+  {
+   case xml:
+
+    gln.log(Level.ERROR, "XML submission are not supported yet");
+
+    return null;
+
+   case json:
+
+    String txt = convertToText(data, charset, gln);
+
+    if(txt != null)
+     doc = new JSONReader(tagRslv, parserCfg).parse(txt, gln);
+
+    break;
+
+   case xlsx:
+   case xls:
+
+    try
+    {
+     Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(data));
+     reader = new XLSpreadsheetReader(wb);
+    }
+    catch(Exception e)
+    {
+     gln.log(Level.ERROR, "Can't read Excel file: " + e.getMessage());
+    }
+
+    break;
+
+   case ods:
+
+    try
+    {
+     SpreadsheetDocument odsdoc = SpreadsheetDocument.loadDocument(new ByteArrayInputStream(data));
+     reader = new ODSpreadsheetReader(odsdoc);
+    }
+    catch(Exception e)
+    {
+     gln.log(Level.ERROR, "Can't read ODS file: " + e.getMessage());
+    }
+
+    break;
+
+   case csv:
+   case tsv:
+   case csvtsv:
+
+    txt = convertToText(data, charset, gln);
+
+    if(txt != null)
+     reader = new CSVTSVSpreadsheetReader(txt, type == DataFormat.csv ? ',' : (type == DataFormat.tsv ? '\t' : '\0'));
+
+    break;
+
+   default:
+
+    gln.log(Level.ERROR, "Unsupported file type: " + type.name());
+    SimpleLogNode.setLevels(gln);
+    return null;
+
+  }
+
+  SimpleLogNode.setLevels(gln);
+
+  if(gln.getLevel() == Level.ERROR)
+   return null;
+
+  if(reader != null)
+  {
+   PageTabSyntaxParser prs = new PageTabSyntaxParser(tagRslv, parserCfg);
+
+   try
+   {
+    doc = prs.parse(reader, gln);
+   }
+   catch(ParserException e)
+   {
+    gln.log(Level.ERROR, "Parser exception: " + e.getMessage());
+    SimpleLogNode.setLevels(gln);
+    return null;
+   }
+  }
+  
+  return doc;
+
+ }
+ 
+ private boolean checkAccNoPfxSfx( SubmissionInfo si )
+ {
+  boolean submOk = true;
+  
+  try
+  {
+   si.setAccNoPrefix( checkAccNoPart(si.getAccNoPrefix()) );
+  }
+  catch(Exception e)
+  {
+   si.getLogNode().log(Level.ERROR, "Submission accession number prefix contains invalid characters");
+   submOk = false;
+  }
+  
+  try
+  {
+   si.setAccNoSuffix( checkAccNoPart(si.getAccNoSuffix()) );
+  }
+  catch(Exception e)
+  {
+   si.getLogNode().log(Level.ERROR, "Submission accession number prefix contains invalid characters");
+   submOk = false;
+  }
+  
+  Submission submission = si.getSubmission();
+
+  
+  if( si.getAccNoPrefix() == null && si.getAccNoSuffix() == null )
+  {
+   try
+   {
+    submission.setAccNo( checkAccNoPart(submission.getAccNo()) );
+   }
+   catch(Exception e)
+   {
+    si.getLogNode().log(Level.ERROR, "Submission accession number contains invalid characters");
+    submOk = false;
+   }
+  
+   if( submission.getAccNo() == null )
+   {
+    si.setAccNoPrefix( BackendConfig.getDefaultSubmissionAccPrefix() );
+    si.setAccNoSuffix( BackendConfig.getDefaultSubmissionAccSuffix() );
+   }
+  }
+  
+  return submOk;
+ }
+ 
+ private SubmissionReport createSubmissionUnsafe( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
  {
   ErrorCounter ec = new ErrorCounterImpl();
 
@@ -394,109 +545,24 @@ public class JPASubmissionManager implements SubmissionManager
   boolean submComplete = false;
 
   PMDoc doc = null;
-  SpreadsheetReader reader = null;
 
   FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
   Path trnPath = BackendConfig.getSubmissionsTransactionPath().resolve(BackendConfig.getInstanceId()+"#"+BackendConfig.getSeqNumber());
 
   List<FileTransactionUnit> trans = null;
-
+  LockedIdSet locked = null;
+  
   try
   {
+   doc = parseDocument(data, type, charset, new TagResolverImpl(em), gln);
+   
 
-   em.getTransaction().begin();
-
-   switch(type)
-   {
-    case xml:
-
-     gln.log(Level.ERROR, "XML submission are not supported yet");
-
-     return res;
-
-    case json:
-
-     String txt = convertToText(data, charset, gln);
-
-     if(txt != null)
-      doc = new JSONReader(new TagResolverImpl(em), parserCfg).parse(txt, gln);
-
-     break;
-
-    case xlsx:
-    case xls:
-
-     try
-     {
-      Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(data));
-      reader = new XLSpreadsheetReader(wb);
-     }
-     catch(Exception e)
-     {
-      gln.log(Level.ERROR, "Can't read Excel file: " + e.getMessage());
-     }
-
-     break;
-
-    case ods:
-
-     try
-     {
-      SpreadsheetDocument odsdoc = SpreadsheetDocument.loadDocument(new ByteArrayInputStream(data));
-      reader = new ODSpreadsheetReader(odsdoc);
-     }
-     catch(Exception e)
-     {
-      gln.log(Level.ERROR, "Can't read ODS file: " + e.getMessage());
-     }
-
-     break;
-
-    case csv:
-    case tsv:
-    case csvtsv:
-
-     txt = convertToText(data, charset, gln);
-
-     if(txt != null)
-      reader = new CSVTSVSpreadsheetReader(txt, type == DataFormat.csv ? ',' : (type == DataFormat.tsv ? '\t' : '\0'));
-
-     break;
-
-    default:
-     
-     gln.log(Level.ERROR, "Unsupported file type: " + type.name());
-     SimpleLogNode.setLevels(gln);
-     return res;
-
-   }
-
-   SimpleLogNode.setLevels(gln);
-
-   if(gln.getLevel() == Level.ERROR)
+   if( doc == null )
    {
     submOk = false;
     return res;
    }
-
-   if(reader != null)
-   {
-    PageTabSyntaxParser prs = new PageTabSyntaxParser(new TagResolverImpl(em), parserCfg);
-
-    try
-    {
-     doc = prs.parse(reader, gln);
-    }
-    catch(ParserException e)
-    {
-     gln.log(Level.ERROR, "Parser exception: " + e.getMessage());
-     SimpleLogNode.setLevels(gln);
-     submOk = false;
-     return res;
-    }
-   }
    
-   Path usrPath = BackendConfig.getUserDirPath(usr);
 
    
    if( doc.getSubmissions() == null || doc.getSubmissions().size() == 0 )
@@ -506,6 +572,23 @@ public class JPASubmissionManager implements SubmissionManager
     submOk = false;
     return res;
    }
+
+   Path usrPath = BackendConfig.getUserDirPath(usr);
+   
+   Map<String, ElementPointer> smbIdMap = checkSubmissionAccNoUniq(doc);
+   Map<String, ElementPointer> secIdMap = checkSectionAccNoUniq(doc);
+   
+   if( smbIdMap != null && secIdMap != null )
+   {
+    locked = waitForIdUnlocked(smbIdMap,secIdMap);
+   }
+   else
+    submOk = false;
+   
+   
+   em.getTransaction().begin();
+   
+
    
    for(SubmissionInfo si : doc.getSubmissions())
    {
@@ -513,49 +596,11 @@ public class JPASubmissionManager implements SubmissionManager
     
     submission.setOwner(usr);
 
-    try
-    {
-     si.setAccNoPrefix( checkAccNoPart(si.getAccNoPrefix()) );
-    }
-    catch(Exception e)
-    {
-     si.getLogNode().log(Level.ERROR, "Submission accession number prefix contains invalid characters");
-     submOk = false;
-    }
-    
-    try
-    {
-     si.setAccNoSuffix( checkAccNoPart(si.getAccNoSuffix()) );
-    }
-    catch(Exception e)
-    {
-     si.getLogNode().log(Level.ERROR, "Submission accession number prefix contains invalid characters");
-     submOk = false;
-    }
-
-    
-    if( si.getAccNoPrefix() == null && si.getAccNoSuffix() == null )
-    {
-     try
-     {
-      submission.setAccNo( checkAccNoPart(submission.getAccNo()) );
-     }
-     catch(Exception e)
-     {
-      si.getLogNode().log(Level.ERROR, "Submission accssesion number contains invalid characters");
-      submOk = false;
-     }
-    
-     if( submission.getAccNo() == null )
-     {
-      si.setAccNoPrefix( BackendConfig.getDefaultSubmissionAccPrefix() );
-      si.setAccNoSuffix( BackendConfig.getDefaultSubmissionAccSuffix() );
-     }
-    }
+    submOk = submOk && checkAccNoPfxSfx(si);
 
      
-    
-    Set<String> globSecId = null;
+
+    Set<String> goingGlobSecId = null;
 
     long ts = System.currentTimeMillis() / 1000;
 
@@ -610,9 +655,9 @@ public class JPASubmissionManager implements SubmissionManager
        continue;
       }
       
-      globSecId = new HashSet<String>();
+      goingGlobSecId = new HashSet<String>();
       
-      collectGlobalSecIds(oldSbm.getRootSection(), globSecId);
+      collectGlobalSecIds(oldSbm.getRootSection(), goingGlobSecId);
      }
      
     }
@@ -762,7 +807,7 @@ public class JPASubmissionManager implements SubmissionManager
       }
 
       if(seco.getPrefix() == null && seco.getSuffix() == null && seco.getSection().getAccNo() != null
-        && (globSecId == null || !globSecId.contains(seco.getSection().getAccNo())))
+        && (goingGlobSecId == null || !goingGlobSecId.contains(seco.getSection().getAccNo())))
       {
        if(!checkSectionIdUniq(seco.getSection().getAccNo(), em))
        {
@@ -891,6 +936,8 @@ public class JPASubmissionManager implements SubmissionManager
   }
   finally
   {
+   unlockIds(locked);
+   
    if(!submOk || !submComplete)
    {
     if(em.getTransaction().isActive())
@@ -955,7 +1002,157 @@ public class JPASubmissionManager implements SubmissionManager
   
   return res;
  }
+
  
+ 
+ private Map<String, ElementPointer> checkSubmissionAccNoUniq(PMDoc doc)
+ {
+  Map<String, ElementPointer> idMap = new HashMap<>();
+  
+  int conflicts=0;
+  
+  for(SubmissionInfo si : doc.getSubmissions())
+  {
+   if( si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || si.getSubmission().getAccNo() == null )
+    continue;
+   
+   ElementPointer secNo = idMap.get( si.getSubmission().getAccNo() );
+   
+   
+   if( secNo != null )
+   {
+    si.getLogNode().log(Level.ERROR, "Accession number '"+si.getSubmission().getAccNo()+" is already taken by submission at "+secNo);
+    conflicts++;
+   }
+   else
+    idMap.put(si.getSubmission().getAccNo(), si.getElementPointer());
+  }
+  
+  return conflicts > 0? null : idMap;
+ }
+
+ private Map<String, ElementPointer> checkSectionAccNoUniq(PMDoc doc)
+ {
+  Map<String, ElementPointer> idMap = new HashMap<>();
+  
+  int conflicts=0;
+
+  
+  for(SubmissionInfo si : doc.getSubmissions())
+  {
+   if( si.getGlobalSections() == null || si.getGlobalSections().size() == 0  )
+    continue;
+   
+   for( SectionOccurrence seco : si.getGlobalSections() )
+   {
+    if( seco.getPrefix() != null || seco.getSuffix() != null || seco.getSection().getAccNo() == null)
+     continue;
+    
+   ElementPointer secPtr = idMap.get( seco.getSection().getAccNo() );
+   
+   if( secPtr != null )
+   {
+    seco.getSecLogNode().log(Level.ERROR, "Accession number '"+seco.getSection().getAccNo()+" is already taken by section at "+secPtr);
+    conflicts++;
+   }
+   else
+    idMap.put(seco.getSection().getAccNo(), seco.getElementPointer());
+   }
+  }
+  
+  return conflicts > 0? null : idMap;
+ }
+
+
+ 
+ private LockedIdSet waitForIdUnlocked(Map<String,ElementPointer> sbmIdMap, Map<String,ElementPointer> secIdMap ) throws InterruptedException
+ {
+  LockedIdSet lckSet = new LockedIdSet();
+  
+  lckSet.setSubmissionMap(sbmIdMap);
+  lckSet.setSectionMap(secIdMap);
+  
+  if( lckSet.empty() )
+   return null;
+  
+  synchronized(lockedSmbIds)
+  {
+   while(true)
+   {
+
+    boolean needWait = false;
+
+    if( sbmIdMap != null )
+    {
+     for(String s : sbmIdMap.keySet())
+     {
+      if(lockedSmbIds.contains(s))
+      {
+       needWait = true;
+       break;
+      }
+     }
+    }
+    
+    if( secIdMap != null && ! needWait  )
+    {
+     for(String s : secIdMap.keySet())
+     {
+      if(lockedSecIds.contains(s))
+      {
+       needWait = true;
+       break;
+      }
+     }
+    }
+
+
+    if(!needWait)
+    {
+     if( sbmIdMap != null )
+      lockedSmbIds.addAll(sbmIdMap.keySet());
+     
+     if( secIdMap != null )
+     lockedSecIds.addAll(secIdMap.keySet());
+     
+     return lckSet;
+    }
+    
+    while( true )
+    {
+     try
+     {
+      lockedSmbIds.wait();
+      break;
+     }
+     catch(InterruptedException e)
+     {
+      if( shutDownManager )
+       throw e;
+     }
+    }
+   }
+  }
+
+ }
+
+ private void unlockIds( LockedIdSet lset )
+ {
+  if( lset == null )
+   return;
+  
+  synchronized(lockedSmbIds)
+  {
+   if( lset.getSubmissionMap() != null )
+    lockedSmbIds.removeAll(lset.getSubmissionMap().keySet());
+   
+   if( lset.getSectionMap() != null )
+    lockedSecIds.removeAll(lset.getSectionMap().keySet());
+   
+   lockedSmbIds.notifyAll();
+  }
+ }
+
  private AccessTag getPublicTag( EntityManager em )
  {
   Query q = em.createNamedQuery("AccessTag.getByName");
