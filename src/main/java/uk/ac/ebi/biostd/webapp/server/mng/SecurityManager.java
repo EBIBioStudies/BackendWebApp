@@ -11,10 +11,12 @@ public interface SecurityManager
 
  boolean mayUserUpdateSubmission(Submission oldSbm, User usr);
  boolean mayUserDeleteSubmission(Submission sbm, User usr);
+ boolean mayUserAttachToSubmission(Submission s, User usr);
 
  boolean mayEveryoneReadSubmission(Submission submission);
 
  void init();
+
 
 
 }

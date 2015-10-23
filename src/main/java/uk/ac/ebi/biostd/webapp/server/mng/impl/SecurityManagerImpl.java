@@ -317,33 +317,39 @@ public class SecurityManagerImpl implements SecurityManager
   return allow;
  }
 
- @Override
- public boolean mayUserUpdateSubmission(Submission sbm, User usr)
+ public boolean checkSubmissionPermission(Submission sbm, User usr, SystemAction act)
  {
   if( sbm.getOwner().getLogin().equals( usr.getLogin() ) || usr.isSuperuser() )
    return true;
   
-  return checkObjectPermission(sbm, usr, SystemAction.CHANGE);
+  return checkObjectPermission(sbm, usr, act);
+ }
+
+ 
+ @Override
+ public boolean mayUserUpdateSubmission(Submission sbm, User usr)
+ {
+  return checkSubmissionPermission(sbm, usr, SystemAction.CHANGE);
  }
 
  @Override
  public boolean mayUserDeleteSubmission(Submission sbm, User usr)
  {
-  if( sbm.getOwner().getLogin().equals( usr.getLogin() ) || usr.isSuperuser() )
-   return true;
   
-  return checkObjectPermission(sbm, usr, SystemAction.DELETE);
+  return checkSubmissionPermission(sbm, usr, SystemAction.DELETE);
  }
 
  @Override
  public boolean mayUserReadSubmission(Submission sbm, User usr)
  {
-  if( sbm.getOwner().getLogin().equals( usr.getLogin() ) || usr.isSuperuser() )
-   return true;
-  
-  return checkObjectPermission(sbm, usr, SystemAction.READ);
+  return checkSubmissionPermission(sbm, usr, SystemAction.READ);
  }
 
+ @Override
+ public boolean mayUserAttachToSubmission(Submission sbm, User usr )
+ {
+  return checkSubmissionPermission(sbm, usr, SystemAction.ATTACHSUBM);
+ }
  
  @Override
  public boolean mayEveryoneReadSubmission(Submission submission)
@@ -374,5 +380,7 @@ public class SecurityManagerImpl implements SecurityManager
   
   return allow;
  }
+
+
 
 }
