@@ -35,5 +35,7 @@ public interface SubmissionManager
 
  
  LogNode deleteSubmissionByAccession(String acc, User usr);
+ 
+ void shutdown();
 
 }

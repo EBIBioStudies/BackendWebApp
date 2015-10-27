@@ -98,6 +98,9 @@ public class WebAppInit implements ServletContextListener
   if( BackendConfig.getServiceManager().getSessionManager() != null )
    BackendConfig.getServiceManager().getSessionManager().shutdown();
   
+  if( BackendConfig.getServiceManager().getSubmissionManager() != null )
+   BackendConfig.getServiceManager().getSubmissionManager().shutdown();
+
   if( BackendConfig.getEntityManagerFactory() != null )
    BackendConfig.getEntityManagerFactory().close();
   

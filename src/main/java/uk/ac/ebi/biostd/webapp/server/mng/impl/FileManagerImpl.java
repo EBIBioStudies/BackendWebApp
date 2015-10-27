@@ -58,6 +58,7 @@ public class FileManagerImpl implements FileManager
  @Override
  public void moveDirectory( Path src, Path dst ) throws IOException
  {
+  Files.createDirectories(dst.getParent());
   Files.move(src, dst);
  }
  
@@ -72,7 +73,7 @@ public class FileManagerImpl implements FileManager
   
   try
   {
-   Files.move(origDir, histDir);
+   moveDirectory(origDir, histDir);
    return;
   }
   catch(Exception e )
@@ -130,6 +131,8 @@ public class FileManagerImpl implements FileManager
  @Override
  public void copyDirectory(final Path srcDir, final Path dstDir) throws IOException
  {
+  Files.createDirectories(dstDir.getParent());
+
   Files.walkFileTree(srcDir, new SimpleFileVisitor<Path>()
   {
 
@@ -160,6 +163,8 @@ public class FileManagerImpl implements FileManager
  @Override
  public void linkOrCopyDirectory(final Path srcDir, final Path dstDir) throws IOException
  {
+  Files.createDirectories(dstDir.getParent());
+
   Files.walkFileTree(srcDir, new SimpleFileVisitor<Path>()
   {
 

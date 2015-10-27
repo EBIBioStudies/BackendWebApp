@@ -1,5 +1,10 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
+import static uk.ac.ebi.biostd.in.pageml.PageMLAttributes.ACCNO;
+import static uk.ac.ebi.biostd.in.pageml.PageMLAttributes.ID;
+import static uk.ac.ebi.biostd.in.pageml.PageMLElements.SUBMISSION;
+import static uk.ac.ebi.biostd.util.StringUtils.xmlEscaped;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -108,20 +113,26 @@ public class JPASubmissionManager implements SubmissionManager
  private boolean shutDownManager = false;
  
  private ParserConfig parserCfg;
- 
+ private UpdateQueueProcessor queueProc = null;
+ private boolean shutdown;
  
  public JPASubmissionManager(EntityManagerFactory emf)
  {
   if( log == null )
    log = LoggerFactory.getLogger(getClass());
 
-  
+  shutdown=false;
 
   parserCfg = new ParserConfig();
   
   parserCfg.setMultipleSubmissions(true);
   
-//  rTimePattern = Pattern.compile(Submission.releaseDateFormat);
+  if( BackendConfig.getSubmissionUpdatePath() != null )
+  {
+   queueProc = new UpdateQueueProcessor();
+   queueProc.start();
+  }
+  
  }
 
  
@@ -179,9 +190,11 @@ public class JPASubmissionManager implements SubmissionManager
   Path histDir = null;
   Path histDirTmp = null;
   
-  int dirOp = 0; // 0 - not changed, 1 - moved, 2 - copied, 3 = error
+  SubmissionDirState dirOp = SubmissionDirState.ABSENT; // 0 - not changed, 1 - moved, 2 - copied, 3 = error
   
   boolean trnOk=true;
+
+  Submission sbm = null;
 
   try
   {
@@ -191,7 +204,6 @@ public class JPASubmissionManager implements SubmissionManager
 
    q.setParameter("accNo", acc);
 
-   Submission sbm = null;
 
    try
    {
@@ -223,7 +235,7 @@ public class JPASubmissionManager implements SubmissionManager
     try
     {
      fileMngr.moveDirectory(origDir, histDirTmp); // trying to submission directory to the history dir
-     dirOp = 1;
+     dirOp = SubmissionDirState.LINKED;
     }
     catch(Exception e)
     {
@@ -232,14 +244,14 @@ public class JPASubmissionManager implements SubmissionManager
      try
      {
       fileMngr.copyDirectory(origDir, histDirTmp);
-      dirOp=2;
+      dirOp=SubmissionDirState.COPIED;
      }
      catch(Exception ex1)
      {
       log.error("Can't copy directory " + origDir + " to " + histDirTmp + " : " + ex1.getMessage());
       gln.log(Level.ERROR, "File operation error. Contact system administrator");
       
-      dirOp = 3;
+      dirOp = null;
       
       return gln; // Bad. We have to break the operation
      }
@@ -255,7 +267,7 @@ public class JPASubmissionManager implements SubmissionManager
    
    try
    {
-    if( dirOp != 3 )
+    if( dirOp != null )
      em.getTransaction().commit();
     else
     {
@@ -279,7 +291,7 @@ public class JPASubmissionManager implements SubmissionManager
     gln.log(Level.INFO, "Transaction successful");
    else
    {
-    if( dirOp == 1 )
+    if( dirOp == SubmissionDirState.LINKED )
     {
      try
      {
@@ -294,7 +306,7 @@ public class JPASubmissionManager implements SubmissionManager
      }
 
     }
-    else if( dirOp == 2 )
+    else if( dirOp == SubmissionDirState.COPIED )
     {
      try
      {
@@ -327,6 +339,40 @@ public class JPASubmissionManager implements SubmissionManager
      gln.log(Level.WARN, "Public FTP directory was not deleted");
     }
    }
+   
+   if( queueProc != null )
+   {
+    StringBuilder out = new StringBuilder();
+    
+    
+    out.append('<').append(SUBMISSION.getElementName()).append(' ').append(ACCNO.getAttrName()).append("=\"");
+    
+    try
+    {
+     xmlEscaped(sbm.getAccNo(), out);
+    }
+    catch(IOException e)
+    {
+    }
+
+    out.append("\" ").append(ID.getAttrName()).append("=\"").append( String.valueOf(sbm.getId()) );
+    out.append("\" delete=\"true\"/>\n");
+
+    String msg = out.toString();
+    
+    while( ! shutdown )
+    {
+     try
+     {
+      queueProc.put(msg);
+      break;       
+     }
+     catch(InterruptedException e)
+     {
+     }
+    }
+   }
+    
   }
   
   return gln;
@@ -1033,6 +1079,40 @@ public class JPASubmissionManager implements SubmissionManager
   
   if( trans != null && BackendConfig.getPublicFTPPath() != null )
    copyToPublicFTP( fileMngr, doc.getSubmissions(), gln );
+  
+  if( queueProc != null )
+  {
+   StringBuilder sb = new StringBuilder(10000);
+   
+   for(SubmissionInfo si : doc.getSubmissions())
+   {
+    sb.setLength(0);
+    
+    try
+    {
+     new PageMLFormatter(sb).format(si.getSubmission(), sb);
+    }
+    catch(IOException e)
+    {
+    }
+    
+    String msg = sb.toString();
+    
+    while( ! shutdown )
+    {
+     try
+     {
+      queueProc.put(msg);
+      break;       
+     }
+     catch(InterruptedException e)
+     {
+     }
+    }
+   }
+   
+  }
+  
   
   return res;
  }
@@ -2041,46 +2121,13 @@ public class JPASubmissionManager implements SubmissionManager
  }
 
 
-/*
  @Override
- public LogNode createJSONSubmission(String txt, User usr)
+ public void shutdown()
  {
-  return createSubmission(txt, SourceType.JSON, false, usr);
+  shutdown = true;
+  
+  if( queueProc != null )
+   queueProc.shutdown();
  }
 
-
- @Override
- public LogNode createXMLSubmission(String txt, User usr)
- {
-  return createSubmission(txt, SourceType.XML, false, usr);
- }
-
-
- @Override
- public LogNode createPageTabSubmission(String txt, User usr)
- {
-  return createSubmission(txt, SourceType.PageTab, false, usr);
- }
-
-
- @Override
- public LogNode updateJSONSubmission(String txt, User usr)
- {
-  return createSubmission(txt, SourceType.JSON, true, usr);
- }
-
-
- @Override
- public LogNode updateXMLSubmission(String txt, User usr)
- {
-  return createSubmission(txt, SourceType.XML, true, usr);
- }
-
-
- @Override
- public LogNode updatePageTabSubmission(String txt, User usr)
- {
-  return createSubmission(txt, SourceType.PageTab, true, usr);
- }
-*/
 }

@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.config;
 
+import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -37,23 +38,27 @@ public class BackendConfig
  public static final String EveryoneGroup = "@Everyone";
  public static final String AuthenticatedGroup = "@Authenticated";
 
- public static final String PublicTag = "Public";
- 
- public static final String SubmissionHistoryPostfix = "#ver";
- public static final String SubmissionFilesDir = "Files";
- public static final String UsersDir = "Users";
- public static final String GroupsDir = "Groups";
- 
- public static final String WorkdirParameter       = "workDir";
+ public static final String             PublicTag                           = "Public";
 
- public static final String UserGroupDirParameter       = "userGroupDir";
- public static final String SubmissionDirParameter = "submissionDir";
- public static final String SubmissionTransactionDirParameter = "submissionTransactionDir";
- public static final String SubmissionHistoryDirParameter      = "submissionHistoryDir";
- public static final String AllowFileLinksParameter      = "allowFileLinks";
- public static final String PublicFTPDirParameter      = "publicFTPDir";
- public static final String DefaultSubmissionAccPrefixParameter      = "defaultSubmissionAccNoPrefix";
- public static final String DefaultSubmissionAccSuffixParameter      = "defaultSubmissionAccNoSuffix";
+ public static final String             SubmissionHistoryPostfix            = "#ver";
+ public static final String             SubmissionFilesDir                  = "Files";
+ public static final String             UsersDir                            = "Users";
+ public static final String             GroupsDir                           = "Groups";
+
+ public static final String             WorkdirParameter                    = "workDir";
+
+ public static final String             UserGroupDirParameter               = "userGroupDir";
+ public static final String             SubmissionDirParameter              = "submissionDir";
+ public static final String             SubmissionTransactionDirParameter   = "submissionTransactionDir";
+ public static final String             SubmissionHistoryDirParameter       = "submissionHistoryDir";
+ public static final String             AllowFileLinksParameter             = "allowFileLinks";
+ public static final String             PublicFTPDirParameter               = "publicFTPDir";
+ public static final String             SubmissionUpdateParameter           = "updateDir";
+ public static final String             UpdateURLParameter                  = "updateListenerURL";
+ public static final String             UpdateURLFilePlaceholder            = "{file}";
+ 
+ public static final String             DefaultSubmissionAccPrefixParameter = "defaultSubmissionAccNoPrefix";
+ public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
 
  
  public static final String DataMountPathParameter = "dataMountPath";
@@ -80,7 +85,11 @@ public class BackendConfig
  private static Path submissionsHistoryPath;
  private static Path submissionsTransactionPath;
  private static Path publicFTPPath;
+ private static Path submissionUpdatePath;
 
+ private static String updateListenerURLPfx;
+ private static String updateListenerURLSfx;
+ 
  private static String defaultSubmissionAccPrefix = null;
  private static String defaultSubmissionAccSuffix = null;
  
@@ -135,6 +144,36 @@ public class BackendConfig
 
    return true;
   }
+  
+  if( SubmissionUpdateParameter.equals(param) )
+  {
+   submissionUpdatePath = FileSystems.getDefault().getPath(val);
+
+   return true;
+  }
+  
+  if( UpdateURLParameter.equals(param) )
+  {
+   int pos = val.indexOf(UpdateURLFilePlaceholder);
+   
+   if( pos < 0 )
+    throw new ServiceConfigException(UpdateURLParameter+" should contain "+UpdateURLFilePlaceholder+" placeholder");
+   
+   updateListenerURLPfx = val.substring(0,pos);
+   updateListenerURLSfx = val.substring(pos+UpdateURLFilePlaceholder.length());
+
+   try
+   {
+    new URL(updateListenerURLPfx+"aaa.txt"+updateListenerURLSfx);
+   }
+   catch(Exception e)
+   {
+    throw new ServiceConfigException(UpdateURLParameter+": invalid URL '"+val+"'");
+   }
+   
+   return true;
+  }
+
   
   if( SubmissionHistoryDirParameter.equals(param) )
   {
@@ -304,6 +343,21 @@ public class BackendConfig
  {
   return publicFTPPath;
  }
+ 
+ public static Path getSubmissionUpdatePath()
+ {
+  return submissionUpdatePath;
+ }
+
+ public static String getUpdateListenerURLPrefix()
+ {
+  return updateListenerURLPfx;
+ }
+ 
+ public static String getUpdateListenerURLPostfix()
+ {
+  return updateListenerURLSfx;
+ }
 
  public static void setPublicFTPPath(Path publicFTPPath)
  {
@@ -318,6 +372,16 @@ public class BackendConfig
  public static String getDefaultSubmissionAccSuffix()
  {
   return defaultSubmissionAccSuffix;
+ }
+
+ public static int getUpdateScanPeriod()
+ {
+  return 5000;
+ }
+
+ public static int getMaxUpdatesPerFile()
+ {
+  return 50;
  }
 
 }
