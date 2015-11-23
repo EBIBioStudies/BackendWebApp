@@ -45,6 +45,10 @@ public class BackendConfig
  public static final String             UsersDir                            = "Users";
  public static final String             GroupsDir                           = "Groups";
 
+ public static final String             CreateFileStructureParameter        = "createFileStructure";
+
+ public static final String             BaseDirParameter                    = "baseDir";
+ 
  public static final String             WorkdirParameter                    = "workDir";
 
  public static final String             UserGroupDirParameter               = "userGroupDir";
@@ -56,6 +60,10 @@ public class BackendConfig
  public static final String             SubmissionUpdateParameter           = "updateDir";
  public static final String             UpdateURLParameter                  = "updateListenerURL";
  public static final String             UpdateURLFilePlaceholder            = "{file}";
+ public static final String             UpdateWaitPeriodParameter           = "updateWaitPeriod";
+ public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
+ public static final String             FTPRootPathParameter                = "FTPRootPath";
+ public static final String             DropBoxPathParameter                = "dropboxPath";
  
  public static final String             DefaultSubmissionAccPrefixParameter = "defaultSubmissionAccNoPrefix";
  public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
@@ -76,7 +84,9 @@ public class BackendConfig
  private static ServiceManager defaultServiceManager;
  private static EntityManagerFactory emf;
 
+ private static boolean createFileStructure=false;
 
+ private static Path baseDirectory;
  private static Path workDirectory;
  private static Path userGroupPath;
  private static Path usersPath;
@@ -86,12 +96,17 @@ public class BackendConfig
  private static Path submissionsTransactionPath;
  private static Path publicFTPPath;
  private static Path submissionUpdatePath;
+ private static Path ftpRootPath;
+ private static Path dropboxPath;
 
  private static String updateListenerURLPfx;
  private static String updateListenerURLSfx;
  
  private static String defaultSubmissionAccPrefix = null;
  private static String defaultSubmissionAccSuffix = null;
+ 
+ private static int updateWaitPeriod = 5;
+ private static int maxUpdatesPerFile = 50;
  
  private static boolean fileLinkAllowed=true;
  
@@ -130,24 +145,48 @@ public class BackendConfig
    return true;
   }
 
-  
+  if( BaseDirParameter.equals(param) )
+  {
+   baseDirectory=FileSystems.getDefault().getPath(val);
+   
+   if( ! baseDirectory.isAbsolute() )
+    throw new ServiceConfigException(BaseDirParameter+": path should be absolute");
+   
+   return true;
+  }
+
   if( WorkdirParameter.equals(param) )
   {
-   workDirectory=FileSystems.getDefault().getPath(val);
+   workDirectory=createPath(WorkdirParameter,val);
    
    return true;
   }
   
+  if( FTPRootPathParameter.equals(param) )
+  {
+   ftpRootPath=FileSystems.getDefault().getPath(val);
+   
+   return true;
+  }
+
+  if( DropBoxPathParameter.equals(param) )
+  {
+   dropboxPath=FileSystems.getDefault().getPath(val);
+   
+   return true;
+  }
+
+  
   if( SubmissionDirParameter.equals(param) )
   {
-   submissionsPath = FileSystems.getDefault().getPath(val);
+   submissionsPath = createPath(SubmissionDirParameter,val);
 
    return true;
   }
   
   if( SubmissionUpdateParameter.equals(param) )
   {
-   submissionUpdatePath = FileSystems.getDefault().getPath(val);
+   submissionUpdatePath = createPath(SubmissionUpdateParameter,val);
 
    return true;
   }
@@ -174,24 +213,53 @@ public class BackendConfig
    return true;
   }
 
+  if( UpdateWaitPeriodParameter.equals(param) )
+  {
+   try
+   {
+    updateWaitPeriod = Integer.parseInt(val);
+   }
+   catch(Exception e)
+   {
+    throw new ServiceConfigException(UpdateWaitPeriodParameter+": integer value expected '"+val+"'");
+   }
+   
+   return true;
+  }
+  
+  if( MaxUpdatesPerFileParameter.equals(param) )
+  {
+   try
+   {
+    maxUpdatesPerFile = Integer.parseInt(val);
+   }
+   catch(Exception e)
+   {
+    throw new ServiceConfigException(MaxUpdatesPerFileParameter+": integer value expected '"+val+"'");
+   }
+   
+   return true;
+  }
+
   
   if( SubmissionHistoryDirParameter.equals(param) )
   {
-   submissionsHistoryPath = FileSystems.getDefault().getPath(val);
+   submissionsHistoryPath = createPath(SubmissionHistoryDirParameter,val);
+
  
    return true;
   }
   
   if( SubmissionTransactionDirParameter.equals(param) )
   {
-   submissionsTransactionPath = FileSystems.getDefault().getPath(val);
+   submissionsTransactionPath = createPath(SubmissionTransactionDirParameter,val);
  
    return true;
   }
 
   if( PublicFTPDirParameter.equals(param) )
   {
-   publicFTPPath = FileSystems.getDefault().getPath(val);
+   publicFTPPath = createPath(PublicFTPDirParameter,val);
  
    return true;
   }
@@ -199,7 +267,7 @@ public class BackendConfig
 
   if( UserGroupDirParameter.equals(param) )
   {
-   userGroupPath = FileSystems.getDefault().getPath(val);
+   userGroupPath = createPath(UserGroupDirParameter,val);
 
    usersPath = userGroupPath.resolve(UsersDir);
    groupsPath = userGroupPath.resolve(GroupsDir);
@@ -222,6 +290,12 @@ public class BackendConfig
   if( AllowFileLinksParameter.equals(param) )
   {
    fileLinkAllowed = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   return true;
+  }
+
+  if( CreateFileStructureParameter.equals(param) )
+  {
+   createFileStructure = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
   }
 
   
@@ -229,6 +303,19 @@ public class BackendConfig
 
  }
 
+ private static Path createPath( String prm, String p ) throws ServiceConfigException
+ {
+  Path np = FileSystems.getDefault().getPath(p);
+  
+  if( np.isAbsolute() )
+   return np;
+  
+  if( baseDirectory != null )
+   return baseDirectory.resolve(np);
+
+  throw new ServiceConfigException(prm+": path should be either absolute or "+BaseDirParameter+" parameter should be defined before");
+ }
+ 
  
  public static Path getWorkDirectory()
  {
@@ -316,6 +403,10 @@ public class BackendConfig
   return getSubmissionPath(sbm).resolve( SubmissionFilesDir );
  }
 
+ public static Path getSubmissionPublicFTPPath(Submission sbm)
+ {
+  return getPublicFTPPath().resolve( getSubmissionRelativePath(sbm) );
+ }
 
  public static Path getSubmissionsHistoryPath()
  {
@@ -324,7 +415,7 @@ public class BackendConfig
  
  public static Path getSubmissionHistoryPath(Submission sbm)
  {
-  return submissionsHistoryPath.resolve( getSubmissionRelativePath(sbm) + SubmissionHistoryPostfix +  sbm.getVersion() );
+  return submissionsHistoryPath.resolve( getSubmissionRelativePath(sbm) + SubmissionHistoryPostfix + Math.abs(sbm.getVersion()) );
  }
 
 
@@ -374,14 +465,34 @@ public class BackendConfig
   return defaultSubmissionAccSuffix;
  }
 
- public static int getUpdateScanPeriod()
+ public static int getUpdateWaitPeriod()
  {
-  return 5000;
+  return updateWaitPeriod;
  }
 
  public static int getMaxUpdatesPerFile()
  {
-  return 50;
+  return maxUpdatesPerFile;
+ }
+
+ public static boolean isCreateFileStructure()
+ {
+  return createFileStructure;
+ }
+
+ public static Path getBaseDirectory()
+ {
+  return baseDirectory;
+ }
+
+ public static Path getFtpRootPath()
+ {
+  return ftpRootPath;
+ }
+
+ public static Path getDropboxPath()
+ {
+  return dropboxPath;
  }
 
 }

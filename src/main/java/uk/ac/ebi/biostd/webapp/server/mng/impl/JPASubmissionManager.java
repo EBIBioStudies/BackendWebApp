@@ -179,10 +179,16 @@ public class JPASubmissionManager implements SubmissionManager
  @Override
  public LogNode deleteSubmissionByAccession( String acc, User usr )
  {
-  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
-  
   ErrorCounter ec = new ErrorCounterImpl();
   SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Deleting submission '"+acc+"'", ec);
+
+  if( shutdown )
+  {
+   gln.log(Level.ERROR, "Service is shut down");
+   return gln;
+  } 
+  
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
   FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
   
@@ -227,9 +233,10 @@ public class JPASubmissionManager implements SubmissionManager
 
    origDir = BackendConfig.getSubmissionPath(sbm);
 
+   histDir = BackendConfig.getSubmissionHistoryPath(sbm);
+
    if(Files.exists(origDir))
    {
-    histDir = BackendConfig.getSubmissionHistoryPath(sbm);
     histDirTmp = histDir.resolveSibling(histDir.getFileName() + "#tmp");
 
     try
@@ -288,7 +295,22 @@ public class JPASubmissionManager implements SubmissionManager
    }
    
    if( trnOk )
+   {
+    if( dirOp != SubmissionDirState.ABSENT )
+    {
+     try
+     {
+      fileMngr.moveDirectory( histDirTmp, histDir );
+     }
+     catch(IOException e)
+     {
+      log.error("History directory '"+histDirTmp+"' rename failed: "+e);
+      e.printStackTrace();
+     }
+    }
+    
     gln.log(Level.INFO, "Transaction successful");
+   }
    else
    {
     if( dirOp == SubmissionDirState.LINKED )
@@ -324,7 +346,7 @@ public class JPASubmissionManager implements SubmissionManager
   
   if( trnOk && BackendConfig.getPublicFTPPath() != null )
   {
-   Path ftpPath = BackendConfig.getPublicFTPPath().resolve(acc);
+   Path ftpPath = BackendConfig.getSubmissionPublicFTPPath(sbm);
    
    if( Files.exists(ftpPath) )
    {
@@ -340,7 +362,7 @@ public class JPASubmissionManager implements SubmissionManager
     }
    }
    
-   if( queueProc != null )
+   if( trnOk && queueProc != null )
    {
     StringBuilder out = new StringBuilder();
     
@@ -574,9 +596,17 @@ public class JPASubmissionManager implements SubmissionManager
 
   SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, op.name() + " submission(s) from " + type.name() + " source", ec);
 
+
+  
   SubmissionReport res = new SubmissionReport();
   
   res.setLog(gln);
+  
+  if( shutdown )
+  {
+   gln.log(Level.ERROR, "Service is shut down");
+   return res;
+  } 
   
   if( op == Operation.CREATE && !BackendConfig.getServiceManager().getSecurityManager().mayUserCreateSubmission(usr) )
   {
@@ -1296,7 +1326,7 @@ public class JPASubmissionManager implements SubmissionManager
   for(SubmissionInfo si : list)
   {
    Path sourceDir = BackendConfig.getSubmissionFilesPath(si.getSubmission());
-   Path targetDir = BackendConfig.getPublicFTPPath().resolve(si.getSubmission().getAccNo());
+   Path targetDir = BackendConfig.getSubmissionPublicFTPPath(si.getSubmission());
 
    try
    {
@@ -1304,9 +1334,9 @@ public class JPASubmissionManager implements SubmissionManager
     if(Files.exists(targetDir))
      fileMngr.deleteDirectory(targetDir);
 
-    if(Files.exists(sourceDir))
+    if(Files.exists(sourceDir) && BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(si.getSubmission()) )
     {
-     fileMngr.copyDirectory(sourceDir, targetDir);
+     fileMngr.linkOrCopyDirectory(sourceDir, targetDir);
 
      try
      {
@@ -2128,6 +2158,175 @@ public class JPASubmissionManager implements SubmissionManager
   
   if( queueProc != null )
    queueProc.shutdown();
+ }
+
+
+ @Override
+ public LogNode tranklucateSubmissionById(int id, User user)
+ {
+  // TODO Auto-generated method stub
+  return null;
+ }
+
+
+ @Override
+ public LogNode tranklucateSubmissionByAccession(String acc, User usr)
+ {
+  ErrorCounter ec = new ErrorCounterImpl();
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Tranklucating submission '"+acc+"'", ec);
+
+  if( shutdown )
+  {
+   gln.log(Level.ERROR, "Service is shut down");
+   return gln;
+  } 
+  
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+  FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
+  
+  boolean trnOk = false;
+  
+  Submission mainSbm = null;
+
+  try
+  {
+   em.getTransaction().begin();
+
+   Query q = em.createNamedQuery("Submission.getAllByAcc");
+
+   q.setParameter("accNo", acc);
+
+
+   List<Submission> res = q.getResultList();
+
+   if(res.size() == 0)
+   {
+    gln.log(Level.ERROR, "Submission not found");
+    return gln;
+   }
+   
+   for( Submission s : res )
+   {
+    if( s.getVersion() > 0 )
+    {
+     mainSbm = s;
+     break;
+    }
+   }
+
+   if(mainSbm !=null && !BackendConfig.getServiceManager().getSecurityManager().mayUserDeleteSubmission(mainSbm, usr))
+   {
+    gln.log(Level.ERROR, "User has no permission to delete this submission");
+    return gln;
+   }
+
+   for( Submission s : res )
+    em.remove(s);
+   
+   trnOk = true;
+   
+   for( Submission s : res )
+   {
+    Path dir = s == mainSbm ? BackendConfig.getSubmissionPath(s) : BackendConfig.getSubmissionHistoryPath(s);
+
+    if(Files.exists(dir))
+    {
+     try
+     {
+      fileMngr.deleteDirectory(dir);
+     }
+     catch(Exception e)
+     {
+      log.error("Can't delete submission directory " + dir + " Error: " + e.getMessage());
+      e.printStackTrace();
+      gln.log(Level.WARN, "Submission directory was not deleted");
+     }
+    }
+   }
+   
+  }
+  finally
+  {
+   
+   try
+   {
+    if( trnOk )
+    {
+     em.getTransaction().commit();
+     gln.log(Level.INFO, "Transaction successful");
+    }
+    else
+     em.getTransaction().rollback();
+   }
+   catch(Throwable t)
+   {
+    trnOk = false;
+    
+    String err = "Database transaction failed: " + t.getMessage();
+
+    gln.log(Level.ERROR, err);
+
+    if(em.getTransaction().isActive())
+     em.getTransaction().rollback();
+   }
+
+  }
+  
+  if( trnOk && BackendConfig.getPublicFTPPath() != null && mainSbm != null )
+  {
+   Path ftpPath = BackendConfig.getSubmissionPublicFTPPath(mainSbm);
+   
+   if( Files.exists(ftpPath) )
+   {
+    try
+    {
+     fileMngr.deleteDirectory(ftpPath);
+    }
+    catch(Exception e)
+    {
+     log.error("Can't delete public ftp directory "+ftpPath+" Error: "+e.getMessage());
+     e.printStackTrace();
+     gln.log(Level.WARN, "Public FTP directory was not deleted");
+    }
+   }
+   
+   if( trnOk && queueProc != null && mainSbm != null )
+   {
+    StringBuilder out = new StringBuilder();
+    
+    
+    out.append('<').append(SUBMISSION.getElementName()).append(' ').append(ACCNO.getAttrName()).append("=\"");
+    
+    try
+    {
+     xmlEscaped(mainSbm.getAccNo(), out);
+    }
+    catch(IOException e)
+    {
+    }
+
+    out.append("\" ").append(ID.getAttrName()).append("=\"").append( String.valueOf(mainSbm.getId()) );
+    out.append("\" delete=\"true\"/>\n");
+
+    String msg = out.toString();
+    
+    while( ! shutdown )
+    {
+     try
+     {
+      queueProc.put(msg);
+      break;       
+     }
+     catch(InterruptedException e)
+     {
+     }
+    }
+   }
+    
+  }
+  
+  return gln;
  }
 
 }

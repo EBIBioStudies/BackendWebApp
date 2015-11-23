@@ -167,6 +167,7 @@ public class FileManagerImpl implements FileManager
 
   Files.walkFileTree(srcDir, new SimpleFileVisitor<Path>()
   {
+   boolean tryLink = BackendConfig.isLinkingAllowed();
 
    @Override
    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException
@@ -184,7 +185,7 @@ public class FileManagerImpl implements FileManager
     Path rel = srcDir.relativize(file);
     Path dst = dstDir.resolve(rel);
     
-    if( BackendConfig.isLinkingAllowed() )
+    if( tryLink )
     {
      try
      {
@@ -193,6 +194,7 @@ public class FileManagerImpl implements FileManager
      catch( IOException e )
      {
       Files.copy( file, dst );
+      tryLink = false;
      }
     }
     else

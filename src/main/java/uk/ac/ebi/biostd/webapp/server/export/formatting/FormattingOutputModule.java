@@ -8,6 +8,8 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.Constructor;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
@@ -20,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.out.TextStreamFormatter;
 import uk.ac.ebi.biostd.util.StringUtils;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.export.ExporterStat;
 import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
@@ -113,13 +116,26 @@ public class FormattingOutputModule implements OutputModule
   String tmpDirName = cfg.getTmpDir(null);
   
   if( tmpDirName == null )
-  {
    throw new TaskConfigException("Output module '"+name+"': Temp directory is not defined");
+  
+  Path tmpPath = FileSystems.getDefault().getPath(tmpDirName);
+  
+  if( ! tmpPath.isAbsolute() )
+  {
+   if( BackendConfig.getBaseDirectory() == null )
+   {
+    log.error("Output module '"+name+"': Temporary directory path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
+    throw new TaskConfigException("Output module '"+name+"': Temporary directory path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
+   }
+   
+   tmpPath = BackendConfig.getBaseDirectory().resolve(tmpPath);
   }
   
-  
-  tmpDir = new File(tmpDirName);
+  tmpDir = tmpPath.toFile();
 
+  if( ! tmpDir.exists() && BackendConfig.isCreateFileStructure() )
+   tmpDir.mkdirs();
+  
   if( ! tmpDir.canWrite() )
   {
    log.error("Output module '"+name+"': Temporary directory is not writable: " + tmpDir);
@@ -132,12 +148,31 @@ public class FormattingOutputModule implements OutputModule
   if( outFileName == null )
    throw new TaskConfigException("Output module '"+name+"': Output file is not defined");
   
-  outFile = new File(outFileName);
+  Path outPath = FileSystems.getDefault().getPath(outFileName);
 
-  if(!outFile.getParentFile().canWrite())
+  if( ! outPath.isAbsolute() )
   {
-   log.error("Output module '"+name+"': Output file directory is not writable: " + outFile);
-   throw new TaskConfigException("Output module '"+name+"': Output file directory is not writable: " + outFile);
+   if( BackendConfig.getBaseDirectory() == null )
+   {
+    log.error("Output module '"+name+"': Output file path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
+    throw new TaskConfigException("Output module '"+name+"': TOutput file path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
+   }
+   
+   outPath = BackendConfig.getBaseDirectory().resolve(outPath);
+  }
+
+  
+  outFile = outPath.toFile();
+
+  File outPDir= outFile.getParentFile();
+  
+  if( ! outPDir.exists() && BackendConfig.isCreateFileStructure() )
+   outPDir.mkdirs();
+  
+  if(!outPDir.isDirectory() || !outPDir.canWrite() )
+  {
+   log.error("Output module '"+name+"': Output file directory is not writable: " + outPDir);
+   throw new TaskConfigException("Output module '"+name+"': Output file directory is not writable: " + outPDir);
   }
  
  }

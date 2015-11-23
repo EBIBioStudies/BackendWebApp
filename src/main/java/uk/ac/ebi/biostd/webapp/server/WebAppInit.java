@@ -121,6 +121,22 @@ public class WebAppInit implements ServletContextListener
 
   Enumeration<String> pNames = config.getNames();
 
+  String baseDir = config.getParameter(ServiceParamPrefix+BackendConfig.BaseDirParameter);
+  
+  if( baseDir != null )
+  {
+   try
+   {
+    if(!BackendConfig.readParameter(BackendConfig.BaseDirParameter, baseDir))
+     log.warn("Unknown configuration parameter: " + BackendConfig.BaseDirParameter + " will be ignored");
+   }
+   catch(ServiceConfigException e)
+   {
+    log.error("Invalid parameter value: " + BackendConfig.BaseDirParameter + "=" + baseDir+" "+e.getMessage());
+    confOk = false;
+   }
+  }
+  
   while(pNames.hasMoreElements())
   {
    String key = pNames.nextElement();
@@ -139,7 +155,7 @@ public class WebAppInit implements ServletContextListener
     }
     catch(ServiceConfigException e)
     {
-     log.error("Invalid parameter value: " + key + "=" + val);
+     log.error("Invalid parameter value: " + key + "=" + val+" "+e.getMessage());
      confOk = false;
     }
    }
@@ -545,7 +561,7 @@ public class WebAppInit implements ServletContextListener
     return false;
    }
   }
-  else
+  else if( BackendConfig.isCreateFileStructure() )
   {
    try
    {
@@ -557,6 +573,8 @@ public class WebAppInit implements ServletContextListener
     return false;
    }
   }
+  else
+   return false;
   
   return true;
  }

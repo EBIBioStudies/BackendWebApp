@@ -70,6 +70,13 @@ public class SubmitServlet extends ServiceServlet
    return;
   }
   
+  if( act == Operation.TRANKLUCATE )
+  {
+   processTranklucate( request, response, sess );
+   return;
+  }
+
+  
   String cType = request.getContentType();
   
   if( cType == null )
@@ -154,5 +161,46 @@ public class SubmitServlet extends ServiceServlet
 
  }
 
+ public void processTranklucate(HttpServletRequest request, HttpServletResponse response, Session sess) throws IOException
+ {
+  String sbmID = request.getParameter("id");
+  String sbmAcc = request.getParameter("accno");
+  
+  if( sbmID == null && sbmAcc == null )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL 'id' or 'accno' parameter is not specified");
+   return;
+  }
+  
+  int id = -1;
+  
+  if( sbmID != null  )
+  {
+   try
+   {
+    id = Integer.parseInt(sbmID);
+   }
+   catch(Exception e)
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.getWriter().print("FAIL Invalis 'id' parameter value. Must be integer");
+    return;
+   }
+  }
+  
+  response.setContentType("application/json");
+  
+  LogNode topLn = null;
+  
+  if( sbmID != null )
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionById(id, sess.getUser());
+  else
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccession(sbmAcc, sess.getUser());
+  
+  SimpleLogNode.setLevels(topLn);
+  JSON4Log.convert(topLn, response.getWriter());
+
+ }
  
 }

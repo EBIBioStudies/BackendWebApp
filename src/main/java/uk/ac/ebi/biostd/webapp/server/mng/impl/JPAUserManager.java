@@ -1,6 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
 import java.util.List;
+import java.util.UUID;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
@@ -84,6 +85,8 @@ public class JPAUserManager implements UserManager, SessionListener
    u.setSuperuser(true);
    BackendConfig.getServiceManager().getSecurityManager().init();
   }
+  
+  u.setSecret( UUID.randomUUID().toString() );
   
   trn.begin();
 

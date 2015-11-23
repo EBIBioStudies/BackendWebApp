@@ -15,7 +15,8 @@ public interface SubmissionManager
   CREATE,
   UPDATE,
   REPLACE,
-  DELETE
+  DELETE,
+  TRANKLUCATE
  }
  
  Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
@@ -36,6 +37,8 @@ public interface SubmissionManager
  
  LogNode deleteSubmissionByAccession(String acc, User usr);
  
- void shutdown();
+ LogNode tranklucateSubmissionById(int id, User user);
+ LogNode tranklucateSubmissionByAccession(String sbmAcc, User user);
 
+ void shutdown();
 }
