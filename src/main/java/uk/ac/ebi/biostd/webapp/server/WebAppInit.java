@@ -374,6 +374,24 @@ public class WebAppInit implements ServletContextListener
    throw new RuntimeException("Can't find WebResourceRoot. Not Tomcat 8?");
   }
   
+  
+  if( BackendConfig.isCreateFileStructure() && BackendConfig.getBaseDirectory() != null )
+  {
+   try
+   {
+    Files.createDirectories(BackendConfig.getBaseDirectory());
+    Files.setPosixFilePermissions(BackendConfig.getBaseDirectory(), BackendConfig.rwxrwx___);
+   }
+   catch( UnsupportedOperationException e )
+   {
+    log.warn("Filesystem doesn't support POSIX file permissions. Please check base directory permissions manually");
+   }
+   catch(IOException e)
+   {
+    throw new RuntimeException("Directory access error: "+BackendConfig.getBaseDirectory());
+   }
+  }
+  
   Path dir = BackendConfig.getWorkDirectory();
   
   if( dir == null )
@@ -385,8 +403,6 @@ public class WebAppInit implements ServletContextListener
   if( ! checkDirectory(dir) )
    throw new RuntimeException("Directory access error: "+dir);
   
-
-  
   dir = BackendConfig.getUserGroupPath();
   
   if( dir == null )
@@ -394,6 +410,9 @@ public class WebAppInit implements ServletContextListener
    log.error("Mandatory "+ServiceParamPrefix+BackendConfig.UserGroupDirParameter+" parameter is not set");
    throw new RuntimeException("Invalid configuration");
   }
+  
+
+  
   
   if( ! checkDirectory(dir) )
    throw new RuntimeException("Directory access error: "+dir);

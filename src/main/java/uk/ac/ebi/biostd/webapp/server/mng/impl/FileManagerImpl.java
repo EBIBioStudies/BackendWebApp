@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -103,6 +104,9 @@ public class FileManagerImpl implements FileManager
  @Override
  public void deleteDirectory(Path origDir) throws IOException
  {
+  if( ! Files.exists(origDir) )
+   return;
+  
   Files.walkFileTree(origDir, new SimpleFileVisitor<Path>()
   {
 
@@ -141,8 +145,13 @@ public class FileManagerImpl implements FileManager
    {
     Path rel = srcDir.relativize(dir);
     
-    Files.createDirectory(dstDir.resolve(rel));
-
+    try
+    {
+     Files.createDirectory(dstDir.resolve(rel));
+    }
+    catch( FileAlreadyExistsException e )
+    {}
+    
     return FileVisitResult.CONTINUE;
    }
    

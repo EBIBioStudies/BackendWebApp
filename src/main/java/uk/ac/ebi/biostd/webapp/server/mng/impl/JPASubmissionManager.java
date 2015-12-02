@@ -1497,7 +1497,6 @@ public class JPASubmissionManager implements SubmissionManager
 
      try
      {
-      Files.createDirectories(histDirTmp);
       fileMngr.moveDirectory(origDir, histDirTmp); // trying to move submission directory to the history dir
       ftu.historyPathTmp = histDirTmp;
 
