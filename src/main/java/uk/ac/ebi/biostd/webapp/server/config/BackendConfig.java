@@ -5,6 +5,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -13,6 +15,7 @@ import javax.persistence.EntityManagerFactory;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
@@ -83,6 +86,7 @@ public class BackendConfig
 
  private static ServiceManager defaultServiceManager;
  private static EntityManagerFactory emf;
+ private static TaskInfo expTaskInfo;
 
  private static boolean createFileStructure=false;
 
@@ -109,6 +113,8 @@ public class BackendConfig
  private static int maxUpdatesPerFile = 50;
  
  private static boolean fileLinkAllowed=true;
+
+ private static Map<String, Object> databaseConfig;
  
  public static void init( int contextHash )
  {
@@ -493,6 +499,29 @@ public class BackendConfig
  public static Path getDropboxPath()
  {
   return dropboxPath;
+ }
+
+
+ public static TaskInfo getExportTask()
+ {
+  return expTaskInfo;
+ }
+ 
+ public static void setExportTask( TaskInfo ti )
+ {
+  expTaskInfo = ti;
+ }
+
+ public static void setDatabaseConfig(Map<String, Object> dbConfig)
+ {
+  databaseConfig = new HashMap<String, Object>(dbConfig);
+  
+ }
+ 
+ public static Map<String, Object> getDatabaseConfig()
+ {
+  return databaseConfig;
+  
  }
 
 }

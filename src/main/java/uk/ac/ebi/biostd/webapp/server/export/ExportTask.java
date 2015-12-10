@@ -145,7 +145,7 @@ public class ExportTask
      exportControl.interrupt();
    }
    
-   busy.lock();
+   busy.lock(); // waiting until task is idle
    busy.unlock();
    
    return true;

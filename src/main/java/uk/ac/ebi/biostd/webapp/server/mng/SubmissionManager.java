@@ -39,6 +39,7 @@ public interface SubmissionManager
  
  LogNode tranklucateSubmissionById(int id, User user);
  LogNode tranklucateSubmissionByAccession(String sbmAcc, User user);
+ LogNode tranklucateSubmissionByAccessionPattern(String accPfx, User usr);
 
  void shutdown();
 }

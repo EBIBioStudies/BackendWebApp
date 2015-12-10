@@ -25,6 +25,9 @@ public class SubmitServlet extends ServiceServlet
  private static final long serialVersionUID = 1L;
 
  public static final String validateOnlyParameter = "validateOnly";
+ public static final String idParameter = "id";
+ public static final String accnoParameter = "accno";
+ public static final String accnoPatternParameter = "accnoPattern";
 
  
  
@@ -75,6 +78,7 @@ public class SubmitServlet extends ServiceServlet
    processTranklucate( request, response, sess );
    return;
   }
+
 
   
   String cType = request.getContentType();
@@ -161,15 +165,33 @@ public class SubmitServlet extends ServiceServlet
 
  }
 
- public void processTranklucate(HttpServletRequest request, HttpServletResponse response, Session sess) throws IOException
+ public void processTranklucate(HttpServletRequest request, HttpServletResponse response, Session sess ) throws IOException
  {
-  String sbmID = request.getParameter("id");
-  String sbmAcc = request.getParameter("accno");
+  String sbmID = request.getParameter(idParameter);
+  String sbmAcc = request.getParameter(accnoParameter);
+  String patAcc = request.getParameter(accnoPatternParameter);
   
-  if( sbmID == null && sbmAcc == null )
+  boolean clash=false;
+  
+  if( patAcc != null )
+  {
+   if( sbmAcc != null || sbmID != null )
+    clash = true;
+  }
+  else if( sbmAcc != null )
+  {
+   if( patAcc != null || sbmID != null )
+    clash = true;
+  }
+  else if( sbmID != null )
+  {
+   if( patAcc != null || sbmAcc != null )
+    clash = true;
+  }
+  else
   {
    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-   response.getWriter().print("FAIL 'id' or 'accno' parameter is not specified");
+   response.getWriter().print("FAIL '"+idParameter+"' or '"+accnoParameter+"' or '"+accnoPatternParameter+"' parameter is not specified");
    return;
   }
   
@@ -184,9 +206,16 @@ public class SubmitServlet extends ServiceServlet
    catch(Exception e)
    {
     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    response.getWriter().print("FAIL Invalis 'id' parameter value. Must be integer");
+    response.getWriter().print("FAIL Invalid '"+idParameter+"' parameter value. Must be integer");
     return;
    }
+  }
+  
+  if( patAcc != null && patAcc.equals("%") )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL Invalid '"+accnoPatternParameter+"' parameter value. Can't be single '%'");
+   return;
   }
   
   response.setContentType("application/json");
@@ -195,8 +224,10 @@ public class SubmitServlet extends ServiceServlet
   
   if( sbmID != null )
    topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionById(id, sess.getUser());
-  else
+  else if( sbmAcc!= null )
    topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccession(sbmAcc, sess.getUser());
+  else
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccessionPattern(sbmAcc, sess.getUser());
   
   SimpleLogNode.setLevels(topLn);
   JSON4Log.convert(topLn, response.getWriter());

@@ -101,6 +101,9 @@ public class WebAppInit implements ServletContextListener
   if( BackendConfig.getServiceManager().getSubmissionManager() != null )
    BackendConfig.getServiceManager().getSubmissionManager().shutdown();
 
+  if( BackendConfig.getExportTask() != null )
+   BackendConfig.getExportTask().getTask().interrupt();
+  
   if( BackendConfig.getEntityManagerFactory() != null )
    BackendConfig.getEntityManagerFactory().close();
   
@@ -489,6 +492,7 @@ public class WebAppInit implements ServletContextListener
 
   
   
+  BackendConfig.setDatabaseConfig( dbConfig );
   BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig));
 
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
@@ -511,6 +515,8 @@ public class WebAppInit implements ServletContextListener
   try
   {
    tinf = createTask(taskConfig);
+   
+   BackendConfig.setExportTask(tinf);
   }
   catch( TaskConfigException e )
   {

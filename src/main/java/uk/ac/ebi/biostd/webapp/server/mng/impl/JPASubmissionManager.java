@@ -27,6 +27,7 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.NoResultException;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -2163,25 +2164,97 @@ public class JPASubmissionManager implements SubmissionManager
  @Override
  public LogNode tranklucateSubmissionById(int id, User user)
  {
-  // TODO Auto-generated method stub
-  return null;
+  return new SimpleLogNode(Level.ERROR, "Tranklucating submissions by id is not implemented", null);
  }
 
+ @Override
+ public LogNode tranklucateSubmissionByAccessionPattern(String accPfx, User usr)
+ {
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Tranklucating submissions by pattern '"+accPfx+"'", null);
+  
+  if( shutdown )
+  {
+   gln.log(Level.ERROR, "Service is shut down");
+   return gln;
+  }
+  
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  List<String> res = null;
+  
+  try
+  {
+   TypedQuery<String> pq = em.createNamedQuery("Submission.getAccByPat",String.class);
+   
+   pq.setParameter("pattern", accPfx);
+   
+   res = pq.getResultList();
+   
+   
+   if( res.size() == 0 )
+   {
+    gln.log(Level.INFO, "No matches");
+    return gln;
+   }
+    
+   gln.log(Level.INFO, "Found "+res.size()+" matches");
 
+   Query q = em.createNamedQuery("Submission.getAllByAcc");
+
+   for( String acc : res )
+   {
+    tranklucateSubmissionByAccession(acc, usr, gln.branch("Tranklucating submission '"+acc+"'"), em, q);
+   }
+   
+  }
+  catch( Exception e )
+  {
+   e.printStackTrace();
+   
+   log.error("Exception: "+e.getClass()+" Message: "+e.getMessage());
+   
+   gln.log(Level.ERROR, "Internal server error");
+  }
+
+  
+
+  return gln;
+ }
+ 
  @Override
  public LogNode tranklucateSubmissionByAccession(String acc, User usr)
  {
-  ErrorCounter ec = new ErrorCounterImpl();
-  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Tranklucating submission '"+acc+"'", ec);
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Tranklucating submission '"+acc+"'", null);
 
   if( shutdown )
   {
    gln.log(Level.ERROR, "Service is shut down");
    return gln;
-  } 
+  }
   
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
+  try
+  {
+   Query q = em.createNamedQuery("Submission.getAllByAcc");
+
+   tranklucateSubmissionByAccession(acc, usr, gln, em, q);
+  }
+  catch( Exception e )
+  {
+   e.printStackTrace();
+   
+   log.error("Exception: "+e.getClass()+" Message: "+e.getMessage());
+   
+   gln.log(Level.ERROR, "Internal server error");
+  }
+  
+  return gln;
+ }
+ 
+ 
+ private LogNode tranklucateSubmissionByAccession(String acc, User usr, LogNode gln,EntityManager em, Query q)
+ {
   FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
   
   boolean trnOk = false;
@@ -2192,11 +2265,10 @@ public class JPASubmissionManager implements SubmissionManager
   {
    em.getTransaction().begin();
 
-   Query q = em.createNamedQuery("Submission.getAllByAcc");
-
    q.setParameter("accNo", acc);
 
 
+   @SuppressWarnings("unchecked")
    List<Submission> res = q.getResultList();
 
    if(res.size() == 0)

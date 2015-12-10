@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 
 
 
+
 public interface ServiceManager
 {
  UserManager getUserManager();
@@ -20,5 +21,4 @@ public interface ServiceManager
  SecurityManager getSecurityManager();
  
  ReleaseManager getReleaseManager();
-
 }
