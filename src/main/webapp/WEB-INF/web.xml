@@ -137,6 +137,17 @@
     <url-pattern>/export/*</url-pattern>
   </servlet-mapping>
   
+  <servlet>
+    <description></description>
+    <display-name>AccNoReserveServlet</display-name>
+    <servlet-name>AccNoReserveServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.reserve.AccNoReserveServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AccNoReserveServlet</servlet-name>
+    <url-pattern>/reserve</url-pattern>
+  </servlet-mapping>
+
   <filter>
    <filter-name>CorsFilter</filter-name>
    <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>

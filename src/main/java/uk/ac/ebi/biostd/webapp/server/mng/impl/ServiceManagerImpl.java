@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
+import uk.ac.ebi.biostd.webapp.server.mng.AccessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ReleaseManager;
 import uk.ac.ebi.biostd.webapp.server.mng.RemoteRequestManager;
@@ -24,6 +25,7 @@ public class ServiceManagerImpl implements ServiceManager
  private FileManager fileManager;
  private SecurityManager authzManager;
  private ReleaseManager releaser;
+ private AccessionManager accManager;
  
  @Override
  public UserManager getUserManager()
@@ -118,6 +120,17 @@ public class ServiceManagerImpl implements ServiceManager
  public void setReleaseManager(ReleaseManager releaser)
  {
   this.releaser = releaser;
+ }
+
+ @Override
+ public AccessionManager getAccessionManager()
+ {
+  return accManager;
+ }
+
+ public void setAccessionManager(AccessionManager accManager)
+ {
+  this.accManager = accManager;
  }
 
 

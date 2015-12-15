@@ -3,11 +3,14 @@ package uk.ac.ebi.biostd.webapp.server.endpoint.reserve;
 import java.io.IOException;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class AccNoReserveServlet extends HttpServlet
+import uk.ac.ebi.biostd.authz.Session;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+
+public class AccNoReserveServlet extends ServiceServlet
 {
  public static final String prefixParameter = "prefix";
  public static final String suffixParameter = "suffix";
@@ -16,8 +19,16 @@ public class AccNoReserveServlet extends HttpServlet
  public static final int MaxCount = 100; 
 
  @Override
- protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+ protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
+  if(sess == null)
+  {
+   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+   resp.getWriter().print("FAIL User not logged in");
+   return;
+  }
+
+  
   String countPrm = req.getParameter(countParameter);
   
   if( countPrm == null )
@@ -55,7 +66,23 @@ public class AccNoReserveServlet extends HttpServlet
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
    resp.getWriter().print("FAIL Either '"+prefixParameter+"' or '"+suffixParameter+"' or both must be defined");
    return;
-  }  
+  }
+  
+  long first = -1;
+  
+  try
+  {
+   first = BackendConfig.getServiceManager().getAccessionManager().incrementIdGen(prefix, suffix, count, sess.getUser());
+  }
+  catch(Exception e)
+  {
+   resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+   resp.getWriter().print("FAIL "+e.getMessage());
+   return;
+  }
+  
+  resp.getWriter().print("OK ["+first+","+(first+count-1)+"]");
+  
  }
- 
+
 }

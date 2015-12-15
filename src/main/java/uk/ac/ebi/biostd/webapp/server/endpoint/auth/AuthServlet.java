@@ -231,6 +231,17 @@ public class AuthServlet extends HttpServlet
 
     return;
    }
+   
+   usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
+   
+   if( usr != null )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User with email address '"+email+"' exists");
+
+    return;
+   }
+
+
 
    String pass = prms.getParameter(PasswordParameter);
    

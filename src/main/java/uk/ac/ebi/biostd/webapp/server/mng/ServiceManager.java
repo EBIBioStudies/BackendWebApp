@@ -21,4 +21,6 @@ public interface ServiceManager
  SecurityManager getSecurityManager();
  
  ReleaseManager getReleaseManager();
+ 
+ AccessionManager getAccessionManager();
 }

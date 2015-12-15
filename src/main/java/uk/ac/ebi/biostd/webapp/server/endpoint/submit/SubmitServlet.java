@@ -195,6 +195,13 @@ public class SubmitServlet extends ServiceServlet
    return;
   }
   
+  if( clash )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL Parameters '"+idParameter+"', '"+accnoParameter+"' and '"+accnoPatternParameter+"' can'n be used at the same time");
+   return;
+  }
+  
   int id = -1;
   
   if( sbmID != null  )
@@ -227,7 +234,7 @@ public class SubmitServlet extends ServiceServlet
   else if( sbmAcc!= null )
    topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccession(sbmAcc, sess.getUser());
   else
-   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccessionPattern(sbmAcc, sess.getUser());
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccessionPattern(patAcc, sess.getUser());
   
   SimpleLogNode.setLevels(topLn);
   JSON4Log.convert(topLn, response.getWriter());

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
 import org.slf4j.Logger;
@@ -15,20 +16,29 @@ import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.authz.ACR;
 import uk.ac.ebi.biostd.authz.ACR.Permit;
 import uk.ac.ebi.biostd.authz.AccessTag;
+import uk.ac.ebi.biostd.authz.AuthorizationTemplate;
+import uk.ac.ebi.biostd.authz.AuthzObject;
 import uk.ac.ebi.biostd.authz.BuiltInUsers;
 import uk.ac.ebi.biostd.authz.Permission;
 import uk.ac.ebi.biostd.authz.PermissionProfile;
 import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserACR;
 import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.authz.acr.SystemPermGrpACR;
 import uk.ac.ebi.biostd.authz.acr.SystemPermUsrACR;
 import uk.ac.ebi.biostd.authz.acr.SystemProfGrpACR;
 import uk.ac.ebi.biostd.authz.acr.SystemProfUsrACR;
+import uk.ac.ebi.biostd.authz.acr.TemplatePermGrpACR;
+import uk.ac.ebi.biostd.authz.acr.TemplatePermUsrACR;
+import uk.ac.ebi.biostd.authz.acr.TemplateProfGrpACR;
+import uk.ac.ebi.biostd.authz.acr.TemplateProfUsrACR;
 import uk.ac.ebi.biostd.model.SecurityObject;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.webapp.server.DBInitializer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
+import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
 
 public class SecurityManagerImpl implements SecurityManager
 {
@@ -179,6 +189,120 @@ public class SecurityManagerImpl implements SecurityManager
    
  }
  
+ 
+ @Override
+ public synchronized User addUser(User u) throws ServiceException
+ {
+  EntityManager em = null;
+  Collection<UserACR> newSysACR = null;
+
+  try
+  {
+   em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+   EntityTransaction trn = em.getTransaction();
+   
+   
+   Query q = em.createNamedQuery("User.getCount");
+   
+   if( (Long)q.getSingleResult() == 0)
+   {
+    DBInitializer.init();
+    u.setSuperuser(true);
+    init();
+   }
+   
+   Query ctq = em.createNamedQuery("AuthorizationTemplate.getByClassName");
+   ctq.setParameter("className", User.class.getName());
+   
+   
+   trn.begin();
+   
+   List<AuthorizationTemplate> tpls = ctq.getResultList();
+   
+   if( tpls.size() == 1 )
+   {
+    newSysACR = new ArrayList<UserACR>();
+    
+    AuthorizationTemplate tpl = tpls.get(0);
+    
+    Collection<TemplatePermUsrACR> p4u =  tpl.getPermissionForUserACRs();
+    
+    if( p4u != null )
+    {
+     for( TemplatePermUsrACR acr : p4u )
+     {
+      SystemPermUsrACR sp = new SystemPermUsrACR();
+      sp.setAction(acr.getAction());
+      sp.setAllow(acr.isAllow());
+      sp.setSubject(u);
+      
+      em.persist(sp);
+      
+      newSysACR.add( sp );
+     }
+    }
+    
+    Collection<TemplateProfUsrACR> r4u = tpl.getProfileForUserACRs();
+    
+    if( r4u != null )
+    {
+     for( TemplateProfUsrACR acr : r4u )
+     {
+      SystemProfUsrACR sp = new SystemProfUsrACR();
+      sp.setSubject(u);
+      sp.setProfile(acr.getProfile());
+      
+      em.persist(sp);
+      
+      newSysACR.add( sp );
+     }
+    }
+   }
+   
+   em.persist( u );
+   
+   trn.commit();
+  }
+  catch( Exception e )
+  {
+   try
+   {
+    if( em != null )
+    {
+     if( em.getTransaction().isActive() )
+      em.getTransaction().rollback();
+     
+    }
+   }
+   catch(Exception e2)
+   {
+    log.error("Error during transaction roolback: "+e2.getClass().getName()+": "+e2.getMessage());
+    e2.printStackTrace();
+   }
+
+   e.printStackTrace();
+   throw new ServiceException("JPA exception: "+e.getClass().getName()+": "+e.getMessage(),e);
+  }
+  
+  
+  User du = detachUser(u);
+
+  if( newSysACR != null )
+  {
+   
+   for( UserACR acr : newSysACR )
+   {
+    em.detach(acr);
+    acr.setSubject( du );
+    systemACR.add(acr);
+   }
+   
+  }
+  
+  return du;
+ }
+ 
  private User detachUser( User u ) // to pull user structure from the DB. We need this to overcome lazy loading
  {
   User du = userMap.get(u.getId());
@@ -296,8 +420,7 @@ public class SecurityManagerImpl implements SecurityManager
  }
  
  
- @Override
- public boolean mayUserCreateSubmission(User usr)
+ private boolean checkSystemPermission(SystemAction act, User usr)
  {
   if( usr.isSuperuser() )
    return true;
@@ -306,7 +429,7 @@ public class SecurityManagerImpl implements SecurityManager
   
   for( ACR acr : systemACR )
   {
-   Permit p = acr.checkPermission(SystemAction.CREATESUBM, usr);
+   Permit p = acr.checkPermission(act, usr);
    
    if( p == Permit.DENY )
     return false;
@@ -315,6 +438,12 @@ public class SecurityManagerImpl implements SecurityManager
   }
   
   return allow;
+ } 
+ 
+ @Override
+ public boolean mayUserCreateSubmission(User usr)
+ {
+  return checkSystemPermission(SystemAction.CREATESUBM, usr);
  }
 
  public boolean checkSubmissionPermission(Submission sbm, User usr, SystemAction act)
@@ -379,6 +508,50 @@ public class SecurityManagerImpl implements SecurityManager
   }
   
   return allow;
+ }
+
+ @Override
+ public boolean mayUserCreateIdGenerator(User usr)
+ {
+  return checkSystemPermission(SystemAction.CREATEIDGEN, usr);
+ }
+
+ @Override
+ public void applyTemplate(AuthzObject obj, AuthorizationTemplate tpl)
+ {
+  Collection<TemplatePermUsrACR> p4u =  tpl.getPermissionForUserACRs();
+  
+  if( p4u != null )
+  {
+   for( TemplatePermUsrACR acr : p4u )
+    obj.addPermissionForUserACR(acr.getSubject(), acr.getAction(), acr.isAllow());
+  }
+  
+  Collection<TemplatePermGrpACR> p4g = tpl.getPermissionForGroupACRs();
+  
+  if( p4g != null )
+  {
+   for( TemplatePermGrpACR acr : p4g )
+    obj.addPermissionForGroupACR(acr.getSubject(), acr.getAction(), acr.isAllow());
+  }
+  
+  Collection<TemplateProfUsrACR> r4u = tpl.getProfileForUserACRs();
+  
+  if( r4u != null )
+  {
+   for( TemplateProfUsrACR acr : r4u )
+    obj.addProfileForUserACR(acr.getSubject(), acr.getProfile());
+  }
+  
+  Collection<TemplateProfGrpACR> r4g = tpl.getProfileForGroupACRs();
+  
+  if( r4u != null )
+  {
+   for( TemplateProfGrpACR acr : r4g )
+    obj.addProfileForGroupACR(acr.getSubject(), acr.getProfile());
+  }
+
+  
  }
 
 

@@ -10,7 +10,7 @@ public interface UserManager
 
  User getUserByEmail(String prm);
 
- void addUser(User u);
+ void addUser(User u) throws ServiceException;
 
  UserData getUserData(User user, String key);
 

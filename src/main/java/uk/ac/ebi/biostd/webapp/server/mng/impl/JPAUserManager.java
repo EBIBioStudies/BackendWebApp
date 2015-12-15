@@ -9,8 +9,8 @@ import javax.persistence.Query;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
-import uk.ac.ebi.biostd.webapp.server.DBInitializer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
@@ -70,29 +70,12 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
  @Override
- public synchronized void addUser(User u)
+ public synchronized void addUser(User u) throws ServiceException
  {
-  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
-  
-  EntityTransaction trn = em.getTransaction();
-  
-  
-  Query q = em.createNamedQuery("User.getCount");
-
-  if( (Long)q.getSingleResult() == 0)
-  {
-   DBInitializer.init();
-   u.setSuperuser(true);
-   BackendConfig.getServiceManager().getSecurityManager().init();
-  }
   
   u.setSecret( UUID.randomUUID().toString() );
-  
-  trn.begin();
 
-  em.persist( u );
-  
-  trn.commit();
+  BackendConfig.getServiceManager().getSecurityManager().addUser(u);
   
  }
 

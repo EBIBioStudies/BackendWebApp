@@ -960,15 +960,24 @@ public class JPASubmissionManager implements SubmissionManager
     {
      while(true)
      {
-      String newAcc = getNextAccNo(si.getAccNoPrefix(), si.getAccNoSuffix(), em);
-
-      if(checkSubmissionIdUniq(newAcc, em))
+      try
       {
-       subm.setAccNo(newAcc);
-       si.getLogNode().log(Level.INFO, "Submission generated accNo: "+newAcc);
-       
-       sMap.getSubmissionMapping().setAssignedAcc(subm.getAccNo());
-       
+       String newAcc = BackendConfig.getServiceManager().getAccessionManager().getNextAccNo(si.getAccNoPrefix(), si.getAccNoSuffix(), usr);
+
+       if(checkSubmissionIdUniq(newAcc, em))
+       {
+        subm.setAccNo(newAcc);
+        si.getLogNode().log(Level.INFO, "Submission generated accNo: " + newAcc);
+
+        sMap.getSubmissionMapping().setAssignedAcc(subm.getAccNo());
+
+        break;
+       }
+      }
+      catch(SecurityException e)
+      {
+       si.getLogNode().log(Level.ERROR, "User has no permission to generate accession number: " + e.getMessage());
+       submOk = false;
        break;
       }
      }
@@ -987,14 +996,25 @@ public class JPASubmissionManager implements SubmissionManager
        
        while(true)
        {
-        String newAcc = getNextAccNo(seco.getPrefix(), seco.getSuffix(), em);
-
-        if(checkSectionIdUniqTotal(newAcc, em))
+        String newAcc = null;
+        try
         {
-         seco.getSection().setAccNo(newAcc);
-         seco.getSecLogNode().log(Level.INFO, "Section generated accNo: " + newAcc);
+         newAcc = BackendConfig.getServiceManager().getAccessionManager().getNextAccNo(seco.getPrefix(), seco.getSuffix(), usr);
+
+         if(checkSectionIdUniqTotal(newAcc, em))
+         {
+          seco.getSection().setAccNo(newAcc);
+          seco.getSecLogNode().log(Level.INFO, "Section generated accNo: " + newAcc);
+          break;
+         }
+        }
+        catch( SecurityException e)
+        {
+         seco.getSecLogNode().log(Level.ERROR, "User has no permission to generate accession number: " + e.getMessage());
+         submOk = false;
          break;
         }
+
        }
        
        AccessionMapping secMap = new AccessionMapping();
@@ -1047,64 +1067,71 @@ public class JPASubmissionManager implements SubmissionManager
   }
   finally
   {
-   unlockIds(locked);
-   
-   if(!submOk || !submComplete)
+   try
    {
-    if(em.getTransaction().isActive())
-     em.getTransaction().rollback();
     
-    gln.log(Level.ERROR, "Submit/Update operation failed. Rolling transaction back");
-    
-    if( trans != null )
-     rollbackFileTransaction(fileMngr, trans, trnPath);
-    
-    return res;
-   }
-   else
-   {
-    try
+    if(!submOk || !submComplete)
     {
-     em.getTransaction().commit();
-     
-     if( trans != null )
-     {
-      try
-      {
-       commitFileTransaction(fileMngr, trans, trnPath);
-      }
-      catch(IOException ioe)
-      {
-       String err = "File transaction commit failed: " + ioe.getMessage();
-
-       gln.log(Level.ERROR, err);
-       log.error(err);
-
-       ioe.printStackTrace();
-
-       return res;
-      }
-     }
-    }
-    catch(Throwable t)
-    {
-     String err = "Database transaction commit failed: " + t.getMessage();
-
-     gln.log(Level.ERROR, err);
-     log.error(err);
-
-     t.printStackTrace();
-     
      if(em.getTransaction().isActive())
       em.getTransaction().rollback();
 
-     if( trans != null )
+     gln.log(Level.ERROR, "Submit/Update operation failed. Rolling transaction back");
+
+     if(trans != null)
       rollbackFileTransaction(fileMngr, trans, trnPath);
 
      return res;
     }
-    
-    gln.log(Level.INFO, "Database transaction successful");
+    else
+    {
+     try
+     {
+      em.getTransaction().commit();
+
+      if(trans != null)
+      {
+       try
+       {
+        commitFileTransaction(fileMngr, trans, trnPath);
+       }
+       catch(IOException ioe)
+       {
+        String err = "File transaction commit failed: " + ioe.getMessage();
+
+        gln.log(Level.ERROR, err);
+        log.error(err);
+
+        ioe.printStackTrace();
+
+        return res;
+       }
+      }
+     }
+     catch(Throwable t)
+     {
+      String err = "Database transaction commit failed: " + t.getMessage();
+
+      gln.log(Level.ERROR, err);
+      log.error(err);
+
+      t.printStackTrace();
+
+      if(em.getTransaction().isActive())
+       em.getTransaction().rollback();
+
+      if(trans != null)
+       rollbackFileTransaction(fileMngr, trans, trnPath);
+
+      return res;
+     }
+
+     gln.log(Level.INFO, "Database transaction successful");
+    }
+   }
+   finally
+   {
+    unlockIds(locked);
+
    }
   }
   
@@ -1161,12 +1188,12 @@ public class JPASubmissionManager implements SubmissionManager
    if( si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || si.getSubmission().getAccNo() == null )
     continue;
    
-   ElementPointer secNo = idMap.get( si.getSubmission().getAccNo() );
+   ElementPointer sbmPtr = idMap.get( si.getSubmission().getAccNo() );
    
    
-   if( secNo != null )
+   if( sbmPtr != null )
    {
-    si.getLogNode().log(Level.ERROR, "Accession number '"+si.getSubmission().getAccNo()+" is already taken by submission at "+secNo);
+    si.getLogNode().log(Level.ERROR, "Accession number '"+si.getSubmission().getAccNo()+" is already taken by submission at "+sbmPtr);
     conflicts++;
    }
    else
