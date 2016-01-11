@@ -20,7 +20,7 @@ public class JSONHttpResponse implements Response
  @Override
  public void respond(int code, String sts, String msg, KV... kvs) throws IOException
  {
-  response.setContentType("application/json");
+  response.setContentType("application/json; charset=UTF-8");
   response.setStatus(code);
   
   PrintWriter out = response.getWriter();

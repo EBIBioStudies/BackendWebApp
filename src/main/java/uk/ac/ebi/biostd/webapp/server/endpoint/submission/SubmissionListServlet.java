@@ -40,7 +40,9 @@ public class SubmissionListServlet extends ServiceServlet
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
   PrintWriter out = resp.getWriter();
-  
+ 
+  resp.setContentType("application/json; charset=UTF-8");
+
   if( sess == null )
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);

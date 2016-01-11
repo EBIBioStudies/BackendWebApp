@@ -36,6 +36,13 @@ public class BackendConfig
  public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
  public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
+ public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
+ public static final String googleSecretParam = "secret";
+ public static final String googleResponseParam = "response";
+ public static final String googleRemoteipParam = "remoteip";
+ public static final String googleClientResponseParameter="recaptcha2-response";
+ public static final String googleSuccessField = "success";
+ 
  
  public static final String GuestsGroup = "@Guests";
  public static final String EveryoneGroup = "@Everyone";

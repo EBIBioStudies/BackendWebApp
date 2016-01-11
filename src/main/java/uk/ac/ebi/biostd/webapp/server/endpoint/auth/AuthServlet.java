@@ -1,7 +1,11 @@
 package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -13,6 +17,13 @@ import javax.servlet.http.HttpServletResponse;
 import net.tanesha.recaptcha.ReCaptcha;
 import net.tanesha.recaptcha.ReCaptchaFactory;
 import net.tanesha.recaptcha.ReCaptchaResponse;
+
+import org.apache.commons.io.IOUtils;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.util.StringUtils;
@@ -28,6 +39,7 @@ import uk.ac.ebi.biostd.webapp.shared.util.KV;
  */
 public class AuthServlet extends HttpServlet 
 {
+ private static Logger log;
  
  private static final long serialVersionUID = 1L;
  
@@ -40,13 +52,15 @@ public class AuthServlet extends HttpServlet
  public static final String FormatParameter="format";   
  public static final String ReCaptchaChallengeParameter="recaptcha_challenge";   
  public static final String ReCaptchaResponseParameter="recaptcha_response";   
+ public static final String ReCaptcha2ResponseParameter=BackendConfig.googleClientResponseParameter;   
 	
  /**
   * @see HttpServlet#HttpServlet()
   */
  public AuthServlet()
  {
-  super();
+  if( log == null )
+   log = LoggerFactory.getLogger(getClass());
   // TODO Auto-generated constructor stub
  }
 
@@ -252,36 +266,52 @@ public class AuthServlet extends HttpServlet
     return;
    }
    
-   String cptChal = prms.getParameter(ReCaptchaChallengeParameter);
+   String cptResp = prms.getParameter(ReCaptcha2ResponseParameter);
    
-   if( cptChal == null )
+   if( cptResp != null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaChallengeParameter+"' parameter is not defined");
+    
+    if ( !checkRecaptcha2(cptResp, request.getRemoteAddr()) ) 
+    {
+     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
 
-    return;
+     return;
+    }
+    
    }
-
-   String cptResp = prms.getParameter(ReCaptchaResponseParameter);
-   
-   if( cptResp == null )
+   else
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaResponseParameter+"' parameter is not defined");
-
-    return;
+    cptResp = prms.getParameter(ReCaptchaResponseParameter);
+    
+    if( cptResp == null )
+    {
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaResponseParameter+"' parameter is not defined");
+     
+     return;
+    }
+    
+    String cptChal = prms.getParameter(ReCaptchaChallengeParameter);
+    
+    if( cptChal == null )
+    {
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaChallengeParameter+"' parameter is not defined");
+     
+     return;
+    }
+    
+    
+    
+    ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
+    
+    ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
+    
+    if ( !reCaptchaResponse.isValid() ) 
+    {
+     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
+     
+     return;
+    }
    }
-
-   
-   ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
-   
-   ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
-
-   if ( !reCaptchaResponse.isValid() ) 
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
-
-    return;
-   }
-
    
    
    User u = new User();
@@ -395,5 +425,58 @@ public class AuthServlet extends HttpServlet
   process(act, params, request, resp);  
 
  }
+ 
+ private boolean checkRecaptcha2( String resp, String cliIP)
+ {
+  try
+  {
+   URL url = new URL(BackendConfig.googleVerifyURL);
 
+   StringBuilder postData = new StringBuilder();
+
+   postData.append(URLEncoder.encode(BackendConfig.googleSecretParam, "UTF-8"));
+   postData.append('=');
+   postData.append(URLEncoder.encode(BackendConfig.getRecapchaPrivateKey(), "UTF-8"));
+
+   postData.append('&');
+   postData.append(URLEncoder.encode(BackendConfig.googleResponseParam, "UTF-8"));
+   postData.append('=');
+   postData.append(URLEncoder.encode(resp, "UTF-8"));
+
+   postData.append('&');
+   postData.append(URLEncoder.encode(BackendConfig.googleRemoteipParam, "UTF-8"));
+   postData.append('=');
+   postData.append(URLEncoder.encode(cliIP, "UTF-8"));
+
+   byte[] postDataBytes = postData.toString().getBytes("UTF-8");
+
+   HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+   conn.setRequestMethod("POST");
+   conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+   conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
+   conn.setDoOutput(true);
+   conn.getOutputStream().write(postDataBytes);
+
+   JSONObject js = new JSONObject(IOUtils.toString(conn.getInputStream(), StandardCharsets.UTF_8) );
+   
+   conn.disconnect();
+   
+   Object succ = js.opt(BackendConfig.googleSuccessField);
+   
+   if( succ != null && succ instanceof Boolean )
+    return ((Boolean)succ).booleanValue();
+   else
+    log.error("Google returned invalid JSON while checking recaptcha: invalid 'success' field");
+  }
+  catch(IOException e)
+  {
+   log.error("IO error while checking recaptcha: "+e.getMessage());
+  }
+  catch(JSONException e)
+  {
+   log.error("Google returned invalid JSON while checking recaptcha: "+e.getMessage());
+  }
+  
+  return false;
+ }
 }

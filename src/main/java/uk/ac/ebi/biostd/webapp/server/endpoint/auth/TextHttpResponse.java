@@ -20,7 +20,7 @@ public class TextHttpResponse implements Response
  @Override
  public void respond(int code, String sts, String msg, KV... kvs) throws IOException
  {
-  response.setContentType("text/plain");
+  response.setContentType("text/plain; charset=UTF-8");
   response.setStatus(code);
   
   PrintWriter out = response.getWriter();
