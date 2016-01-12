@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -7,6 +8,8 @@ import java.util.UUID;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
+
+import org.apache.commons.io.Charsets;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
@@ -103,7 +106,19 @@ public class JPAUserManager implements UserManager, SessionListener
   
   String htmlBody = null;
   
-  FileUtil.readFile(f, chst);
+   try
+   {
+    if( BackendConfig.getActivationEmailPlainTextFile() != null )
+     textBody = FileUtil.readFile(BackendConfig.getActivationEmailPlainTextFile().toFile(), Charsets.UTF_8);
+
+    if( BackendConfig.getActivationEmailHtmlFile()!= null )
+     htmlBody = FileUtil.readFile(BackendConfig.getActivationEmailHtmlFile().toFile(), Charsets.UTF_8);
+   }
+   catch(IOException e)
+   {
+    e.printStackTrace();
+    return false;
+   }
   
   return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getLogin(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
  }

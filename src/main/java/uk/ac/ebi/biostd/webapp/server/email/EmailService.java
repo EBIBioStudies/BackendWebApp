@@ -203,15 +203,21 @@ public class EmailService
 
   try
   {
+   if( textBody != null )
+   {
+    MimeBodyPart textPart = new MimeBodyPart();
+    textPart.setText(textBody, "utf-8");
 
-   MimeBodyPart textPart = new MimeBodyPart();
-   textPart.setText(textBody, "utf-8");
+    multiPart.addBodyPart(textPart);
+   }
 
-   MimeBodyPart htmlPart = new MimeBodyPart();
-   htmlPart.setContent(htmlBody, "text/html; charset=utf-8");
-
-   multiPart.addBodyPart(textPart);
-   multiPart.addBodyPart(htmlPart);
+   if( htmlBody != null )
+   {
+    MimeBodyPart htmlPart = new MimeBodyPart();
+    htmlPart.setContent(htmlBody, "text/html; charset=utf-8");
+    multiPart.addBodyPart(htmlPart);
+   }
+   
    message.setContent(multiPart);
 
    if(fromAddr != null)
