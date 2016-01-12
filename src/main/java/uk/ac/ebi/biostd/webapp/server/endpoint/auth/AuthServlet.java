@@ -19,6 +19,7 @@ import net.tanesha.recaptcha.ReCaptchaFactory;
 import net.tanesha.recaptcha.ReCaptchaResponse;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -46,8 +47,8 @@ public class AuthServlet extends HttpServlet
  public static final String ActionParameter="action"; 	
  public static final String SessionIdParameter="sessid";   
  public static final String UserLoginParameter="login";   
+ public static final String UserEmailParameter="email";   
  public static final String PasswordParameter="password";   
- public static final String EmailParameter="email";   
  public static final String UsernameParameter="username";   
  public static final String FormatParameter="format";   
  public static final String ReCaptchaChallengeParameter="recaptcha_challenge";   
@@ -129,7 +130,15 @@ public class AuthServlet extends HttpServlet
    
    if( sess != null )
    {
-    resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(UserLoginParameter,sess.getUser().getLogin()), new KV(UsernameParameter,sess.getUser().getFullName()) );
+    User u = sess.getUser();
+    
+    KV[] vars = null;
+    if( u.getLogin() != null )
+     vars = new KV[]{new KV(UserLoginParameter,u.getLogin()), new KV(UserEmailParameter,u.getEmail()), new KV(UsernameParameter,u.getFullName())};
+    else
+     vars = new KV[]{new KV(UserEmailParameter,u.getEmail()), new KV(UsernameParameter,u.getFullName())};
+    
+    resp.respond(HttpServletResponse.SC_OK, "OK", null, vars );
     return;
    }
    
@@ -149,10 +158,7 @@ public class AuthServlet extends HttpServlet
    }
 
    
-   User usr = BackendConfig.getServiceManager().getUserManager().getUserByName(prm);
-   
-   if( usr == null )
-    usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(prm);
+   User usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(prm);
    
    if( usr == null )
    {
@@ -217,45 +223,56 @@ public class AuthServlet extends HttpServlet
   }
   else if( act == Action.signup )
   {
+   User usr = null;
+
    String login = prms.getParameter(UserLoginParameter);
    
-   if( login == null )
+   if( login != null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserLoginParameter+"' parameter is not defined");
+    login = login.trim();
+    
+    if( login.length() == 0 )
+     login = null;
+    else
+    {
+     usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
+     
+     if( usr != null )
+     {
+      resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Login is taken by another user");
 
-    return;
-   }
-  
-   User usr = null;
-   
-   usr = BackendConfig.getServiceManager().getUserManager().getUserByName(login);
-   
-   if( usr != null )
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User exists");
+      return;
+     }
 
-    return;
+    }
    }
    
-   String email = prms.getParameter(EmailParameter);
-  
+   String email = prms.getParameter(UserEmailParameter);
+   
    if( email == null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+EmailParameter+"' parameter is not defined");
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserEmailParameter+"' parameter is not defined");
 
     return;
    }
+  
+   email = email.trim();
    
    usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
    
    if( usr != null )
    {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User with email address '"+email+"' exists");
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Email is taken by another user");
 
     return;
    }
+   
+   if( ! EmailValidator.getInstance(false).isValid(email) )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Email address in not valid");
 
-
+    return;
+   }
 
    String pass = prms.getParameter(PasswordParameter);
    
@@ -323,7 +340,7 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-    BackendConfig.getServiceManager().getUserManager().addUser(u);
+    BackendConfig.getServiceManager().getUserManager().addUser(u, true);
    }
    catch( Throwable t )
    {

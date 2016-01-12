@@ -327,7 +327,7 @@ public class WebdavServlet extends DefaultServlet
 
   UserManager uMngr = BackendConfig.getServiceManager().getUserManager();
   
-  User usr = uMngr.getUserByName( uName );
+  User usr = uMngr.getUserByLogin( uName );
 
   if( usr == null || !usr.checkPassword(uPass) )
   {

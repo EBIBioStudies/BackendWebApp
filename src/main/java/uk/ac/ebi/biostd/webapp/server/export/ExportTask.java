@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.util.StringUtils;
-import uk.ac.ebi.biostd.webapp.server.email.Email;
+import uk.ac.ebi.biostd.webapp.server.email.EmailService;
 
 public class ExportTask
 {
@@ -95,8 +95,8 @@ public class ExportTask
 
     Date endTime = new Date();
 
-    if( Email.getDefaultInstance() != null )
-     if( ! Email.getDefaultInstance().sendAnnouncement(
+    if( EmailService.getDefaultInstance() != null )
+     if( ! EmailService.getDefaultInstance().sendAnnouncement(
        "X-S task '"+name+"' success "+StringUtils.millisToString(endTime.getTime()-startTime.getTime())+(stat.getRecoverAttempt()>0?" I/O errors recovered: "+stat.getRecoverAttempt():""),
        "Task '"+name+"' has finished successfully\n\n"+stat.createReport(startTime, endTime, threads)) )
       log.error("Can't send an info announcement by email");
@@ -106,8 +106,8 @@ public class ExportTask
    {
     log.error("Task '"+name+"': XML generation terminated with error: "+t.getMessage());
 
-    if( Email.getDefaultInstance() != null )
-     if( ! Email.getDefaultInstance().sendErrorAnnouncement("X-S task '"+name+"' error","Task '"+name+"': XML generation terminated with error",t) )
+    if( EmailService.getDefaultInstance() != null )
+     if( ! EmailService.getDefaultInstance().sendErrorAnnouncement("X-S task '"+name+"' error","Task '"+name+"': XML generation terminated with error",t) )
       log.error("Can't send an error announcement by email");
    }
 

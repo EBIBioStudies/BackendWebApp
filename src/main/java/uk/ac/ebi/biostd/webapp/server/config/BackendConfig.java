@@ -36,6 +36,9 @@ public class BackendConfig
  public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
  public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
+ public static final String userNamePlaceHolder = "{USERNAME}";
+ public static final String actvKeyPlaceHolder = "{ACTVKEY}";
+ 
  public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
  public static final String googleSecretParam = "secret";
  public static final String googleResponseParam = "response";
@@ -74,6 +77,9 @@ public class BackendConfig
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
  public static final String             FTPRootPathParameter                = "FTPRootPath";
  public static final String             DropBoxPathParameter                = "dropboxPath";
+ public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
+ public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";
+ public static final String             ActivationEmailHtmlParameter        = "activationEmailHtmlFile";
  
  public static final String             DefaultSubmissionAccPrefixParameter = "defaultSubmissionAccNoPrefix";
  public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
@@ -112,6 +118,10 @@ public class BackendConfig
 
  private static String updateListenerURLPfx;
  private static String updateListenerURLSfx;
+ 
+ private static String activationEmailSubject;
+ private static Path activationEmailPlainTextFile;
+ private static Path activationEmailHtmlFile;
  
  private static String defaultSubmissionAccPrefix = null;
  private static String defaultSubmissionAccSuffix = null;
@@ -309,6 +319,28 @@ public class BackendConfig
   if( CreateFileStructureParameter.equals(param) )
   {
    createFileStructure = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+  }
+
+  if( ActivationEmailSubjectParameter.equals(param) )
+  {
+   activationEmailSubject=val;
+   
+   return true;
+  }
+
+  
+  if( ActivationEmailPlainTextParameter.equals(param) )
+  {
+   activationEmailPlainTextFile=createPath(ActivationEmailPlainTextParameter,val);
+   
+   return true;
+  }
+
+  if( ActivationEmailHtmlParameter.equals(param) )
+  {
+   activationEmailHtmlFile=createPath(ActivationEmailHtmlParameter,val);
+   
+   return true;
   }
 
   
@@ -529,6 +561,21 @@ public class BackendConfig
  {
   return databaseConfig;
   
+ }
+ 
+ public static String getActivationEmailSubject()
+ {
+  return activationEmailSubject;
+ }
+
+ public static Path getActivationEmailPlainTextFile()
+ {
+  return activationEmailPlainTextFile;
+ }
+
+ public static Path getActivationEmailHtmlFile()
+ {
+  return activationEmailHtmlFile;
  }
 
 }

@@ -2,26 +2,30 @@ package uk.ac.ebi.biostd.webapp.server.email;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Date;
 import java.util.Properties;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import javax.mail.Multipart;
 import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
 
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 
-public class Email
+public class EmailService
 {
  public static final String SMTPHostParam="SMTPHost";
  public static final String recipientParam="to";
  public static final String errorRecipientParam="errorsTo";
  public static final String fromParam="from";
  
- private static Email defaultInstance;
+ private static EmailService defaultInstance;
 
  
  private InternetAddress toAddr; 
@@ -30,7 +34,7 @@ public class Email
  
  private final Properties properties;
  
- public Email( ParamPool prms, String pfx ) throws EmailInitException
+ public EmailService( ParamPool prms, String pfx ) throws EmailInitException
  {
   String str = prms.getParameter(pfx+SMTPHostParam);
   
@@ -90,14 +94,14 @@ public class Email
  
  }
  
- public static Email getDefaultInstance()
+ public static EmailService getDefaultInstance()
  {
   return defaultInstance;
  }
 
- public static void setDefaultInstance(Email defaultInstance)
+ public static void setDefaultInstance(EmailService defaultInstance)
  {
-  Email.defaultInstance = defaultInstance;
+  EmailService.defaultInstance = defaultInstance;
  }
  
  public boolean sendErrorAnnouncement(String subj, String msg, Throwable t)
@@ -190,5 +194,53 @@ public class Email
   return true;
  }
 
+ public boolean sendMultipartEmail(String toAddr, String subj, String textBody, String htmlBody )
+ {
+  Session session = Session.getDefaultInstance(properties);
+
+  Message message = new MimeMessage(session);
+  Multipart multiPart = new MimeMultipart("alternative");
+
+  try
+  {
+
+   MimeBodyPart textPart = new MimeBodyPart();
+   textPart.setText(textBody, "utf-8");
+
+   MimeBodyPart htmlPart = new MimeBodyPart();
+   htmlPart.setContent(htmlBody, "text/html; charset=utf-8");
+
+   multiPart.addBodyPart(textPart);
+   multiPart.addBodyPart(htmlPart);
+   message.setContent(multiPart);
+
+   if(fromAddr != null)
+   {
+    message.setFrom(fromAddr);
+   }
+   else
+    message.setFrom();
+
+   InternetAddress[] toAddresses = { new InternetAddress(toAddr) };
+   message.setRecipients(Message.RecipientType.TO, toAddresses);
+   message.setSubject(subj);
+   message.setSentDate(new Date());
+
+   Transport.send(message);
+
+  }
+  catch(AddressException e)
+  {
+   e.printStackTrace();
+   return false;
+  }
+  catch(MessagingException e)
+  {
+   e.printStackTrace();
+   return false;
+  }
+
+  return true;
+ }
 
 }

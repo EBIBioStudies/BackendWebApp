@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -9,6 +10,7 @@ import javax.persistence.Query;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
+import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
@@ -23,7 +25,7 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
  @Override
- public User getUserByName(String uName)
+ public User getUserByLogin(String uName)
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
@@ -50,6 +52,7 @@ public class JPAUserManager implements UserManager, SessionListener
 
  }
 
+
  @Override
  public User getUserByEmail(String prm)
  {
@@ -68,15 +71,41 @@ public class JPAUserManager implements UserManager, SessionListener
   return null;
 
  }
-
+ 
  @Override
- public synchronized void addUser(User u) throws ServiceException
+ public synchronized void addUser(User u, boolean validateEmail) throws ServiceException
  {
   
   u.setSecret( UUID.randomUUID().toString() );
 
+  if( validateEmail )
+  {
+   u.setActive(false);
+   u.setActivationKey(UUID.randomUUID().toString());
+   
+   if( ! sendActivationRequest(u) )
+    throw new ServiceException("Email confirmation request can't be sent. Please try later");
+  }
+  else
+   u.setActive(true);
+  
   BackendConfig.getServiceManager().getSecurityManager().addUser(u);
   
+ }
+
+ private boolean sendActivationRequest(User u)
+ {
+  Path txtFile = BackendConfig.getActivationEmailPlainTextFile();
+
+  String textBody = null;
+  
+  Path htmlFile = BackendConfig.getActivationEmailHtmlFile();
+  
+  String htmlBody = null;
+  
+  FileUtil.readFile(f, chst);
+  
+  return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getLogin(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
  }
 
  @Override
