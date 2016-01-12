@@ -336,7 +336,29 @@ public class AuthServlet extends HttpServlet
 //   resp.respond(HttpServletResponse.SC_OK, "OK");
    
   }
+  else if( act == Action.activate )
+  {
+   request.getQueryString();
    
+   String actKey = request.getQueryString();
+   
+   if( actKey == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    
+    return;
+   }
+
+   if( ! BackendConfig.getServiceManager().getUserManager().activateUser( actKey ) )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User activation failed");
+    
+    return;
+   }
+   
+   resp.respond(HttpServletResponse.SC_OK, "OK", "User successfully activated. You can log in now");
+   
+  } 
  }
  
  /**

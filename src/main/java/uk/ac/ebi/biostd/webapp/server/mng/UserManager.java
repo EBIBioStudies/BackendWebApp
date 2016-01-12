@@ -16,4 +16,6 @@ public interface UserManager
 
  void storeUserData(UserData ud);
 
+ boolean activateUser(String actKey);
+
 }

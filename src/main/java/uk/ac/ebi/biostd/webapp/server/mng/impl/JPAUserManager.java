@@ -121,4 +121,11 @@ public class JPAUserManager implements UserManager, SessionListener
   trn.commit();
  }
 
+ @Override
+ public boolean activateUser(String actKey)
+ {
+  // TODO Auto-generated method stub
+  return false;
+ }
+
 }
