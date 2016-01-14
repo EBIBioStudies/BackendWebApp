@@ -32,6 +32,8 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.JSONReqParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
@@ -353,7 +355,34 @@ public class AuthServlet extends HttpServlet
 //   resp.respond(HttpServletResponse.SC_OK, "OK");
    
   }
+  else if( act == Action.activate )
+  {
+   String actKey = request.getQueryString();
    
+   if( actKey == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    return;
+   }
+
+   ActivationInfo ainf = AccountActivation.decodeActivationKey(actKey);
+   
+   if( ainf == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    return;
+   }
+   
+   if( ! BackendConfig.getServiceManager().getUserManager().activateUser( ainf ) )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User activation failed");
+    
+    return;
+   }
+   
+   resp.respond(HttpServletResponse.SC_OK, "OK", "User successfully activated. You can log in now");
+   
+  } 
  }
  
  /**

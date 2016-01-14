@@ -5,5 +5,6 @@ public enum Action
  signin,
  signup,
  signout,
- check
+ check,
+ activate
 }

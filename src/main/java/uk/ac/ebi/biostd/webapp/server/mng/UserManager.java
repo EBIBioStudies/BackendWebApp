@@ -2,6 +2,7 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 
 public interface UserManager
 {
@@ -14,6 +15,8 @@ public interface UserManager
  UserData getUserData(User user, String key);
 
  void storeUserData(UserData ud);
+ 
+ boolean activateUser(ActivationInfo ainf);
 
 
 }

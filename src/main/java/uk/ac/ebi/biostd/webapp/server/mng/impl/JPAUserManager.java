@@ -1,6 +1,5 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +14,8 @@ import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
 import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
@@ -22,6 +23,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 public class JPAUserManager implements UserManager, SessionListener
 {
+
  
  public JPAUserManager()
  {
@@ -81,12 +83,14 @@ public class JPAUserManager implements UserManager, SessionListener
   
   u.setSecret( UUID.randomUUID().toString() );
 
+  UUID actKey = UUID.randomUUID();
+  
   if( validateEmail )
   {
    u.setActive(false);
-   u.setActivationKey(UUID.randomUUID().toString());
+   u.setActivationKey(actKey.toString());
    
-   if( ! sendActivationRequest(u) )
+   if( ! sendActivationRequest(u,actKey) )
     throw new ServiceException("Email confirmation request can't be sent. Please try later");
   }
   else
@@ -96,7 +100,7 @@ public class JPAUserManager implements UserManager, SessionListener
   
  }
 
- private boolean sendActivationRequest(User u)
+ private boolean sendActivationRequest(User u, UUID key)
  {
   Path txtFile = BackendConfig.getActivationEmailPlainTextFile();
 
@@ -106,23 +110,38 @@ public class JPAUserManager implements UserManager, SessionListener
   
   String htmlBody = null;
   
-   try
+  String actKey = AccountActivation.createActivationKey(u.getEmail(), key);
+  
+  try
+  {
+   if( txtFile != null )
    {
-    if( BackendConfig.getActivationEmailPlainTextFile() != null )
-     textBody = FileUtil.readFile(BackendConfig.getActivationEmailPlainTextFile().toFile(), Charsets.UTF_8);
+    textBody = FileUtil.readFile(txtFile.toFile(), Charsets.UTF_8);
+    
+    textBody = textBody.replaceAll(BackendConfig.actvKeyPlaceHolder, actKey);
+    textBody = textBody.replaceAll(BackendConfig.userNamePlaceHolder, u.getFullName());
+   }
+   
+   if( htmlFile != null )
+   {
+    htmlBody = FileUtil.readFile(htmlFile.toFile(), Charsets.UTF_8);
 
-    if( BackendConfig.getActivationEmailHtmlFile()!= null )
-     htmlBody = FileUtil.readFile(BackendConfig.getActivationEmailHtmlFile().toFile(), Charsets.UTF_8);
+    htmlBody = htmlBody.replaceAll(BackendConfig.actvKeyPlaceHolder, actKey);
+    htmlBody = htmlBody.replaceAll(BackendConfig.userNamePlaceHolder, u.getFullName());
    }
-   catch(IOException e)
-   {
-    e.printStackTrace();
-    return false;
-   }
+  }
+  catch(Exception e)
+  {
+   e.printStackTrace();
+   
+   return false;
+  }
   
   return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getLogin(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
  }
 
+
+ 
  @Override
  public void sessionOpened(User u)
  {
@@ -163,6 +182,51 @@ public class JPAUserManager implements UserManager, SessionListener
   em.merge( ud );
   
   trn.commit();
+ }
+
+ @Override
+ public boolean activateUser(ActivationInfo ainf)
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+  EntityTransaction trn = em.getTransaction();
+
+  try
+  {
+
+   Query q = em.createNamedQuery("User.getByEMail");
+
+   q.setParameter("email", ainf.email);
+
+   @SuppressWarnings("unchecked")
+   List<User> res = q.getResultList();
+
+   User u = null;
+
+   if(res.size() != 0)
+    u = res.get(0);
+
+   if(u == null)
+    return false;
+
+   if(u.isActive() || !ainf.key.equals(u.getActivationKey()))
+    return false;
+
+   u.setActive(true);
+   u.setActivationKey(null);
+
+  }
+  catch(Exception e)
+  {
+   trn.rollback();
+  }
+  finally
+  {
+   if(trn.isActive() && !trn.getRollbackOnly())
+    trn.commit();
+  }
+
+  return true;
  }
 
 }
