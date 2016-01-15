@@ -118,16 +118,16 @@ public class JPAUserManager implements UserManager, SessionListener
    {
     textBody = FileUtil.readFile(txtFile.toFile(), Charsets.UTF_8);
     
-    textBody = textBody.replaceAll(BackendConfig.actvKeyPlaceHolder, actKey);
-    textBody = textBody.replaceAll(BackendConfig.userNamePlaceHolder, u.getFullName());
+    textBody = textBody.replaceAll(BackendConfig.ActivateKeyPlaceHolderRx, actKey);
+    textBody = textBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
    }
    
    if( htmlFile != null )
    {
     htmlBody = FileUtil.readFile(htmlFile.toFile(), Charsets.UTF_8);
 
-    htmlBody = htmlBody.replaceAll(BackendConfig.actvKeyPlaceHolder, actKey);
-    htmlBody = htmlBody.replaceAll(BackendConfig.userNamePlaceHolder, u.getFullName());
+    htmlBody = htmlBody.replaceAll(BackendConfig.ActivateKeyPlaceHolderRx, actKey);
+    htmlBody = htmlBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
    }
   }
   catch(Exception e)
@@ -137,7 +137,7 @@ public class JPAUserManager implements UserManager, SessionListener
    return false;
   }
   
-  return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getLogin(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
+  return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
  }
 
 
@@ -193,7 +193,8 @@ public class JPAUserManager implements UserManager, SessionListener
 
   try
   {
-
+   trn.begin();
+   
    Query q = em.createNamedQuery("User.getByEMail");
 
    q.setParameter("email", ainf.email);

@@ -123,7 +123,6 @@ public class WebAppInit implements ServletContextListener
   Matcher outMtch = Pattern.compile("^"+OutputParamPrefix+"(?:\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
 
   boolean confOk = true;
-  boolean emailTried = false;
   
   Enumeration<String> pNames = config.getNames();
 
@@ -199,19 +198,9 @@ public class WebAppInit implements ServletContextListener
     }
 
    }
-   else if(key.startsWith(EmailParamPrefix) && ! emailTried )
+   else if(key.startsWith(EmailParamPrefix))
    {
-    emailTried = true;
-    
-    try
-    {
-     BackendConfig.getServiceManager().setEmailService( new EmailService(config, EmailParamPrefix) );
-    }
-    catch(EmailInitException e)
-    {
-     log.error("Can't initialize email service: "+e.getMessage());
-     confOk=false;
-    }
+
    }
    else
     log.warn("Invalid parameter {} will be ignored.", key);
@@ -480,11 +469,11 @@ public class WebAppInit implements ServletContextListener
   if( ! checkDirectory(dir) )
    throw new RuntimeException("Directory access error: "+dir);
 
-  if( BackendConfig.getServiceManager().getEmailService() == null )
-  {
-   log.error("Email service is not configured");
-   throw new RuntimeException("Invalid configuration");
-  }
+//  if( BackendConfig.getServiceManager().getEmailService() == null )
+//  {
+//   log.error("Email service is not configured");
+//   throw new RuntimeException("Invalid configuration");
+//  }
   
   if( BackendConfig.getActivationEmailSubject() == null )
   {
@@ -548,6 +537,17 @@ public class WebAppInit implements ServletContextListener
   BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig));
 
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
+  
+  
+  try
+  {
+   BackendConfig.getServiceManager().setEmailService( new EmailService(config, EmailParamPrefix) );
+  }
+  catch(EmailInitException e)
+  {
+   log.error("Can't initialize email service: "+e.getMessage());
+  }
+
   
   timer = new Timer("Timer", true);
   

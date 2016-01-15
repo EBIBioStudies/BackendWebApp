@@ -36,8 +36,8 @@ public class BackendConfig
  public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
  public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
- public static final String userNamePlaceHolder = "{USERNAME}";
- public static final String actvKeyPlaceHolder = "{ACTVKEY}";
+ public static final String UserNamePlaceHolderRx = "\\{USERNAME\\}";
+ public static final String ActivateKeyPlaceHolderRx= "\\{ACTVKEY\\}";
  
  public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
  public static final String googleSecretParam = "secret";

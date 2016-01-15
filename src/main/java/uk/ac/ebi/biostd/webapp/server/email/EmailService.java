@@ -61,16 +61,16 @@ public class EmailService
   
   str = prms.getParameter(pfx+recipientParam);
 
-//  if( str == null )
-//   throw new EmailInitException("Parameter "+pfx+recipientParam+" is not defined");
-  
-  try
+  if( str != null )
   {
-   toAddr = new InternetAddress( str );
-  }
-  catch(AddressException e)
-  {
-   throw new EmailInitException("Invalid 'To' address: "+str);
+   try
+   {
+    toAddr = new InternetAddress( str );
+   }
+   catch(AddressException e)
+   {
+    throw new EmailInitException("Invalid 'To' address: "+str);
+   }
   }
 
   str = prms.getParameter(pfx+errorRecipientParam);
@@ -81,7 +81,7 @@ public class EmailService
   {
    try
    {
-    toAddr = new InternetAddress( str );
+    errorsToAddr = new InternetAddress( str );
    }
    catch(AddressException e)
    {

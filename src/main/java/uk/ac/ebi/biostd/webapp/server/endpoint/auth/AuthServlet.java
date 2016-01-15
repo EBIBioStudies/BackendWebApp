@@ -163,12 +163,22 @@ public class AuthServlet extends HttpServlet
    User usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(prm);
    
    if( usr == null )
+    usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(prm);
+   
+   if( usr == null )
    {
     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL login failed");
 
     return;
    }
 
+   if( ! usr.isActive() )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL account has not been activated");
+
+    return;
+   }
+   
    prm = prms.getParameter(PasswordParameter);
    
    if( prm == null )
@@ -237,6 +247,14 @@ public class AuthServlet extends HttpServlet
      login = null;
     else
     {
+     if( login.indexOf('@') >= 0 )
+     {
+      resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Character @ in allowed in login");
+
+      return;
+     }
+      
+     
      usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
      
      if( usr != null )
@@ -357,7 +375,9 @@ public class AuthServlet extends HttpServlet
   }
   else if( act == Action.activate )
   {
-   String actKey = request.getQueryString();
+   String actKey = request.getPathInfo();
+   
+   actKey = actKey.substring(actKey.lastIndexOf('/')+1);
    
    if( actKey == null )
    {
@@ -397,11 +417,19 @@ public class AuthServlet extends HttpServlet
 
   String pi = request.getPathInfo();
 
+  
   if( pi != null && pi.length() > 1 )
   {
+   int lastSlsh = pi.lastIndexOf('/');
+   
+   if( lastSlsh <= 0 )
+    lastSlsh=pi.length();
+   
+   String actstr = pi.substring(1,lastSlsh);
+
    try
    {
-    act = Action.valueOf(pi.substring(1));
+    act = Action.valueOf(actstr);
    }
    catch( Throwable e )
    {
