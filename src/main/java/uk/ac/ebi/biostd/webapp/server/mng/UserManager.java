@@ -10,7 +10,7 @@ public interface UserManager
  User getUserByLogin(String uName);
  User getUserByEmail(String email);
 
- void addUser(User u, boolean validateEmail) throws ServiceException;
+ void addUser(User u, boolean validateEmail, String actvURL) throws ServiceException;
 
  UserData getUserData(User user, String key);
 

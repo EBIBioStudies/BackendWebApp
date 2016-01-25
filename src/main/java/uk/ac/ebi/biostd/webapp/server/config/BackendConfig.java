@@ -36,8 +36,9 @@ public class BackendConfig
  public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
  public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
- public static final String UserNamePlaceHolderRx = "\\{USERNAME\\}";
- public static final String ActivateKeyPlaceHolderRx= "\\{ACTVKEY\\}";
+ public static final String UserNamePlaceHolderRx = "\\{ACTIVATION:USERNAME\\}";
+ public static final String ActivateKeyPlaceHolderRx= "\\{ACTIVATION:KEY\\}";
+ public static final String ActivateURLPlaceHolderRx= "\\{ACTIVATION:URL\\}";
  
  public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
  public static final String googleSecretParam = "secret";
@@ -64,6 +65,7 @@ public class BackendConfig
  
  public static final String             WorkdirParameter                    = "workDir";
 
+ public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
  public static final String             UserGroupDirParameter               = "userGroupDir";
  public static final String             SubmissionDirParameter              = "submissionDir";
  public static final String             SubmissionTransactionDirParameter   = "submissionTransactionDir";
@@ -130,6 +132,8 @@ public class BackendConfig
  private static int maxUpdatesPerFile = 50;
  
  private static boolean fileLinkAllowed=true;
+
+ private static boolean enableUnsafeRequests=true;
 
  private static Map<String, Object> databaseConfig;
  
@@ -315,6 +319,13 @@ public class BackendConfig
    fileLinkAllowed = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
    return true;
   }
+  
+  if( EnableUnsafeRequestsParameter.equals(param) )
+  {
+   enableUnsafeRequests = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   return true;
+  }
+
 
   if( CreateFileStructureParameter.equals(param) )
   {
@@ -576,6 +587,11 @@ public class BackendConfig
  public static Path getActivationEmailHtmlFile()
  {
   return activationEmailHtmlFile;
+ }
+
+ public static boolean isEnableUnsafeRequests()
+ {
+  return enableUnsafeRequests;
  }
 
 }

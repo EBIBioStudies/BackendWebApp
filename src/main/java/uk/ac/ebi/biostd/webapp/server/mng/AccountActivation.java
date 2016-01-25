@@ -1,8 +1,13 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
+import java.nio.file.Path;
 import java.util.UUID;
 
 import org.apache.commons.io.Charsets;
+
+import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.util.FileUtil;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public class AccountActivation
 {
@@ -80,6 +85,61 @@ public class AccountActivation
   res.email = new String(bytes,Charsets.UTF_8); 
   
   return res;
+ }
+ 
+ public static boolean sendActivationRequest(User u, UUID key, String url)
+ {
+  Path txtFile = BackendConfig.getActivationEmailPlainTextFile();
+
+  String textBody = null;
+  
+  Path htmlFile = BackendConfig.getActivationEmailHtmlFile();
+  
+  String htmlBody = null;
+  
+  String actKey = AccountActivation.createActivationKey(u.getEmail(), key);
+  
+  try
+  {
+   if( txtFile != null )
+   {
+    textBody = FileUtil.readFile(txtFile.toFile(), Charsets.UTF_8);
+    
+    if( url != null )
+     textBody = textBody.replaceAll(BackendConfig.ActivateURLPlaceHolderRx, url);
+    
+    textBody = textBody.replaceAll(BackendConfig.ActivateKeyPlaceHolderRx, actKey);
+    
+    if(u.getFullName() != null )
+     textBody = textBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
+    else
+     textBody = textBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, "");
+   }
+   
+   if( htmlFile != null )
+   {
+    htmlBody = FileUtil.readFile(htmlFile.toFile(), Charsets.UTF_8);
+
+    if( url != null )
+     htmlBody = htmlBody.replaceAll(BackendConfig.ActivateURLPlaceHolderRx, url);
+    
+    htmlBody = htmlBody.replaceAll(BackendConfig.ActivateKeyPlaceHolderRx, actKey);
+
+    if(u.getFullName() != null )
+     htmlBody = htmlBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
+    else
+     htmlBody = htmlBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, "");
+
+   }
+  }
+  catch(Exception e)
+  {
+   e.printStackTrace();
+   
+   return false;
+  }
+  
+  return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
  }
  
  

@@ -1,11 +1,13 @@
 package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -55,7 +57,10 @@ public class AuthServlet extends HttpServlet
  public static final String FormatParameter="format";   
  public static final String ReCaptchaChallengeParameter="recaptcha_challenge";   
  public static final String ReCaptchaResponseParameter="recaptcha_response";   
- public static final String ReCaptcha2ResponseParameter=BackendConfig.googleClientResponseParameter;   
+ public static final String ReCaptcha2ResponseParameter=BackendConfig.googleClientResponseParameter;
+ public static final String ActivationURLParameter = "activationURL";   
+ public static final String ActivationSuccessURLParameter = "activationSuccessURL";   
+ public static final String ActivationFailURLParameter = "activationFailURL";   
 	
  /**
   * @see HttpServlet#HttpServlet()
@@ -92,7 +97,7 @@ public class AuthServlet extends HttpServlet
  }
  
  
- private void process( Action act, ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void process( Action act, ParameterPool prms, HttpServletRequest request, HttpServletResponse response, Response resp) throws IOException
  {
   String prm = prms.getParameter(ActionParameter);
   
@@ -278,30 +283,6 @@ public class AuthServlet extends HttpServlet
   
    email = email.trim();
    
-   usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
-   
-   if( usr != null )
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Email is taken by another user");
-
-    return;
-   }
-   
-   if( ! EmailValidator.getInstance(false).isValid(email) )
-   {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Email address in not valid");
-
-    return;
-   }
-
-   String pass = prms.getParameter(PasswordParameter);
-   
-   if( pass == null )
-   {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' parameter is not defined");
-
-    return;
-   }
    
    String cptResp = prms.getParameter(ReCaptcha2ResponseParameter);
    
@@ -350,6 +331,38 @@ public class AuthServlet extends HttpServlet
     }
    }
    
+   if( ! EmailValidator.getInstance(false).isValid(email) )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Email address in not valid");
+
+    return;
+   }
+   
+   usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
+   
+   if( usr != null )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Email is taken by another user");
+
+    return;
+   }
+   
+   String pass = prms.getParameter(PasswordParameter);
+   
+   if( pass == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' parameter is not defined");
+
+    return;
+   }
+   
+
+   
+   String actvURL = null;
+   
+   if( BackendConfig.isEnableUnsafeRequests() )
+    actvURL =  prms.getParameter(ActivationURLParameter);
+   
    
    User u = new User();
    
@@ -360,7 +373,7 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-    BackendConfig.getServiceManager().getUserManager().addUser(u, true);
+    BackendConfig.getServiceManager().getUserManager().addUser(u, true, actvURL);
    }
    catch( Throwable t )
    {
@@ -377,11 +390,24 @@ public class AuthServlet extends HttpServlet
   {
    String actKey = request.getPathInfo();
    
+   String succURL = null;
+   String failURL = null;
+
+   if( BackendConfig.isEnableUnsafeRequests() )
+   {
+    succURL = request.getParameter(ActivationSuccessURLParameter);
+    failURL = request.getParameter(ActivationFailURLParameter);
+   }
+   
    actKey = actKey.substring(actKey.lastIndexOf('/')+1);
    
    if( actKey == null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    if( failURL == null )
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    else
+     activationRespond(response, failURL, "Invalid request");
+    
     return;
    }
 
@@ -389,22 +415,140 @@ public class AuthServlet extends HttpServlet
    
    if( ainf == null )
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    if( failURL == null )
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    else
+     activationRespond(response, failURL, "Invalid request");
+
     return;
    }
    
    if( ! BackendConfig.getServiceManager().getUserManager().activateUser( ainf ) )
    {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User activation failed");
+    if( failURL == null )
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
+    else
+     activationRespond(response, failURL, "Invalid request");
     
     return;
    }
    
-   resp.respond(HttpServletResponse.SC_OK, "OK", "User successfully activated. You can log in now");
+   if( succURL == null )
+    resp.respond(HttpServletResponse.SC_OK, "OK", "User successfully activated. You can log in now");
+   else
+    activationRespond(response, succURL, null);
+  }
+  else if( act == Action.retryact )
+  {
+   String email = prms.getParameter(UserEmailParameter);
    
-  } 
+   if( email == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserEmailParameter+"' parameter is not defined");
+
+    return;
+   }
+  
+   email = email.trim();
+   
+   
+   String cptResp = prms.getParameter(ReCaptcha2ResponseParameter);
+   
+   if( cptResp != null )
+   {
+    
+    if ( !checkRecaptcha2(cptResp, request.getRemoteAddr()) ) 
+    {
+     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
+
+     return;
+    }
+    
+   }
+   else
+   {
+    cptResp = prms.getParameter(ReCaptchaResponseParameter);
+    
+    if( cptResp == null )
+    {
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaResponseParameter+"' parameter is not defined");
+     
+     return;
+    }
+    
+    String cptChal = prms.getParameter(ReCaptchaChallengeParameter);
+    
+    if( cptChal == null )
+    {
+     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaChallengeParameter+"' parameter is not defined");
+     
+     return;
+    }
+    
+    
+    
+    ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
+    
+    ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
+    
+    if ( !reCaptchaResponse.isValid() ) 
+    {
+     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
+     
+     return;
+    }
+   }
+
+   User usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
+   
+   if( usr == null )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account doesn't exist");
+
+    return;
+   }
+   
+   if( usr.isActive() || usr.getActivationKey() == null )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account is active");
+    
+    return;
+   }
+
+   String actvURL = null;
+   
+   if( BackendConfig.isEnableUnsafeRequests() )
+    actvURL =  prms.getParameter(ActivationURLParameter);
+
+   if( !  AccountActivation.sendActivationRequest(usr, UUID.fromString(usr.getActivationKey()) , actvURL) )
+   {
+    resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Can't send activation email");
+    
+    return;
+   }
+   else
+    resp.respond(HttpServletResponse.SC_OK, "OK", "Activation request email has been sent");
+
+  }
  }
  
+ private void activationRespond(HttpServletResponse resp, String url, String msg)
+ {
+  if( url != null )
+  {
+   try
+   {
+    url+="?msg="+URLEncoder.encode(msg,"UTF-8");
+   }
+   catch(UnsupportedEncodingException e)
+   {
+   }
+  }
+  
+  resp.setHeader("Location", url);
+  resp.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
+ }
+
  /**
   * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
   *      response)
@@ -439,8 +583,20 @@ public class AuthServlet extends HttpServlet
    }
   }
 
+  boolean jsonReq = false;
+  
+  String cType = request.getContentType();
+  
+  if( cType != null )
+  {
+   int pos = cType.indexOf(';');
+   
+   if( pos > 0 )
+    cType = cType.substring(0,pos).trim();
 
-  boolean jsonReq = request.getContentType()!=null && request.getContentType().startsWith("application/json");
+   jsonReq = cType.equalsIgnoreCase("application/json");
+  }
+
   
   Response resp = null;
   
@@ -473,9 +629,12 @@ public class AuthServlet extends HttpServlet
     {}
    }
    
-   String json = StringUtils.readFully(request.getInputStream(), cs);
+   String reqBody = null;
    
-   if( json.length() == 0 )
+  
+   reqBody = StringUtils.readFully(request.getInputStream(), cs);
+  
+   if( reqBody == null || reqBody.length() == 0 )
    {
     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
     response.getWriter().print("FAIL Empty JSON request body");
@@ -484,7 +643,7 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-    params = new JSONReqParameterPool(json, request.getRemoteAddr());
+    params = new JSONReqParameterPool(reqBody, request.getRemoteAddr());
    }
    catch( Exception e )
    {
@@ -496,7 +655,7 @@ public class AuthServlet extends HttpServlet
   else
    params = new HttpReqParameterPool(request);
   
-  process(act, params, request, resp);  
+  process(act, params, request, response, resp);  
 
  }
  

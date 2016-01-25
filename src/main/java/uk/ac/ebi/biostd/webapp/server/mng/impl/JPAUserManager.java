@@ -1,6 +1,5 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -8,11 +7,8 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
-import org.apache.commons.io.Charsets;
-
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
-import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
@@ -78,7 +74,7 @@ public class JPAUserManager implements UserManager, SessionListener
  }
  
  @Override
- public synchronized void addUser(User u, boolean validateEmail) throws ServiceException
+ public synchronized void addUser(User u, boolean validateEmail, String validateURL) throws ServiceException
  {
   
   u.setSecret( UUID.randomUUID().toString() );
@@ -90,7 +86,7 @@ public class JPAUserManager implements UserManager, SessionListener
    u.setActive(false);
    u.setActivationKey(actKey.toString());
    
-   if( ! sendActivationRequest(u,actKey) )
+   if( !AccountActivation.sendActivationRequest(u,actKey,validateURL) )
     throw new ServiceException("Email confirmation request can't be sent. Please try later");
   }
   else
@@ -99,47 +95,6 @@ public class JPAUserManager implements UserManager, SessionListener
   BackendConfig.getServiceManager().getSecurityManager().addUser(u);
   
  }
-
- private boolean sendActivationRequest(User u, UUID key)
- {
-  Path txtFile = BackendConfig.getActivationEmailPlainTextFile();
-
-  String textBody = null;
-  
-  Path htmlFile = BackendConfig.getActivationEmailHtmlFile();
-  
-  String htmlBody = null;
-  
-  String actKey = AccountActivation.createActivationKey(u.getEmail(), key);
-  
-  try
-  {
-   if( txtFile != null )
-   {
-    textBody = FileUtil.readFile(txtFile.toFile(), Charsets.UTF_8);
-    
-    textBody = textBody.replaceAll(BackendConfig.ActivateKeyPlaceHolderRx, actKey);
-    textBody = textBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-   }
-   
-   if( htmlFile != null )
-   {
-    htmlBody = FileUtil.readFile(htmlFile.toFile(), Charsets.UTF_8);
-
-    htmlBody = htmlBody.replaceAll(BackendConfig.ActivateKeyPlaceHolderRx, actKey);
-    htmlBody = htmlBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-   }
-  }
-  catch(Exception e)
-  {
-   e.printStackTrace();
-   
-   return false;
-  }
-  
-  return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
- }
-
 
  
  @Override
