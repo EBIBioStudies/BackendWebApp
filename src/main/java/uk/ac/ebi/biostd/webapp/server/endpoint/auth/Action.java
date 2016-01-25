@@ -6,5 +6,6 @@ public enum Action
  signup,
  signout,
  check,
- activate
+ activate,
+ retryact
 }

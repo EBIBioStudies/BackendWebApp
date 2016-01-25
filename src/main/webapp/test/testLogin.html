@@ -17,54 +17,52 @@ String.prototype.escapeSpecialChars = function() {
                .replace(/\\f/g, "\\f");
 };
 
- function doLogin()
+
+ function getParameter(name) 
  {
+  if( name = (new RegExp('[?&]' + encodeURIComponent(name) + '=([^&]*)')).exec(location.search) )
+   return decodeURIComponent(name[1].replace(/\+/g,' '));
+ }
+
+ function doLogin() {
   var uname = document.getElementById("login").value;
   var pass = document.getElementById("password").value;
 
   var xmlhttp = new XMLHttpRequest();
 
-  xmlhttp.onreadystatechange = function()
-  {
-   if (xmlhttp.readyState == 4)
-   {
+  xmlhttp.onreadystatechange = function() {
+   if (xmlhttp.readyState == 4) {
     var ctype = xmlhttp.getResponseHeader("Content-type");
-    
-    if( ctype != null )
-    {
+
+    if (ctype != null) {
      var pos = ctype.indexOf(';');
-     
-     if( pos != -1 )
-      ctype = ctype.substring(0,pos);
-     
+
+     if (pos != -1)
+      ctype = ctype.substring(0, pos);
+
      ctype = ctype.trim();
     }
-    
+
     var jsonObj;
-    
-    if( ctype == "application/json")
+
+    if (ctype == "application/json")
      jsonObj = JSON.parse(xmlhttp.responseText);
-    
-    var msg="";
-    
-    if( xmlhttp.status == 200 )
-    {
-     msg +="Request succeeded Status: 200";
-     
-     if( jsonObj != null )
-      msg+="\nHello "+jsonObj.username+"\nSession key: "+jsonObj.sessid;
-     
+
+    var msg = "";
+
+    if (xmlhttp.status == 200) {
+     msg += "Request succeeded Status: 200";
+
+     if (jsonObj != null)
+      msg += "\nHello " + jsonObj.username + "\nSession key: " + jsonObj.sessid;
+
+    } else {
+     msg += "Request failed. Status: " + xmlhttp.status;
+
+     if (jsonObj != null)
+      msg += "\nError message: " + jsonObj.message;
     }
-    else
-    {
-     msg +="Request failed. Status: "+xmlhttp.status;
-     
-     if( jsonObj != null )
-      msg+="\nError message: "+jsonObj.message;
-    }
-    
-    
-    
+
     document.getElementById("report").innerHTML = msg;
    }
 
@@ -76,40 +74,55 @@ String.prototype.escapeSpecialChars = function() {
   xmlhttp.send("{ login: \"" + uname.escapeSpecialChars() + "\", password: \""
     + pass.escapeSpecialChars() + "\"}");
  }
- 
- function doCheck()
- {
+
+ function doCheck() {
   var xmlhttp = new XMLHttpRequest();
 
-  xmlhttp.onreadystatechange = function()
-  {
-   if (xmlhttp.readyState == 4)
-   {
-    if( xmlhttp.status == 200 )
+  xmlhttp.onreadystatechange = function() {
+   if (xmlhttp.readyState == 4) {
+    if (xmlhttp.status == 200)
      document.getElementById("report").innerHTML = "User logged in";
     else
      document.getElementById("report").innerHTML = "User NOT logged in";
 
    }
   }
-  
+
   xmlhttp.open("GET", "../auth/check?format=json", true);
   xmlhttp.send();
  }
+ 
+ function showMessage()
+ {
+  var msg = getParameter("msg");
+  
+  if( msg != null )
+   document.writeln(msg);
+ }
+ 
 </script>
 
 </head>
 <body>
 
-<form>
-Username : <input type="text" id="login" /><br/>
-Password : <input type="password" id="password" /><br/>
+<br/>
+<script type="text/javascript">
+showMessage();
+</script>
+<br/>
+<br/>
 
-</form>
-
-<button onClick="doLogin()">Login</button><br/>
-<button onClick="doCheck()">Check</button>
-
+<table>
+<tr>
+<td>Username : </td><td><input type="text" id="login" style="width: 200px"/></td>
+</tr>
+<tr>
+<td>Password : </td><td><input type="password" id="password" style="width: 200px"/></td>
+</tr>
+<tr>
+<td><button onClick="doLogin()">Login</button></td><td><button onClick="doCheck()">Check</button></td>
+</tr>
+</table>
 
 <pre id="report">
 </pre>

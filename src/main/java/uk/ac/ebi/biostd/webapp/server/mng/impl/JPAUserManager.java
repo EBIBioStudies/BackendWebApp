@@ -10,6 +10,8 @@ import javax.persistence.Query;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
@@ -17,13 +19,14 @@ import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 public class JPAUserManager implements UserManager, SessionListener
 {
+
  
  public JPAUserManager()
  {
  }
 
  @Override
- public User getUserByName(String uName)
+ public User getUserByLogin(String uName)
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
@@ -50,6 +53,7 @@ public class JPAUserManager implements UserManager, SessionListener
 
  }
 
+
  @Override
  public User getUserByEmail(String prm)
  {
@@ -68,17 +72,31 @@ public class JPAUserManager implements UserManager, SessionListener
   return null;
 
  }
-
+ 
  @Override
- public synchronized void addUser(User u) throws ServiceException
+ public synchronized void addUser(User u, boolean validateEmail, String validateURL) throws ServiceException
  {
   
   u.setSecret( UUID.randomUUID().toString() );
 
+  UUID actKey = UUID.randomUUID();
+  
+  if( validateEmail )
+  {
+   u.setActive(false);
+   u.setActivationKey(actKey.toString());
+   
+   if( !AccountActivation.sendActivationRequest(u,actKey,validateURL) )
+    throw new ServiceException("Email confirmation request can't be sent. Please try later");
+  }
+  else
+   u.setActive(true);
+  
   BackendConfig.getServiceManager().getSecurityManager().addUser(u);
   
  }
 
+ 
  @Override
  public void sessionOpened(User u)
  {
@@ -122,10 +140,49 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
  @Override
- public boolean activateUser(String actKey)
+ public boolean activateUser(ActivationInfo ainf)
  {
-  // TODO Auto-generated method stub
-  return false;
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+  EntityTransaction trn = em.getTransaction();
+
+  try
+  {
+   trn.begin();
+   
+   Query q = em.createNamedQuery("User.getByEMail");
+
+   q.setParameter("email", ainf.email);
+
+   @SuppressWarnings("unchecked")
+   List<User> res = q.getResultList();
+
+   User u = null;
+
+   if(res.size() != 0)
+    u = res.get(0);
+
+   if(u == null)
+    return false;
+
+   if(u.isActive() || !ainf.key.equals(u.getActivationKey()))
+    return false;
+
+   u.setActive(true);
+   u.setActivationKey(null);
+
+  }
+  catch(Exception e)
+  {
+   trn.rollback();
+  }
+  finally
+  {
+   if(trn.isActive() && !trn.getRollbackOnly())
+    trn.commit();
+  }
+
+  return true;
  }
 
 }

@@ -34,6 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.email.EmailInitException;
+import uk.ac.ebi.biostd.webapp.server.email.EmailService;
 import uk.ac.ebi.biostd.webapp.server.export.ExportTask;
 import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
@@ -61,6 +63,7 @@ public class WebAppInit implements ServletContextListener
  static final String DBParamPrefix = "db.";
  static final String ServiceParamPrefix = "biostd.";
  static final String TaskParamPrefix = "export.";
+ static final String EmailParamPrefix = "email.";
  static final String OutputParamPrefix = "output";
 
  static final String OutputClassParameter = "class";
@@ -115,13 +118,12 @@ public class WebAppInit implements ServletContextListener
  private void readConfig( ParamPool config ) throws ServiceInitExceprion
  {
 
-
   log.info("Initializing BioStudies web app");
 
   Matcher outMtch = Pattern.compile("^"+OutputParamPrefix+"(?:\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
 
   boolean confOk = true;
-
+  
   Enumeration<String> pNames = config.getNames();
 
   String baseDir = config.getParameter(ServiceParamPrefix+BackendConfig.BaseDirParameter);
@@ -194,6 +196,10 @@ public class WebAppInit implements ServletContextListener
       confOk = false;
      }
     }
+
+   }
+   else if(key.startsWith(EmailParamPrefix))
+   {
 
    }
    else
@@ -463,6 +469,41 @@ public class WebAppInit implements ServletContextListener
   if( ! checkDirectory(dir) )
    throw new RuntimeException("Directory access error: "+dir);
 
+//  if( BackendConfig.getServiceManager().getEmailService() == null )
+//  {
+//   log.error("Email service is not configured");
+//   throw new RuntimeException("Invalid configuration");
+//  }
+  
+  if( BackendConfig.getActivationEmailSubject() == null )
+  {
+   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.ActivationEmailSubjectParameter+" parameter is not set");
+   throw new RuntimeException("Invalid configuration");
+  }
+
+  if( BackendConfig.getActivationEmailPlainTextFile() == null && BackendConfig.getActivationEmailHtmlFile() == null )
+  {
+   log.error("At least one of "+ServiceParamPrefix+BackendConfig.ActivationEmailPlainTextParameter+" "+
+     ServiceParamPrefix+BackendConfig.ActivationEmailHtmlParameter+" parameters must be set");
+   throw new RuntimeException("Invalid configuration");
+  }
+
+  Path emailFile = BackendConfig.getActivationEmailPlainTextFile();
+  
+  if( emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  {
+   log.error(ServiceParamPrefix+BackendConfig.ActivationEmailPlainTextParameter+" should point to a regular readable file");
+   throw new RuntimeException("Invalid configuration");
+  }
+  
+  emailFile = BackendConfig.getActivationEmailHtmlFile();
+  
+  if( emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  {
+   log.error(ServiceParamPrefix+BackendConfig.ActivationEmailHtmlParameter+" should point to a regular readable file");
+   throw new RuntimeException("Invalid configuration");
+  }
+
   
   Path sbmTestDir = BackendConfig.getSubmissionsPath().resolve("~tmp");
   try
@@ -496,6 +537,17 @@ public class WebAppInit implements ServletContextListener
   BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig));
 
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
+  
+  
+  try
+  {
+   BackendConfig.getServiceManager().setEmailService( new EmailService(config, EmailParamPrefix) );
+  }
+  catch(EmailInitException e)
+  {
+   log.error("Can't initialize email service: "+e.getMessage());
+  }
+
   
   timer = new Timer("Timer", true);
   

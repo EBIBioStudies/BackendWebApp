@@ -2,20 +2,19 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
+import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 
 public interface UserManager
 {
 
- User getUserByName(String uName);
+ User getUserByLogin(String uName);
+ User getUserByEmail(String email);
 
- User getUserByEmail(String prm);
-
- void addUser(User u) throws ServiceException;
+ void addUser(User u, boolean validateEmail, String actvURL) throws ServiceException;
 
  UserData getUserData(User user, String key);
 
  void storeUserData(UserData ud);
-
- boolean activateUser(String actKey);
-
+ 
+ boolean activateUser(ActivationInfo ainf);
 }

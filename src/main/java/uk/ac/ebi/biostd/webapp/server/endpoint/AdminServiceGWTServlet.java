@@ -70,7 +70,7 @@ public class AdminServiceGWTServlet extends RemoteServiceServlet implements BioS
  @Override
  public User login(String login, String pass)
  {
-  User user = BackendConfig.getServiceManager().getUserManager().getUserByName(login);
+  User user = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
   
   if( user == null )
    return null;

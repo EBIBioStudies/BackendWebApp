@@ -36,6 +36,10 @@ public class BackendConfig
  public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
  public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
+ public static final String UserNamePlaceHolderRx = "\\{ACTIVATION:USERNAME\\}";
+ public static final String ActivateKeyPlaceHolderRx= "\\{ACTIVATION:KEY\\}";
+ public static final String ActivateURLPlaceHolderRx= "\\{ACTIVATION:URL\\}";
+ 
  public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
  public static final String googleSecretParam = "secret";
  public static final String googleResponseParam = "response";
@@ -61,6 +65,7 @@ public class BackendConfig
  
  public static final String             WorkdirParameter                    = "workDir";
 
+ public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
  public static final String             UserGroupDirParameter               = "userGroupDir";
  public static final String             SubmissionDirParameter              = "submissionDir";
  public static final String             SubmissionTransactionDirParameter   = "submissionTransactionDir";
@@ -74,6 +79,9 @@ public class BackendConfig
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
  public static final String             FTPRootPathParameter                = "FTPRootPath";
  public static final String             DropBoxPathParameter                = "dropboxPath";
+ public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
+ public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";
+ public static final String             ActivationEmailHtmlParameter        = "activationEmailHtmlFile";
  
  public static final String             DefaultSubmissionAccPrefixParameter = "defaultSubmissionAccNoPrefix";
  public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
@@ -113,6 +121,10 @@ public class BackendConfig
  private static String updateListenerURLPfx;
  private static String updateListenerURLSfx;
  
+ private static String activationEmailSubject;
+ private static Path activationEmailPlainTextFile;
+ private static Path activationEmailHtmlFile;
+ 
  private static String defaultSubmissionAccPrefix = null;
  private static String defaultSubmissionAccSuffix = null;
  
@@ -120,6 +132,8 @@ public class BackendConfig
  private static int maxUpdatesPerFile = 50;
  
  private static boolean fileLinkAllowed=true;
+
+ private static boolean enableUnsafeRequests=true;
 
  private static Map<String, Object> databaseConfig;
  
@@ -305,10 +319,39 @@ public class BackendConfig
    fileLinkAllowed = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
    return true;
   }
+  
+  if( EnableUnsafeRequestsParameter.equals(param) )
+  {
+   enableUnsafeRequests = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   return true;
+  }
+
 
   if( CreateFileStructureParameter.equals(param) )
   {
    createFileStructure = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+  }
+
+  if( ActivationEmailSubjectParameter.equals(param) )
+  {
+   activationEmailSubject=val;
+   
+   return true;
+  }
+
+  
+  if( ActivationEmailPlainTextParameter.equals(param) )
+  {
+   activationEmailPlainTextFile=createPath(ActivationEmailPlainTextParameter,val);
+   
+   return true;
+  }
+
+  if( ActivationEmailHtmlParameter.equals(param) )
+  {
+   activationEmailHtmlFile=createPath(ActivationEmailHtmlParameter,val);
+   
+   return true;
   }
 
   
@@ -529,6 +572,26 @@ public class BackendConfig
  {
   return databaseConfig;
   
+ }
+ 
+ public static String getActivationEmailSubject()
+ {
+  return activationEmailSubject;
+ }
+
+ public static Path getActivationEmailPlainTextFile()
+ {
+  return activationEmailPlainTextFile;
+ }
+
+ public static Path getActivationEmailHtmlFile()
+ {
+  return activationEmailHtmlFile;
+ }
+
+ public static boolean isEnableUnsafeRequests()
+ {
+  return enableUnsafeRequests;
  }
 
 }

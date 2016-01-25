@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
+import uk.ac.ebi.biostd.webapp.server.email.EmailService;
 import uk.ac.ebi.biostd.webapp.server.mng.AccessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ReleaseManager;
@@ -26,7 +27,20 @@ public class ServiceManagerImpl implements ServiceManager
  private SecurityManager authzManager;
  private ReleaseManager releaser;
  private AccessionManager accManager;
+ private EmailService emailService;
  
+ @Override
+ public EmailService getEmailService()
+ {
+  return emailService;
+ }
+
+ @Override
+ public void setEmailService(EmailService emailService)
+ {
+  this.emailService = emailService;
+ }
+
  @Override
  public UserManager getUserManager()
  {
