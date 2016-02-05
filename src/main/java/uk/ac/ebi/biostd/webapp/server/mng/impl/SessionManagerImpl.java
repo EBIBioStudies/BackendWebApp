@@ -13,6 +13,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import uk.ac.ebi.biostd.authz.Session;
+import uk.ac.ebi.biostd.authz.SessionAnonymous;
+import uk.ac.ebi.biostd.authz.SessionAuthenticated;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
@@ -36,7 +38,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
  
  private final File sessDirRoot;
  
- private Session anonSess;
+ private int anonSessCount=0;
  
  public SessionManagerImpl( File sdr )
  {
@@ -51,11 +53,11 @@ public class SessionManagerImpl implements SessionManager, Runnable
  @Override
  public Session createSession(User user)
  {
-  String key = generateSessionKey(user.getLogin());
+  String key = generateSessionKey(user.getEmail()+user.getLogin());
 
   File sessDir = new File(sessDirRoot,key);
   
-  Session sess = new Session( sessDir, BackendConfig.getEntityManagerFactory() );
+  Session sess = new SessionAuthenticated( sessDir, BackendConfig.getEntityManagerFactory() );
     
   sess.setSessionKey(key);
   sess.setUser(user);
@@ -185,25 +187,6 @@ public class SessionManagerImpl implements SessionManager, Runnable
       
     }
     
-    if( anonSess != null )
-    {
-     if( ( ( time - anonSess.getLastAccessTime() ) > MAX_SESSION_IDLE_TIME ) || shutdown )
-     {
-      anonSess.destroy();
-      
-      Iterator<Map.Entry<Thread, Session>> thIter = threadMap.entrySet().iterator();
-      
-      while( thIter.hasNext() )
-      {
-       Map.Entry<Thread, Session> me = thIter.next();
-       
-       if( me.getValue() == anonSess )
-        thIter.remove();
-      }
-      
-      anonSess=null;
-     }
-    }
    }
    finally
    {
@@ -273,18 +256,18 @@ public class SessionManagerImpl implements SessionManager, Runnable
    
    Session sess = threadMap.get(Thread.currentThread());
    
-   if( sess == null )
-   {
-    if( anonSess != null )
-     return anonSess;
-    
-    String key = generateSessionKey("__");
-
-    File sessDir = new File(sessDirRoot,key);
-    
-    sess =  anonSess = new Session(sessDir, BackendConfig.getEntityManagerFactory()) ;  
-    
-   }
+//   if( sess == null )
+//   {
+//    if( anonSess != null )
+//     return anonSess;
+//    
+//    String key = generateSessionKey("__");
+//
+//    File sessDir = new File(sessDirRoot,key);
+//    
+//    sess =  anonSess = new Session(sessDir, BackendConfig.getEntityManagerFactory()) ;  
+//    
+//   }
    
    return sess;
   }
@@ -305,9 +288,15 @@ public class SessionManagerImpl implements SessionManager, Runnable
    
    if( sess != null )
    {
-    threadMap.put(Thread.currentThread(), sess);
+    Session oldSess = threadMap.put(Thread.currentThread(), sess);
     
     sess.setCheckedIn( true );
+   
+    if( oldSess != null )
+    {
+     oldSess.setCheckedIn(false);
+     System.err.println("Stale session for: "+oldSess.getUser().getEmail()+" ("+oldSess.getUser().getLogin()+")");
+    }
    }
    
    return sess;
@@ -329,6 +318,9 @@ public class SessionManagerImpl implements SessionManager, Runnable
    
    if( sess != null )
     sess.setCheckedIn( false );
+   
+   if( sess.isAnonymouns() )
+    sess.destroy();
    
    return sess;
   }
@@ -405,20 +397,30 @@ public class SessionManagerImpl implements SessionManager, Runnable
  }
 
  @Override
- public Session getAnonymousSession()
+ public Session createAnonymousSession()
  {
   try
   {
    lock.lock();
 
-  if( anonSess != null )
-   return anonSess;
-  
-  String key = generateSessionKey("__");
+   String key = generateSessionKey("@"+anonSessCount++);
 
-  File sessDir = new File(sessDirRoot,key);
+   File sessDir = new File(sessDirRoot,key);
   
-  return anonSess = new Session(sessDir, BackendConfig.getEntityManagerFactory()) ;
+   Session anonSess = new SessionAnonymous(sessDir, BackendConfig.getEntityManagerFactory());
+  
+   anonSess.setUser(BackendConfig.getServiceManager().getSecurityManager().getAnonymousUser());
+   
+   Session oldSess = threadMap.put(Thread.currentThread(), anonSess);
+   
+   if( oldSess != null )
+   {
+    oldSess.setCheckedIn(false);
+    System.err.println("Stale session for: "+oldSess.getUser().getEmail()+" ("+oldSess.getUser().getLogin()+")");
+   }
+
+   
+   return anonSess;
   }
   finally
   {

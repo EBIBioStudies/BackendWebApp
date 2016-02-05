@@ -36,7 +36,7 @@ public class SingleSubmissionServlet extends ServiceServlet
  {
   PrintWriter out = resp.getWriter();
   
-  if( sess == null )
+  if( sess == null || sess.isAnonymouns() )
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
    

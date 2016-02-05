@@ -196,12 +196,12 @@ public class SecurityManagerImpl implements SecurityManager
   EntityManager em = null;
   Collection<UserACR> newSysACR = null;
 
+  em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+
   try
   {
-   em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
-
-   EntityTransaction trn = em.getTransaction();
-   
    
    Query q = em.createNamedQuery("User.getCount");
    
@@ -270,8 +270,8 @@ public class SecurityManagerImpl implements SecurityManager
    {
     if( em != null )
     {
-     if( em.getTransaction().isActive() )
-      em.getTransaction().rollback();
+     if( trn.isActive() )
+      trn.rollback();
      
     }
    }
@@ -447,7 +447,7 @@ public class SecurityManagerImpl implements SecurityManager
 
  public boolean checkSubmissionPermission(Submission sbm, User usr, SystemAction act)
  {
-  if( sbm.getOwner().getLogin().equals( usr.getLogin() ) || usr.isSuperuser() )
+  if( sbm.getOwner().equals( usr ) || usr.isSuperuser() )
    return true;
   
   return checkObjectPermission(sbm, usr, act);
@@ -482,8 +482,7 @@ public class SecurityManagerImpl implements SecurityManager
  @Override
  public boolean mayEveryoneReadSubmission(Submission submission)
  {
-  
-  if( submission.getOwner().getLogin().equals( anonUser.getLogin() ) )
+  if( anonUser.getLogin().equals( submission.getOwner().getLogin() ) )
    return true;
   
   return checkObjectPermission(submission, anonUser, SystemAction.READ);
@@ -550,9 +549,12 @@ public class SecurityManagerImpl implements SecurityManager
     obj.addProfileForGroupACR(acr.getSubject(), acr.getProfile());
   }
 
-  
  }
 
-
+ @Override
+ public User getAnonymousUser()
+ {
+  return anonUser;
+ }
 
 }

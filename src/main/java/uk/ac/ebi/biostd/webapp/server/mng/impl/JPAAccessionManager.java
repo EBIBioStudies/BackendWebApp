@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
 import org.slf4j.Logger;
@@ -114,6 +115,8 @@ public class JPAAccessionManager implements AccessionManager
   long origMaxCount=-1;
   Counter cnt = null;
   
+  EntityTransaction trn  = null;
+  
   try
   {
    em = BackendConfig.getEntityManagerFactory().createEntityManager();
@@ -123,7 +126,8 @@ public class JPAAccessionManager implements AccessionManager
 //   IdGen gen = cache.get( cacheKey );
    IdGen gen = null;
    
-   em.getTransaction().begin();
+   trn  = em.getTransaction();
+   trn.begin();
    
    if( gen == null )
    {
@@ -197,7 +201,7 @@ public class JPAAccessionManager implements AccessionManager
 //   em.merge(cnt);
 //   em.merge(gen);
    
-   em.getTransaction().commit();
+   trn.commit();
    
    em.detach(gen);
    em.detach(cnt);
@@ -213,8 +217,8 @@ public class JPAAccessionManager implements AccessionManager
   {
    if( em != null && em.isOpen() )
    {
-    if( em.getTransaction().isActive() )
-     em.getTransaction().rollback();
+    if( trn.isActive() )
+     trn.rollback();
     
     em.close();
    }

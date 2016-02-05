@@ -432,7 +432,9 @@ public class WebAppInit implements ServletContextListener
   if( ! checkDirectory( BackendConfig.getGroupsPath() ) )
    throw new RuntimeException("Directory access error: "+BackendConfig.getGroupsPath() );
 
-  
+  if( ! checkDirectory( BackendConfig.getSubmissionUpdatePath() ) )
+   throw new RuntimeException("Directory access error: "+BackendConfig.getGroupsPath() );
+ 
 
   dir = BackendConfig.getSubmissionsPath();
   
@@ -475,13 +477,13 @@ public class WebAppInit implements ServletContextListener
 //   throw new RuntimeException("Invalid configuration");
 //  }
   
-  if( BackendConfig.getActivationEmailSubject() == null )
+  if( BackendConfig.isMandatoryAccountActivation() && BackendConfig.getActivationEmailSubject() == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+BackendConfig.ActivationEmailSubjectParameter+" parameter is not set");
    throw new RuntimeException("Invalid configuration");
   }
 
-  if( BackendConfig.getActivationEmailPlainTextFile() == null && BackendConfig.getActivationEmailHtmlFile() == null )
+  if( BackendConfig.isMandatoryAccountActivation() && BackendConfig.getActivationEmailPlainTextFile() == null && BackendConfig.getActivationEmailHtmlFile() == null )
   {
    log.error("At least one of "+ServiceParamPrefix+BackendConfig.ActivationEmailPlainTextParameter+" "+
      ServiceParamPrefix+BackendConfig.ActivationEmailHtmlParameter+" parameters must be set");
@@ -490,7 +492,7 @@ public class WebAppInit implements ServletContextListener
 
   Path emailFile = BackendConfig.getActivationEmailPlainTextFile();
   
-  if( emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  if( BackendConfig.isMandatoryAccountActivation() && emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
   {
    log.error(ServiceParamPrefix+BackendConfig.ActivationEmailPlainTextParameter+" should point to a regular readable file");
    throw new RuntimeException("Invalid configuration");
@@ -498,7 +500,7 @@ public class WebAppInit implements ServletContextListener
   
   emailFile = BackendConfig.getActivationEmailHtmlFile();
   
-  if( emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  if( BackendConfig.isMandatoryAccountActivation() && emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
   {
    log.error(ServiceParamPrefix+BackendConfig.ActivationEmailHtmlParameter+" should point to a regular readable file");
    throw new RuntimeException("Invalid configuration");

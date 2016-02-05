@@ -34,6 +34,7 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.JSONReqParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
@@ -42,7 +43,7 @@ import uk.ac.ebi.biostd.webapp.shared.util.KV;
 /**
  * Servlet implementation class AuthServlet
  */
-public class AuthServlet extends HttpServlet 
+public class AuthServlet extends ServiceServlet 
 {
  private static Logger log;
  
@@ -373,7 +374,7 @@ public class AuthServlet extends HttpServlet
    
    try
    {
-    BackendConfig.getServiceManager().getUserManager().addUser(u, true, actvURL);
+    BackendConfig.getServiceManager().getUserManager().addUser(u, BackendConfig.isMandatoryAccountActivation(), actvURL);
    }
    catch( Throwable t )
    {
@@ -556,7 +557,7 @@ public class AuthServlet extends HttpServlet
   *      response)
   */
  @Override
- protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+ protected void service(HttpServletRequest request, HttpServletResponse response, Session sess) throws ServletException, IOException
  {
   Action act = Action.check;
   

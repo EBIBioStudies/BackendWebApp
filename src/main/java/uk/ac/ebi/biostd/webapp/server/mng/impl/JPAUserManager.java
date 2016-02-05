@@ -30,9 +30,13 @@ public class JPAUserManager implements UserManager, SessionListener
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
+  EntityTransaction trn = null;
+  
   try
   {
-   em.getTransaction().begin();
+   trn = em.getTransaction();
+   
+   trn.begin();
    
    Query q = em.createNamedQuery("User.getByLogin");
 
@@ -46,7 +50,7 @@ public class JPAUserManager implements UserManager, SessionListener
   }
   finally
   {
-   em.getTransaction().commit();
+   trn.commit();
   }
 
   return null;

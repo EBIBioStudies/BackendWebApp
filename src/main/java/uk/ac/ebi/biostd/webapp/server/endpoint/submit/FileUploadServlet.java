@@ -48,7 +48,7 @@ public class FileUploadServlet extends ServiceServlet
    return;
   }
   
-  if( sess == null )
+  if( sess == null || sess.isAnonymouns() )
   {
    respond(HttpServletResponse.SC_FORBIDDEN, "User not logged in", resp);
    return;

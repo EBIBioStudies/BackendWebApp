@@ -12,6 +12,9 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 
 public class AccNoReserveServlet extends ServiceServlet
 {
+
+ private static final long serialVersionUID = 1L;
+
  public static final String prefixParameter = "prefix";
  public static final String suffixParameter = "suffix";
  public static final String countParameter = "count";
@@ -21,7 +24,7 @@ public class AccNoReserveServlet extends ServiceServlet
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
-  if(sess == null)
+  if(sess == null || sess.isAnonymouns())
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
    resp.getWriter().print("FAIL User not logged in");

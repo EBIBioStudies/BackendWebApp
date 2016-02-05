@@ -4,17 +4,18 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.export.ExportTask;
 
-public class ExportControlServlet extends HttpServlet
+public class ExportControlServlet extends ServiceServlet
 {
  static final long serialVersionUID = 1L;
  
@@ -27,8 +28,14 @@ public class ExportControlServlet extends HttpServlet
 
  
  @Override
- protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
+ protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
+  if( ! sess.getUser().isSuperuser() )
+  {
+   sendMessageNoExp("Only superuser can run this service", resp.getWriter(), "red");
+   return;
+  }
+  
   String cmd = req.getPathInfo();
   
   

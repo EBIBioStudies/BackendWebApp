@@ -108,7 +108,13 @@ public class JPASubmissionManager implements SubmissionManager
   PageTab
  }
 
- private Set<String> lockedSmbIds = new HashSet<String>();
+ static class LockInfo
+ {
+  String lockOwner;
+  Set<String> waiters;
+ }
+ 
+ private Map<String,LockInfo> lockedSmbIds = new HashMap<>();
  private Set<String> lockedSecIds = new HashSet<String>();
  
  private boolean shutDownManager = false;
@@ -116,6 +122,10 @@ public class JPASubmissionManager implements SubmissionManager
  private ParserConfig parserCfg;
  private UpdateQueueProcessor queueProc = null;
  private boolean shutdown;
+ private EntityManagerFactory emf;
+ 
+ 
+// private Map<String, Integer> __accVerMap = new HashMap<String, Integer>();
  
  public JPASubmissionManager(EntityManagerFactory emf)
  {
@@ -134,13 +144,15 @@ public class JPASubmissionManager implements SubmissionManager
    queueProc.start();
   }
   
+  this.emf = emf;
+  
  }
 
  
  @Override
  public Collection<Submission> getSubmissionsByOwner(User u, int offset, int limit)
  {
-  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  EntityManager em = emf.createEntityManager();
 
   EntityTransaction trn = em.getTransaction();
 
@@ -172,6 +184,8 @@ public class JPASubmissionManager implements SubmissionManager
   {
    if( trn.isActive() )
     trn.commit();
+  
+   em.close();
   }
   
   return null;
@@ -189,7 +203,7 @@ public class JPASubmissionManager implements SubmissionManager
    return gln;
   } 
   
-  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  EntityManager em = emf.createEntityManager();
 
   FileManager fileMngr = BackendConfig.getServiceManager().getFileManager();
   
@@ -203,9 +217,13 @@ public class JPASubmissionManager implements SubmissionManager
 
   Submission sbm = null;
 
+  EntityTransaction trn = null;
+  
   try
   {
-   em.getTransaction().begin();
+   trn = em.getTransaction();
+   
+   trn.begin();
 
    Query q = em.createNamedQuery("Submission.getByAcc");
 
@@ -276,10 +294,10 @@ public class JPASubmissionManager implements SubmissionManager
    try
    {
     if( dirOp != null )
-     em.getTransaction().commit();
+     trn.commit();
     else
     {
-     em.getTransaction().rollback();
+     trn.rollback();
      trnOk = false;
     }
    }
@@ -291,8 +309,8 @@ public class JPASubmissionManager implements SubmissionManager
 
     gln.log(Level.ERROR, err);
 
-    if(em.getTransaction().isActive())
-     em.getTransaction().rollback();
+    if(trn.isActive())
+     trn.rollback();
    }
    
    if( trnOk )
@@ -343,6 +361,7 @@ public class JPASubmissionManager implements SubmissionManager
     }
    }
 
+   em.close();
   }
   
   if( trnOk && BackendConfig.getPublicFTPPath() != null )
@@ -406,7 +425,7 @@ public class JPASubmissionManager implements SubmissionManager
  @Override
  public Submission getSubmissionsByAccession(String acc)
  {
-  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  EntityManager em = emf.createEntityManager();
 
   EntityTransaction trn = em.getTransaction();
 
@@ -429,6 +448,7 @@ public class JPASubmissionManager implements SubmissionManager
   finally
   {
    trn.commit();
+   em.close();
   }
   
  }
@@ -442,8 +462,16 @@ public class JPASubmissionManager implements SubmissionManager
   }
   catch(Throwable e)
   {
+   log.error("createSubmissionUnsafe: uncought exception "+e);
+
    ExceptionUtil.unroll(e).printStackTrace();
-   throw e;
+   
+   SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, op.name() + " submission(s) from " + type.name() + " source",null);
+   gln.log(Level.ERROR, "Internal server error");
+   
+   SubmissionReport res = new SubmissionReport();
+   res.setLog(gln);
+   return res;
   }
  }
  
@@ -618,7 +646,7 @@ public class JPASubmissionManager implements SubmissionManager
   gln.log(Level.INFO, "Processing '" + type.name() + "' data. Body size: " + data.length);
 
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
-
+  
   boolean submOk = true;
   boolean submComplete = false;
 
@@ -630,6 +658,8 @@ public class JPASubmissionManager implements SubmissionManager
   List<FileTransactionUnit> trans = null;
   LockedIdSet locked = null;
   
+  EntityTransaction trn = null;
+  
   try
   {
    doc = parseDocument(data, type, charset, new TagResolverImpl(em), gln);
@@ -637,6 +667,7 @@ public class JPASubmissionManager implements SubmissionManager
 
    if( doc == null )
    {
+    em=null;
     submOk = false;
     return res;
    }
@@ -648,6 +679,7 @@ public class JPASubmissionManager implements SubmissionManager
     gln.log(Level.ERROR, "There are no submissions in the document");    
     SimpleLogNode.setLevels(gln);
     submOk = false;
+    em=null;
     return res;
    }
 
@@ -663,10 +695,15 @@ public class JPASubmissionManager implements SubmissionManager
    else
     submOk = false;
    
+   em = emf.createEntityManager();
    
-   em.getTransaction().begin();
-   
+   if( locked.getWaitCount() > 0 )
+    em.clear();
 
+   
+   trn = em.getTransaction();
+   
+   trn.begin();
    
    for(SubmissionInfo si : doc.getSubmissions())
    {
@@ -686,7 +723,8 @@ public class JPASubmissionManager implements SubmissionManager
 
     Submission oldSbm = null;
 
-    
+    if( submission.getTitle() == null )
+     submission.setTitle( submission.createTitle() );
     
     if( op == Operation.UPDATE || op == Operation.REPLACE )
     {
@@ -701,6 +739,9 @@ public class JPASubmissionManager implements SubmissionManager
 
      if( oldSbm == null )
      {
+//      if( __accVerMap.containsKey(submission.getAccNo()) )
+//       System.out.println(submission.getAccNo()+" invisible update "+System.currentTimeMillis());
+      
       if( op == Operation.REPLACE )
       {
        si.getLogNode().log(Level.ERROR, "Submission '" + submission.getAccNo() + "' doesn't exist and can't be replced");
@@ -725,6 +766,11 @@ public class JPASubmissionManager implements SubmissionManager
       submission.setCTime(oldSbm.getCTime());
       si.setOriginalSubmission(oldSbm);
       submission.setVersion(oldSbm.getVersion() + 1);
+      
+//      Integer __oldVer = __accVerMap.get(oldSbm.getAccNo());
+//      
+//      if( __oldVer != null && __oldVer.intValue() != oldSbm.getVersion() )
+//       System.out.println(oldSbm.getAccNo()+" version conflict "+__oldVer+" vs "+oldSbm.getVersion());
       
       if(!BackendConfig.getServiceManager().getSecurityManager().mayUserUpdateSubmission(oldSbm, usr))
       {
@@ -1039,9 +1085,14 @@ public class JPASubmissionManager implements SubmissionManager
     }
 
     if(si.getOriginalSubmission() != null)
+    {
      si.getOriginalSubmission().setVersion(-si.getOriginalSubmission().getVersion());
-
+    }
+    
     em.persist(subm);
+    
+//    __accVerMap.put(subm.getAccNo(), subm.getVersion());
+
 
    }
 
@@ -1072,8 +1123,8 @@ public class JPASubmissionManager implements SubmissionManager
     
     if(!submOk || !submComplete)
     {
-     if(em.getTransaction().isActive())
-      em.getTransaction().rollback();
+     if(trn.isActive())
+      trn.rollback();
 
      gln.log(Level.ERROR, "Submit/Update operation failed. Rolling transaction back");
 
@@ -1086,8 +1137,9 @@ public class JPASubmissionManager implements SubmissionManager
     {
      try
      {
-      em.getTransaction().commit();
-
+      if( trn != null && trn.isActive() )
+       trn.commit();
+      
       if(trans != null)
       {
        try
@@ -1116,8 +1168,8 @@ public class JPASubmissionManager implements SubmissionManager
 
       t.printStackTrace();
 
-      if(em.getTransaction().isActive())
-       em.getTransaction().rollback();
+      if(trn != null && trn.isActive())
+       trn.rollback();
 
       if(trans != null)
        rollbackFileTransaction(fileMngr, trans, trnPath);
@@ -1130,8 +1182,10 @@ public class JPASubmissionManager implements SubmissionManager
    }
    finally
    {
+    if( em !=null )
+     em.close();
+    
     unlockIds(locked);
-
    }
   }
   
@@ -1258,8 +1312,15 @@ public class JPASubmissionManager implements SubmissionManager
     {
      for(String s : sbmIdMap.keySet())
      {
-      if(lockedSmbIds.contains(s))
+      LockInfo li = lockedSmbIds.get(s);
+      
+      if(li != null )
       {
+       if( li.waiters == null )
+        li.waiters = new HashSet<String>();
+       
+       li.waiters.add(Thread.currentThread().getName());
+       
        needWait = true;
        break;
       }
@@ -1282,13 +1343,23 @@ public class JPASubmissionManager implements SubmissionManager
     if(!needWait)
     {
      if( sbmIdMap != null )
-      lockedSmbIds.addAll(sbmIdMap.keySet());
-     
+     {
+      for(String s : sbmIdMap.keySet())
+      {
+       LockInfo li = new LockInfo();
+       li.lockOwner = Thread.currentThread().getName();
+       
+       lockedSmbIds.put(s, li);
+      }
+     }
+      
      if( secIdMap != null )
      lockedSecIds.addAll(secIdMap.keySet());
      
      return lckSet;
     }
+    
+    lckSet.incWaitCount();
     
     while( true )
     {
@@ -1316,7 +1387,7 @@ public class JPASubmissionManager implements SubmissionManager
   synchronized(lockedSmbIds)
   {
    if( lset.getSubmissionMap() != null )
-    lockedSmbIds.removeAll(lset.getSubmissionMap().keySet());
+    lockedSmbIds.keySet().removeAll(lset.getSubmissionMap().keySet());
    
    if( lset.getSectionMap() != null )
     lockedSecIds.removeAll(lset.getSectionMap().keySet());
@@ -1516,6 +1587,11 @@ public class JPASubmissionManager implements SubmissionManager
    {
     Path histDir = BackendConfig.getSubmissionHistoryPath(si.getOriginalSubmission());
 
+    if( Files.exists(histDir) )
+    {
+     log.error("History directory already exists");
+     return false;
+    }
 
     if(Files.exists(origDir))
     {
@@ -1619,8 +1695,15 @@ public class JPASubmissionManager implements SubmissionManager
 
    if(si.getFileOccurrences() != null)
    {
+    Set<FileOccurrence> foSet = new HashSet<FileOccurrence>();
+    
     for(FileOccurrence fo : si.getFileOccurrences())
     {
+     if( foSet.contains(fo) )
+      continue;
+     
+     foSet.add(fo);
+     
      try
      {
       fileMngr.linkOrCopy(sbmFilesPath, fo.getFilePointer());
@@ -1631,6 +1714,7 @@ public class JPASubmissionManager implements SubmissionManager
      catch(IOException e)
      {
       log.error("File " + fo.getFilePointer() + " transfer error: " + e.getMessage());
+      e.printStackTrace();
       return false;
      }
     }
@@ -2205,7 +2289,7 @@ public class JPASubmissionManager implements SubmissionManager
    return gln;
   }
   
-  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  EntityManager em = emf.createEntityManager();
   
   List<String> res = null;
   
@@ -2241,6 +2325,10 @@ public class JPASubmissionManager implements SubmissionManager
    log.error("Exception: "+e.getClass()+" Message: "+e.getMessage());
    
    gln.log(Level.ERROR, "Internal server error");
+  }
+  finally
+  {
+   em.close();
   }
 
   
@@ -2288,9 +2376,12 @@ public class JPASubmissionManager implements SubmissionManager
   
   Submission mainSbm = null;
 
+  EntityTransaction trn = em.getTransaction();
+
   try
   {
-   em.getTransaction().begin();
+   
+   trn.begin();
 
    q.setParameter("accNo", acc);
 
@@ -2351,11 +2442,11 @@ public class JPASubmissionManager implements SubmissionManager
    {
     if( trnOk )
     {
-     em.getTransaction().commit();
+     trn.commit();
      gln.log(Level.INFO, "Transaction successful");
     }
     else
-     em.getTransaction().rollback();
+     trn.rollback();
    }
    catch(Throwable t)
    {
@@ -2365,8 +2456,8 @@ public class JPASubmissionManager implements SubmissionManager
 
     gln.log(Level.ERROR, err);
 
-    if(em.getTransaction().isActive())
-     em.getTransaction().rollback();
+    if(trn.isActive())
+     trn.rollback();
    }
 
   }

@@ -28,13 +28,38 @@ public class SubmitServlet extends ServiceServlet
  public static final String idParameter = "id";
  public static final String accnoParameter = "accno";
  public static final String accnoPatternParameter = "accnoPattern";
+ public static final String requestIdParameter = "requestId";
 
  
  
  @Override
  protected void service(HttpServletRequest request, HttpServletResponse response, Session sess) throws ServletException, IOException
  {
-  if(sess == null)
+  String reqId = request.getParameter(requestIdParameter);
+  
+  if( reqId != null && BackendConfig.isEnableUnsafeRequests() )
+  {
+   String tname = Thread.currentThread().getName();
+
+   try
+   {
+    Thread.currentThread().setName(reqId);
+    
+    serviceContinue(request, response, sess);
+   }
+   finally
+   {
+    Thread.currentThread().setName(tname);
+   }
+  }
+  else
+   serviceContinue(request, response, sess);
+  
+ }
+ 
+ protected void serviceContinue(HttpServletRequest request, HttpServletResponse response, Session sess) throws ServletException, IOException
+ {
+  if( sess == null || sess.isAnonymouns() )
   {
    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
    response.getWriter().print("FAIL User not logged in");

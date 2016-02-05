@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
 import org.slf4j.Logger;
@@ -31,11 +32,13 @@ public class JPAReleaser implements ReleaseManager
  {
   EntityManager em = null;
   
+  em = BackendConfig.getEntityManagerFactory().createEntityManager();
+  EntityTransaction trn = em.getTransaction();
+  
   try
   {
-   em = BackendConfig.getEntityManagerFactory().createEntityManager();
    
-   em.getTransaction().begin();
+   trn.begin();
   
    long now = System.currentTimeMillis()/1000;
    
@@ -71,7 +74,7 @@ public class JPAReleaser implements ReleaseManager
      {
       e.printStackTrace();
       log.error("Can't find 'Public' access tag. Check DB initialization. "+e.getMessage());
-      em.getTransaction().rollback();
+      trn.rollback();
       return;
      }
      
@@ -99,15 +102,15 @@ public class JPAReleaser implements ReleaseManager
     }
    }
    
-   em.getTransaction().commit();
+   trn.commit();
    
   }
   catch(Exception e)
   {
    try
    {
-    if( em.getTransaction().isActive() )
-     em.getTransaction().rollback();
+    if( trn.isActive() )
+     trn.rollback();
    }
    catch(Exception e2)
    {

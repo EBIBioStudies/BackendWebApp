@@ -48,9 +48,9 @@ public class BackendConfig
  public static final String googleSuccessField = "success";
  
  
- public static final String GuestsGroup = "@Guests";
- public static final String EveryoneGroup = "@Everyone";
- public static final String AuthenticatedGroup = "@Authenticated";
+// public static final String GuestsGroup = "@Guests";
+// public static final String EveryoneGroup = "@Everyone";
+// public static final String AuthenticatedGroup = "@Authenticated";
 
  public static final String             PublicTag                           = "Public";
 
@@ -79,6 +79,7 @@ public class BackendConfig
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
  public static final String             FTPRootPathParameter                = "FTPRootPath";
  public static final String             DropBoxPathParameter                = "dropboxPath";
+ public static final String             MandatoryAccountActivationParameter = "mandatoryAccountActivation";
  public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
  public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";
  public static final String             ActivationEmailHtmlParameter        = "activationEmailHtmlFile";
@@ -134,6 +135,7 @@ public class BackendConfig
  private static boolean fileLinkAllowed=true;
 
  private static boolean enableUnsafeRequests=true;
+ private static boolean mandatoryAccountActivation=true;
 
  private static Map<String, Object> databaseConfig;
  
@@ -331,6 +333,12 @@ public class BackendConfig
   {
    createFileStructure = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
   }
+  
+  if( MandatoryAccountActivationParameter.equals(param) )
+  {
+   mandatoryAccountActivation = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+  }
+
 
   if( ActivationEmailSubjectParameter.equals(param) )
   {
@@ -592,6 +600,11 @@ public class BackendConfig
  public static boolean isEnableUnsafeRequests()
  {
   return enableUnsafeRequests;
+ }
+
+ public static boolean isMandatoryAccountActivation()
+ {
+  return mandatoryAccountActivation;
  }
 
 }

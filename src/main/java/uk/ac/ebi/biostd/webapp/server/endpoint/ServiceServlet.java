@@ -70,6 +70,9 @@ public abstract class ServiceServlet extends HttpServlet
   if( sessID != null )
    sess = BackendConfig.getServiceManager().getSessionManager().checkin( sessID );
   
+  if( sess == null )
+   sess = BackendConfig.getServiceManager().getSessionManager().createAnonymousSession();
+  
 //  if (sessID == null)
 //  {
 //   resp.sendError(HttpServletResponse.SC_FORBIDDEN);

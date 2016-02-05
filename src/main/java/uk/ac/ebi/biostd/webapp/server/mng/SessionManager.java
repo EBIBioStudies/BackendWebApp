@@ -6,9 +6,9 @@ import uk.ac.ebi.biostd.authz.User;
 public interface SessionManager
 {
  User getEffectiveUser();
- 
+
  Session createSession(User user);
- Session getAnonymousSession();
+ Session createAnonymousSession();
  Session getSession( String sKey );
  Session getSession();
  Session getSessionByUser(String id);

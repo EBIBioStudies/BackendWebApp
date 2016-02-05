@@ -8,6 +8,7 @@ public class LockedIdSet
 {
  private Map<String, ElementPointer> submissionMap;
  private Map<String, ElementPointer> sectionMap;
+ private int waitCount=0;
 
  public Map<String, ElementPointer> getSubmissionMap()
  {
@@ -32,5 +33,15 @@ public class LockedIdSet
  public boolean empty()
  {
   return ( submissionMap == null || submissionMap.size()==0 ) && ( sectionMap == null || sectionMap.size()==0 );
+ }
+
+ public int getWaitCount()
+ {
+  return waitCount;
+ }
+ 
+ public void incWaitCount()
+ {
+  waitCount++;
  }
 }

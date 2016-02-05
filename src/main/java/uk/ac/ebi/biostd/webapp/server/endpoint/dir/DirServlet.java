@@ -48,7 +48,7 @@ public class DirServlet extends ServiceServlet
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
   
-  if( sess == null )
+  if( sess == null || sess.isAnonymouns() )
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
    

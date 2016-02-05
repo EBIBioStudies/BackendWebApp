@@ -43,7 +43,7 @@ public class SubmissionListServlet extends ServiceServlet
  
   resp.setContentType("application/json; charset=UTF-8");
 
-  if( sess == null )
+  if( sess == null || sess.isAnonymouns() )
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
    

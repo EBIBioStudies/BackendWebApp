@@ -29,7 +29,7 @@ public class UserDataServlet extends ServiceServlet
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
-  if(sess == null)
+  if(sess == null || sess.isAnonymouns() )
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
    resp.getWriter().print("FAIL User not logged in");

@@ -25,7 +25,6 @@ public interface SecurityManager
 
  User addUser(User u) throws ServiceException;
 
-
-
+ User getAnonymousUser();
 
 }

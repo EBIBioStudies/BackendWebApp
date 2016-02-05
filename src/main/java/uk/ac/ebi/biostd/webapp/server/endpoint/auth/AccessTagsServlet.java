@@ -121,7 +121,9 @@ public class AccessTagsServlet extends HttpServlet
    StringBuilder allow = new StringBuilder();
    StringBuilder deny = new StringBuilder();
    
-   allow.append('~').append(u.getLogin()).append(';');
+   allow.append('~').append(u.getEmail()).append(';');
+   
+   allow.append('#').append(u.getId()).append(';');
    
    q = em.createQuery("SELECT t FROM AccessTag t");
    
