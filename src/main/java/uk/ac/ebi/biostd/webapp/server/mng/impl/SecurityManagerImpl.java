@@ -50,6 +50,8 @@ public class SecurityManagerImpl implements SecurityManager
  private Collection<ACR> systemACR;
  private Map<Long, UserGroup> groupMap = new HashMap<Long, UserGroup>();
  private Map<Long, User> userMap = new HashMap<Long, User>();
+ private Map<String, User> userEmailMap = new HashMap<String, User>();
+ private Map<String, User> userLoginMap = new HashMap<String, User>();
  
 
 
@@ -76,7 +78,15 @@ public class SecurityManagerImpl implements SecurityManager
    groupMap.clear();
    userMap.clear();
 
-   Query q = em.createQuery("SELECT acr FROM SystemPermGrpACR acr");
+   Query q = em.createQuery("SELECT usr FROM User usr");
+   
+   @SuppressWarnings("unchecked")
+   List<User> usrs = q.getResultList();
+   
+   for( User u : usrs )
+    detachUser(u);
+   
+   q = em.createQuery("SELECT acr FROM SystemPermGrpACR acr");
    
    @SuppressWarnings("unchecked")
    List<SystemPermGrpACR> spgACRs = q.getResultList();
@@ -316,8 +326,19 @@ public class SecurityManagerImpl implements SecurityManager
   du.setId( u.getId() );
   du.setLogin( u.getLogin() );
   du.setSuperuser( du.isSuperuser() );
+  du.setEmail(u.getEmail());
+  du.setActive(u.isActive());
+  du.setSecret(u.getSecret());
+  du.setPasswordDigest(u.getPasswordDigest());
+  du.setAuxProfileInfo(du.getAuxProfileInfo());
  
   userMap.put(du.getId(), du);
+  
+  if( du.getEmail() != null && du.getEmail().length() > 0 )
+   userEmailMap.put(du.getEmail(), du);
+  
+  if( du.getLogin() != null && du.getLogin().length() > 0 )
+   userLoginMap.put(du.getLogin(), du);
 
   if( u.getGroups() != null  )
   {
@@ -555,6 +576,25 @@ public class SecurityManagerImpl implements SecurityManager
  public User getAnonymousUser()
  {
   return anonUser;
+ }
+
+ @Override
+ public User getUserById(long id)
+ {
+  return userMap.get(id);
+ }
+
+ @Override
+ public User getUserByLogin(String login)
+ {
+  return userLoginMap.get(login);
+ }
+
+ @Override
+ public User getuserByEmail(String email)
+ {
+  // TODO Auto-generated method stub
+  return userEmailMap.get(email);
  }
 
 }

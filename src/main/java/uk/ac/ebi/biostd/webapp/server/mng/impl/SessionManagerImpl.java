@@ -342,7 +342,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
  }
 
  @Override
- public Session getSessionByUser(String uid)
+ public Session getSessionByUserId(long uid)
  {
   try
   {
@@ -353,7 +353,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
    while( sessItr.hasNext() )
    {
     Session s = sessItr.next();
-    if(s.getUser().getLogin().equals(uid) )
+    if( s.getUser().getId() == uid )
      return s;
    } 
    

@@ -25,6 +25,10 @@ public interface SecurityManager
 
  User addUser(User u) throws ServiceException;
 
+ User getUserById( long id );
+ User getUserByLogin( String login );
+ User getuserByEmail( String email );
+ 
  User getAnonymousUser();
 
 }

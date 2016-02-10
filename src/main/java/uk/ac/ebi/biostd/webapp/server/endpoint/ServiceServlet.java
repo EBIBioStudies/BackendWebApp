@@ -91,6 +91,12 @@ public abstract class ServiceServlet extends HttpServlet
   {
    service(req,resp,sess);
   }
+  catch( Throwable e )
+  {
+   e.printStackTrace();
+   
+   resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  }
   finally
   {
    if( sess != null )

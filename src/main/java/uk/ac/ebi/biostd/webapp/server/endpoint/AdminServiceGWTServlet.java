@@ -78,7 +78,7 @@ public class AdminServiceGWTServlet extends RemoteServiceServlet implements BioS
   if( pass == null ||  ! user.checkPassword(pass) )
    return null;
 
-  Session sess = BackendConfig.getServiceManager().getSessionManager().getSessionByUser(user.getLogin());
+  Session sess = BackendConfig.getServiceManager().getSessionManager().getSessionByUserId(user.getId());
   
   if( sess == null )
    sess = BackendConfig.getServiceManager().getSessionManager().createSession(user);    

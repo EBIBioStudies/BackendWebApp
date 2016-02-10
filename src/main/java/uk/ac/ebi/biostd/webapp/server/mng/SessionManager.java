@@ -11,7 +11,7 @@ public interface SessionManager
  Session createAnonymousSession();
  Session getSession( String sKey );
  Session getSession();
- Session getSessionByUser(String id);
+ Session getSessionByUserId(long id);
  boolean closeSession( String sKey );
 
  Session checkin( String sessId );

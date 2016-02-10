@@ -152,7 +152,7 @@ public class JPASubmissionManager implements SubmissionManager
  @Override
  public Collection<Submission> getSubmissionsByOwner(User u, int offset, int limit)
  {
-  EntityManager em = emf.createEntityManager();
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
   EntityTransaction trn = em.getTransaction();
 
@@ -182,10 +182,8 @@ public class JPASubmissionManager implements SubmissionManager
   }
   finally
   {
-   if( trn.isActive() )
+   if( trn !=null && trn.isActive() )
     trn.commit();
-  
-   em.close();
   }
   
   return null;
@@ -425,7 +423,7 @@ public class JPASubmissionManager implements SubmissionManager
  @Override
  public Submission getSubmissionsByAccession(String acc)
  {
-  EntityManager em = emf.createEntityManager();
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
   EntityTransaction trn = em.getTransaction();
 
@@ -447,8 +445,8 @@ public class JPASubmissionManager implements SubmissionManager
   }
   finally
   {
-   trn.commit();
-   em.close();
+   if( trn != null && trn.isActive() )
+    trn.commit();
   }
   
  }
@@ -696,10 +694,6 @@ public class JPASubmissionManager implements SubmissionManager
     submOk = false;
    
    em = emf.createEntityManager();
-   
-   if( locked.getWaitCount() > 0 )
-    em.clear();
-
    
    trn = em.getTransaction();
    
@@ -1123,7 +1117,7 @@ public class JPASubmissionManager implements SubmissionManager
     
     if(!submOk || !submComplete)
     {
-     if(trn.isActive())
+     if(trn !=null && trn.isActive())
       trn.rollback();
 
      gln.log(Level.ERROR, "Submit/Update operation failed. Rolling transaction back");

@@ -197,7 +197,7 @@ public class AuthServlet extends ServiceServlet
     return;
    }
 
-   Session sess = sessMngr.getSessionByUser(usr.getLogin());
+   Session sess = sessMngr.getSessionByUserId(usr.getId());
    
    if( sess == null )
     sess = sessMngr.createSession(usr);    

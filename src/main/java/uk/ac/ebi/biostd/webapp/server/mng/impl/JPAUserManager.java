@@ -25,8 +25,7 @@ public class JPAUserManager implements UserManager, SessionListener
  {
  }
 
- @Override
- public User getUserByLogin(String uName)
+ private User getUserByLoginDB(String uName)
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
@@ -50,16 +49,28 @@ public class JPAUserManager implements UserManager, SessionListener
   }
   finally
   {
-   trn.commit();
+   if( trn != null && trn.isActive() )
+    trn.commit();
   }
 
   return null;
 
  }
 
+ @Override
+ public User getUserByEmail(String email)
+ {
+  return BackendConfig.getServiceManager().getSecurityManager().getuserByEmail(email);
+ }
 
  @Override
- public User getUserByEmail(String prm)
+ public User getUserByLogin(String login)
+ {
+  return BackendConfig.getServiceManager().getSecurityManager().getUserByLogin(login);
+ }
+
+ 
+ private User getUserByEmailDB(String prm)
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
@@ -149,6 +160,8 @@ public class JPAUserManager implements UserManager, SessionListener
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
   EntityTransaction trn = em.getTransaction();
+  
+  User u = null;
 
   try
   {
@@ -161,7 +174,6 @@ public class JPAUserManager implements UserManager, SessionListener
    @SuppressWarnings("unchecked")
    List<User> res = q.getResultList();
 
-   User u = null;
 
    if(res.size() != 0)
     u = res.get(0);
@@ -170,8 +182,11 @@ public class JPAUserManager implements UserManager, SessionListener
     return false;
 
    if(u.isActive() || !ainf.key.equals(u.getActivationKey()))
+   {
+    u=null;
     return false;
-
+   }
+   
    u.setActive(true);
    u.setActivationKey(null);
 
@@ -183,7 +198,20 @@ public class JPAUserManager implements UserManager, SessionListener
   finally
   {
    if(trn.isActive() && !trn.getRollbackOnly())
+   {
     trn.commit();
+    
+    if( u != null )
+    {
+     User cchUsr = BackendConfig.getServiceManager().getSecurityManager().getUserById(u.getId());
+     
+     if( cchUsr != null )
+     {
+      cchUsr.setActive(true);
+      cchUsr.setActivationKey(null);
+     }
+    }
+   }
   }
 
   return true;

@@ -85,9 +85,9 @@ public class AccessTagsServlet extends HttpServlet
   {
    em = BackendConfig.getEntityManagerFactory().createEntityManager();
    
-   Query q = em.createNamedQuery("User.getByLogin");
+   Query q = em.createNamedQuery("User.getByEMail");
    
-   q.setParameter("login", login);
+   q.setParameter("email", login);
    
    User u = null;
    
@@ -97,9 +97,25 @@ public class AccessTagsServlet extends HttpServlet
    }
    catch(Exception e)
    {
-    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-    resp.getWriter().println("Status: FAILED");
-    return;
+   }
+   
+   if( u == null )
+   {
+    q= em.createNamedQuery("User.getByLogin");
+    
+    q.setParameter("login", login);
+    
+    try
+    {
+     u = (User)q.getSingleResult();
+    }
+    catch(Exception e)
+    {
+     resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+     resp.getWriter().println("Status: FAILED");
+     return;
+    }
+
    }
    
    if( pass != null )

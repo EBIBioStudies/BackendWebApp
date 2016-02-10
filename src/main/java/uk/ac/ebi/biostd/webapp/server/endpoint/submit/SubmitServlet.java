@@ -243,11 +243,33 @@ public class SubmitServlet extends ServiceServlet
    }
   }
   
-  if( patAcc != null && patAcc.equals("%") )
+  if( patAcc != null ) //&& patAcc.length() < 5 && patAcc.startsWith("%") || patAcc.startsWith("") )
   {
-   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-   response.getWriter().print("FAIL Invalid '"+accnoPatternParameter+"' parameter value. Can't be single '%'");
-   return;
+   if( patAcc.length() < 5 )
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.getWriter().print("FAIL Invalid '"+accnoPatternParameter+"' parameter value. Pattern is too short");
+    return;
+   }
+   
+   int pfxLen = 0;
+   
+   for( int i=0; i < patAcc.length(); i++ )
+   {
+    char c = patAcc.charAt(i);
+    
+    if( c == '?' || c== '%' )
+     break;
+    
+    pfxLen++;
+   }
+   
+   if( pfxLen < 5 )
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.getWriter().print("FAIL Invalid '"+accnoPatternParameter+"' parameter value. Pattern is too loose. Should have 5 characters prefix");
+    return;
+   }
   }
   
   response.setContentType("application/json");
