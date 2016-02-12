@@ -325,12 +325,12 @@ public class SecurityManagerImpl implements SecurityManager
   du.setFullName( u.getFullName() );
   du.setId( u.getId() );
   du.setLogin( u.getLogin() );
-  du.setSuperuser( du.isSuperuser() );
+  du.setSuperuser( u.isSuperuser() );
   du.setEmail(u.getEmail());
   du.setActive(u.isActive());
   du.setSecret(u.getSecret());
   du.setPasswordDigest(u.getPasswordDigest());
-  du.setAuxProfileInfo(du.getAuxProfileInfo());
+  du.setAuxProfileInfo(u.getAuxProfileInfo());
  
   userMap.put(du.getId(), du);
   
