@@ -332,11 +332,13 @@ public class BackendConfig
   if( CreateFileStructureParameter.equals(param) )
   {
    createFileStructure = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   return true; 
   }
   
   if( MandatoryAccountActivationParameter.equals(param) )
   {
    mandatoryAccountActivation = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   return true; 
   }
 
 
