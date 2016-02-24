@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
+import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
@@ -7,6 +8,8 @@ import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 public interface UserManager
 {
 
+ Session login(String login, String password) throws SecurityException;
+ 
  User getUserByLogin(String uName);
  User getUserByEmail(String email);
 
@@ -17,4 +20,5 @@ public interface UserManager
  void storeUserData(UserData ud);
  
  boolean activateUser(ActivationInfo ainf);
+
 }

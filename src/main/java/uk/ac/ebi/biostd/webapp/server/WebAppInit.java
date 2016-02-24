@@ -2,6 +2,7 @@ package uk.ac.ebi.biostd.webapp.server;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.servlet.ServletContext;
@@ -30,6 +32,9 @@ import org.apache.catalina.LifecycleException;
 import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.WebResourceRoot.ResourceSetType;
 import org.apache.catalina.webresources.StandardRoot;
+import org.hibernate.search.cfg.Environment;
+import org.hibernate.search.jpa.FullTextEntityManager;
+import org.hibernate.search.jpa.Search;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +50,7 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceInitExceprion;
+import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ResourceBundleParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ServletContextParamPool;
@@ -536,8 +542,57 @@ public class WebAppInit implements ServletContextListener
   
   
   BackendConfig.setDatabaseConfig( dbConfig );
+  
+  Path idxPath = null;
+  boolean rebuildIndex = false;
+  
+  Object indexBaseParam = dbConfig.get("hibernate.search.default.indexBase");
+  if( indexBaseParam != null )
+  {
+   idxPath = FileSystems.getDefault().getPath(indexBaseParam.toString());
+   
+   if( ! idxPath.isAbsolute() )
+    idxPath = BackendConfig.getBaseDirectory().resolve(idxPath);
+   
+   rebuildIndex = ! Files.exists(idxPath);
+   
+   dbConfig.put("hibernate.search.default.indexBase",idxPath.toString());
+   dbConfig.put(Environment.MODEL_MAPPING, SearchMapper.makeMapping() );
+   
+   BackendConfig.setSearchEnabled( true );
+  }
+  
   BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig));
 
+  if( rebuildIndex )
+  {
+   try
+   {
+    Files.createDirectories(idxPath);
+   }
+   catch(IOException e)
+   {
+    log.error("Can't create search index directory '"+idxPath+"' : "+e.getMessage());
+    throw new RuntimeException("BioStd webapp initialization failed");
+   }
+   
+   EntityManager entityManager = BackendConfig.getEntityManagerFactory().createEntityManager();
+   FullTextEntityManager fullTextEntityManager = Search.getFullTextEntityManager(entityManager);
+   try
+   {
+    log.info("Starting Hibernate indexer");
+    fullTextEntityManager.createIndexer().startAndWait();
+    log.info("Hibernate indexer: done");
+   }
+   catch(InterruptedException e)
+   {
+    log.error("Can't initialize Hibernate search: "+e.getMessage());
+    throw new RuntimeException("BioStd webapp initialization failed");
+   }
+   
+   fullTextEntityManager.close();
+  }
+  
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
   
   

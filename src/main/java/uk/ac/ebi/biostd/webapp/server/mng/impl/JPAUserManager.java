@@ -7,13 +7,16 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
+import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
+import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
+import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 
@@ -215,6 +218,42 @@ public class JPAUserManager implements UserManager, SessionListener
   }
 
   return true;
+ }
+
+ @Override
+ public Session login(String login, String password) throws SecurityException
+ {
+  User usr = null;
+  
+  if( login == null || login.length() == 0 )
+   throw new SecurityException("Invalid email or user name");
+  
+  usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
+  
+  if( usr == null )
+   usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(login);
+
+  if(usr == null)
+   throw new SecurityException("Login failed");
+
+  if(!usr.isActive())
+   throw new SecurityException("Account has not been activated");
+
+
+  if(password == null)
+   password = "";
+
+  if(!usr.checkPassword(password))
+   throw new SecurityException("Login failed");
+
+  SessionManager sessMngr = BackendConfig.getServiceManager().getSessionManager();
+
+  Session sess = sessMngr.getSessionByUserId(usr.getId());
+
+  if(sess == null)
+   sess = sessMngr.createSession(usr);
+
+  return sess;
  }
 
 }

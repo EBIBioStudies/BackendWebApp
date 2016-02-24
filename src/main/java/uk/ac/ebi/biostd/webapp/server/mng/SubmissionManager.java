@@ -2,6 +2,8 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 
 import java.util.Collection;
 
+import org.apache.lucene.queryparser.classic.ParseException;
+
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.treelog.LogNode;
@@ -21,6 +23,8 @@ public interface SubmissionManager
  
  Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
  Submission getSubmissionsByAccession( String acc );
+ 
+ Collection< Submission > searchSubmissions( User user, SubmissionSearchRequest ssr ) throws ParseException;
  
  /*
  LogNode createJSONSubmission(String txt, User usr);

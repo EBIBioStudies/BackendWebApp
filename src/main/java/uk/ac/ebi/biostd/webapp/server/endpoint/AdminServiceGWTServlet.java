@@ -11,6 +11,7 @@ import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.client.BioStdService;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 
 import com.google.gwt.user.server.rpc.RemoteServiceServlet;
 
@@ -70,18 +71,17 @@ public class AdminServiceGWTServlet extends RemoteServiceServlet implements BioS
  @Override
  public User login(String login, String pass)
  {
-  User user = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
-  
-  if( user == null )
-   return null;
-  
-  if( pass == null ||  ! user.checkPassword(pass) )
-   return null;
 
-  Session sess = BackendConfig.getServiceManager().getSessionManager().getSessionByUserId(user.getId());
+  Session sess=null;
+  try
+  {
+   sess = BackendConfig.getServiceManager().getUserManager().login(login, pass);
+  }
+  catch(SecurityException e)
+  {
+   return null;
+  }
   
-  if( sess == null )
-   sess = BackendConfig.getServiceManager().getSessionManager().createSession(user);    
   
   String skey = sess.getSessionKey();
   
@@ -91,7 +91,7 @@ public class AdminServiceGWTServlet extends RemoteServiceServlet implements BioS
   getThreadLocalResponse().addCookie( cke );
   
   
-  return user;
+  return sess.getUser();
  }
 
 }

@@ -37,6 +37,7 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
+import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
@@ -156,51 +157,18 @@ public class AuthServlet extends ServiceServlet
   }
   else if( act == Action.signin )
   {
-   prm = prms.getParameter(UserLoginParameter);
    
-   if( prm == null )
+   Session sess;
+   try
    {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserLoginParameter+"' parameter is not defined");
-
-    return;
+    sess = BackendConfig.getServiceManager().getUserManager().login( prms.getParameter(UserLoginParameter), prms.getParameter(PasswordParameter));
    }
-
-   
-   User usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(prm);
-   
-   if( usr == null )
-    usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(prm);
-   
-   if( usr == null )
+   catch(SecurityException e)
    {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL login failed");
-
-    return;
-   }
-
-   if( ! usr.isActive() )
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL account has not been activated");
-
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL "+e.getMessage());
     return;
    }
    
-   prm = prms.getParameter(PasswordParameter);
-   
-   if( prm == null )
-    prm = "";
-    
-   if( ! usr.checkPassword(prm) )
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL login failed");
-
-    return;
-   }
-
-   Session sess = sessMngr.getSessionByUserId(usr.getId());
-   
-   if( sess == null )
-    sess = sessMngr.createSession(usr);    
    
    String skey = sess.getSessionKey();
    
@@ -209,7 +177,7 @@ public class AuthServlet extends ServiceServlet
    
    resp.addCookie( cke );
    
-   resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey), new KV(UsernameParameter,usr.getFullName()));
+   resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey), new KV(UsernameParameter,sess.getUser().getFullName()));
    
    return;
   }

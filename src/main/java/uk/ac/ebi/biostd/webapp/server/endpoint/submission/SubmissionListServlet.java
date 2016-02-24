@@ -4,11 +4,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.util.Collection;
+import java.util.function.Consumer;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.apache.lucene.queryparser.classic.ParseException;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.model.Submission;
@@ -18,6 +21,7 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.JSONReqParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+import uk.ac.ebi.biostd.webapp.server.mng.SubmissionSearchRequest;
 
 /**
  * Servlet implementation class DirServlet
@@ -25,6 +29,20 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 
 public class SubmissionListServlet extends ServiceServlet
 {
+ public static final String limitParameter = "limit";
+ public static final String offserParameter = "offset";
+ public static final String ownerParameter = "owner";
+ public static final String accNoParameter = "accNo";
+ public static final String keywordsParameter = "keywords";
+ public static final String cTimeFromParameter = "cTimeFrom";
+ public static final String cTimeToParameter = "cTimeTo";
+ public static final String mTimeFromParameter = "mTimeFrom";
+ public static final String mTimeToParameter = "mTimeTo";
+ public static final String rTimeFromParameter = "rTimeFrom";
+ public static final String rTimeToParameter = "rTimeTo";
+ public static final String sortByParameter = "sortBy";
+ 
+ 
  private static final long serialVersionUID = 1L;
 
  /**
@@ -99,7 +117,7 @@ public class SubmissionListServlet extends ServiceServlet
   
   int offset = 0;
   
-  String val = params.getParameter("offset");
+  String val = params.getParameter(offserParameter);
   
   if( val != null )
   {
@@ -115,7 +133,7 @@ public class SubmissionListServlet extends ServiceServlet
   
   int limit = -1;
   
-  val = params.getParameter("limit");
+  val = params.getParameter(limitParameter);
   
   if( val != null )
   {
@@ -128,8 +146,76 @@ public class SubmissionListServlet extends ServiceServlet
    }
   }
 
- 
-  Collection<Submission> subs = BackendConfig.getServiceManager().getSubmissionManager().getSubmissionsByOwner( sess.getUser(), offset, limit );
+  SubmissionSearchRequest ssr = new SubmissionSearchRequest();
+  boolean ssrSet = false;
+  
+  val = params.getParameter(keywordsParameter);
+  
+  if( val != null && (val=val.trim()).length() > 0 )
+  {
+   ssr.setKeywords(val);  
+   ssrSet = true;
+  }
+  
+  val = params.getParameter(ownerParameter);
+  
+  if( val != null && (val=val.trim()).length() > 0 )
+  {
+   ssr.setOwner(val);  
+   ssrSet = true;
+  }
+  
+  val = params.getParameter(accNoParameter);
+  
+  if( val != null && (val=val.trim()).length() > 0 )
+  {
+   ssr.setAccNo(val);  
+   ssrSet = true;
+  }
+
+
+  val = params.getParameter(sortByParameter);
+
+  if( val != null && (val=val.trim()).length() > 0 )
+  {
+   for( SubmissionSearchRequest.SortFields sf : SubmissionSearchRequest.SortFields.values() )
+   {
+    if( sf.name().equalsIgnoreCase(val) )
+    {
+     ssr.setSortBy(sf);
+     ssrSet = true;
+     break;     
+    }
+   }
+  }
+
+  
+  ssrSet = setLongParameter(params.getParameter(cTimeFromParameter), ssr::setFromCTime) || ssrSet;
+  ssrSet = setLongParameter(params.getParameter(cTimeToParameter), ssr::setToCTime) || ssrSet;
+  ssrSet = setLongParameter(params.getParameter(mTimeFromParameter), ssr::setFromMTime) || ssrSet;
+  ssrSet = setLongParameter(params.getParameter(mTimeToParameter), ssr::setToMTime) || ssrSet;
+  ssrSet = setLongParameter(params.getParameter(rTimeFromParameter), ssr::setFromRTime) || ssrSet;
+  ssrSet = setLongParameter(params.getParameter(rTimeToParameter), ssr::setToRTime) || ssrSet;
+  
+  Collection<Submission> subs = null;
+  
+  if( ssrSet )
+  {
+   ssr.setSkip(offset);
+   ssr.setLimit(limit);
+   
+   try
+   {
+    subs = BackendConfig.getServiceManager().getSubmissionManager().searchSubmissions( sess.getUser(), ssr );
+   }
+   catch(ParseException e)
+   {
+    out.print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid query string\"\n}");
+    return;
+   }
+  }
+  else
+   subs = BackendConfig.getServiceManager().getSubmissionManager().getSubmissionsByOwner( sess.getUser(), offset, limit );
 
   out.print("{\n\"status\": \"OK\",\n\"submissions\": [\n");
   
@@ -173,5 +259,29 @@ public class SubmissionListServlet extends ServiceServlet
 
  }
 
+ private boolean setLongParameter(String pval, Consumer<Long> setter )
+ {
+  if( pval == null )
+   return false;
+  
+  pval = pval.trim();
+  
+  try
+  {
+   long val = Long.parseLong(pval);
+   
+   if( val < 0 )
+    val=0;
+   
+   setter.accept(val);
+  }
+  catch(Throwable t)
+  {
+   return false;
+  }
+  
+  
+  return true;
+ }
 
 }

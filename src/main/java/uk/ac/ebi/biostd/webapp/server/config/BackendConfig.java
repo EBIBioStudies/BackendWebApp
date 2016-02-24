@@ -136,6 +136,8 @@ public class BackendConfig
 
  private static boolean enableUnsafeRequests=true;
  private static boolean mandatoryAccountActivation=true;
+ 
+ private static boolean searchEnabled=false;
 
  private static Map<String, Object> databaseConfig;
  
@@ -607,6 +609,16 @@ public class BackendConfig
  public static boolean isMandatoryAccountActivation()
  {
   return mandatoryAccountActivation;
+ }
+
+ public static boolean isSearchEnabled()
+ {
+  return searchEnabled;
+ }
+
+ public static void setSearchEnabled(boolean searchEnabled)
+ {
+  BackendConfig.searchEnabled = searchEnabled;
  }
 
 }

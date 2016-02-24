@@ -30,8 +30,21 @@ import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.NumericRangeQuery;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.hibernate.search.jpa.FullTextEntityManager;
+import org.hibernate.search.jpa.FullTextQuery;
+import org.hibernate.search.jpa.Search;
 import org.odftoolkit.simple.SpreadsheetDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +89,8 @@ import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.SubmissionSearchRequest;
+import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 
@@ -2510,6 +2525,126 @@ public class JPASubmissionManager implements SubmissionManager
   }
   
   return gln;
+ }
+
+
+ @Override
+ public Collection<Submission> searchSubmissions( User u, SubmissionSearchRequest ssr) throws ParseException
+ {
+  Collection<Submission> res = null;
+  
+  EntityManager entityManager = BackendConfig.getEntityManagerFactory().createEntityManager();
+  FullTextEntityManager fullTextEntityManager = Search.getFullTextEntityManager(entityManager);
+
+  try
+  {
+
+   BooleanQuery.Builder qb = new BooleanQuery.Builder();
+
+   if(ssr.getKeywords() != null)
+   {
+    QueryParser queryParser = new QueryParser(SearchMapper.titleField, new StandardAnalyzer());
+
+    qb.add(queryParser.parse(ssr.getKeywords()), BooleanClause.Occur.MUST);
+   }
+
+   if( ssr.getOwner() != null )
+   {
+    TermQuery tq = new TermQuery( new Term(SearchMapper.ownerField+'.'+SearchMapper.emailField, ssr.getOwner()) );
+    qb.add(tq, BooleanClause.Occur.MUST);
+   }
+
+   if( ssr.getAccNo() != null )
+   {
+    TermQuery tq = new TermQuery( new Term(SearchMapper.accNoField, ssr.getAccNo()) );
+    qb.add(tq, BooleanClause.Occur.MUST);
+   }
+  
+   long from, to;
+   String field;
+
+   from = ssr.getFromCTime();
+   to = ssr.getToCTime();
+   field = SearchMapper.cTimeField;
+
+   if(from > 0 || to > 0)
+   {
+    if(to == 0)
+     to = Long.MAX_VALUE;
+
+    qb.add(NumericRangeQuery.newLongRange(field, from, to, true, true), BooleanClause.Occur.MUST);
+   }
+
+   from = ssr.getFromMTime();
+   to = ssr.getToMTime();
+   field = SearchMapper.mTimeField;
+
+   if(from > 0 || to > 0)
+   {
+    if(to == 0)
+     to = Long.MAX_VALUE;
+
+    qb.add(NumericRangeQuery.newLongRange(field, from, to, true, true), BooleanClause.Occur.MUST);
+   }
+
+   from = ssr.getFromRTime();
+   to = ssr.getToRTime();
+   field = SearchMapper.rTimeField;
+
+   if(from > 0 || to > 0)
+   {
+    if(to == 0)
+     to = Long.MAX_VALUE;
+
+    qb.add(NumericRangeQuery.newLongRange(field, from, to, true, true), BooleanClause.Occur.MUST);
+   }
+
+   Sort sort = null;
+
+   if(ssr.getSortBy() != null)
+   {
+    switch(ssr.getSortBy())
+    {
+     case CTime:
+      sort = new Sort(new SortField(SearchMapper.cTimeField, SortField.Type.LONG, true));
+      break;
+
+     case MTime:
+      sort = new Sort(new SortField(SearchMapper.mTimeField, SortField.Type.LONG, true));
+      break;
+
+     case RTime:
+      sort = new Sort(new SortField(SearchMapper.rTimeField, SortField.Type.LONG, true));
+      break;
+    }
+   }
+
+   org.apache.lucene.search.Query q = qb.build();
+
+   FullTextQuery query = fullTextEntityManager.createFullTextQuery(q, Submission.class);
+
+   if(sort != null)
+    query.setSort(sort);
+
+   if( ssr.getSkip() > 0 )
+    query.setFirstResult(ssr.getSkip());
+   
+   if( ssr.getLimit() > 0 )
+   query.setMaxResults(ssr.getLimit());
+
+   res = query.getResultList();
+
+  }
+  finally
+  {
+   if( fullTextEntityManager != null )
+    fullTextEntityManager.close();
+   
+   if( entityManager != null && entityManager.isOpen() )
+    entityManager.close();
+  }
+  
+  return res;
  }
 
 }
