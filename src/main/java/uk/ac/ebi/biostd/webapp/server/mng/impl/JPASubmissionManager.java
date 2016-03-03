@@ -1719,6 +1719,7 @@ public class JPASubmissionManager implements SubmissionManager
       si.getLogNode().log(Level.INFO, "File '" + fo.getFileRef().getName() + "' transfer success");
       
       fo.getFileRef().setSize( fo.getFilePointer().getSize() );
+      fo.getFileRef().setDirectory(fo.getFilePointer().isDirectory());
      }
      catch(IOException e)
      {

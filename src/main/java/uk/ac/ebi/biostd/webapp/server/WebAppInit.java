@@ -51,6 +51,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceInitExceprion;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
+import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ResourceBundleParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ServletContextParamPool;
@@ -298,7 +299,7 @@ public class WebAppInit implements ServletContextListener
     }
     catch(Exception ex)
     {
-     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't create instance of class '" + outtaskCls + "'");
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't create instance of class '" + outtaskCls + "' : "+ExceptionUtil.unroll(ex).getMessage());
     }
 
     mods.add( outMod );

@@ -109,7 +109,9 @@ public class IDPrefetchExporterTask implements MTExportTask
 
    }
    
-   putIntoQueue(ft.getOutQueue(), sb.toString());
+   
+   if( sb.length() > 0 )
+    putIntoQueue(ft.getOutQueue(), sb.toString());
   }
   
   return needMoreData;

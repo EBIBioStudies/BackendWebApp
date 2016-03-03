@@ -102,11 +102,11 @@ public class FileManagerImpl implements FileManager
  }
  
  @Override
- public void deleteDirectory(Path origDir) throws IOException
+ public void deleteDirectoryContents(Path origDir) throws IOException
  {
   if( ! Files.exists(origDir) )
    return;
-  
+
   Files.walkFileTree(origDir, new SimpleFileVisitor<Path>()
   {
 
@@ -116,7 +116,8 @@ public class FileManagerImpl implements FileManager
     if( ex != null )
      throw ex;
     
-    Files.delete(dir);
+    if( ! dir.equals(origDir) )
+     Files.delete(dir);
 
     return FileVisitResult.CONTINUE;
    }
@@ -130,6 +131,18 @@ public class FileManagerImpl implements FileManager
    }
 
   });
+ }
+ 
+ @Override
+ public void deleteDirectory(Path origDir) throws IOException
+ {
+  if( ! Files.exists(origDir) )
+   return;
+  
+  deleteDirectoryContents(origDir);
+  
+  Files.delete(origDir);
+
  }
 
  @Override

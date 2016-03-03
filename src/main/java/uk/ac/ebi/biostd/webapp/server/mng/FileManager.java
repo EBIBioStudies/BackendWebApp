@@ -33,5 +33,6 @@ public interface FileManager
  void linkOrCopyDirectory(Path srcDir, Path dstDir) throws IOException;
 
  void deleteDirectory(Path origDir) throws IOException;
+ void deleteDirectoryContents(Path origDir) throws IOException;
 
 }

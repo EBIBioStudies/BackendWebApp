@@ -4,6 +4,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 
+import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 
 public class FmtModuleConfig
@@ -16,14 +17,18 @@ public class FmtModuleConfig
  public static final String OutputFileParameter        = "outfile";
  public static final String FormatParameter            = "format";
  public static final String TmpDirParameter            = "tmpdir";
+ public static final String ChunkParameter            = "chunkSize";
 
  private String      format;
  private Boolean     publicOnly;
  private String      outputFile;
  private String      tmpDir;
  private Map<String, String> formatterParams=new HashMap<String, String>();
+ private boolean chunkOutput;
+ private long chunkSize;
+ private boolean chunkSizeInUnits;
 
- public void loadParameters(ParamPool params, String pfx)
+ public void loadParameters(ParamPool params, String pfx) throws TaskConfigException
  {
   if( pfx == null )
    pfx="";
@@ -42,6 +47,49 @@ public class FmtModuleConfig
   {
    publicOnly = pv.equalsIgnoreCase("true") || pv.equalsIgnoreCase("yes") || pv.equals("1");
   }
+  
+  pv = params.getParameter(pfx+ChunkParameter);
+
+  if( pv != null )
+  {
+   pv = pv.trim();
+   
+   if( pv.length() == 0 )
+    throw new TaskConfigException("FormattingOutputModule: invalid value of parameter: "+pfx+ChunkParameter);
+   
+   char ch = pv.charAt( pv.length()-1 );
+   
+   int mult = 1;
+   
+   chunkSizeInUnits = false;
+   
+   if( Character.toUpperCase(ch) == 'K' )
+    mult = 1024;
+   else if( Character.toUpperCase(ch) == 'M' )
+    mult = 1024*1024;
+   else if( Character.toUpperCase(ch) == 'G' )
+    mult = 1024*1024*1024;
+   else if( Character.toUpperCase(ch) == 'U' || Character.isDigit(ch) )
+    chunkSizeInUnits = true;
+   else
+    throw new TaskConfigException("FormattingOutputModule: invalid value of parameter: "+pfx+ChunkParameter+"="+pv);
+    
+   try
+   {
+    chunkSize = Integer.parseInt(Character.isDigit(ch)?pv:pv.substring(0,pv.length()-1));
+   }
+   catch(NumberFormatException e)
+   {
+    throw new TaskConfigException("FormattingOutputModule: invalid value of parameter: "+pfx+ChunkParameter+"="+pv);
+   }
+   
+   chunkSize *= mult;
+   
+   chunkOutput = true;
+
+  }
+  else
+   chunkOutput = false;
   
   Enumeration<String> pnames = params.getNames();
   
@@ -82,6 +130,24 @@ public class FmtModuleConfig
  public Map<String, String> getFormatterParams()
  {
   return formatterParams;
+ }
+
+
+ public boolean isChunkOutput()
+ {
+  return chunkOutput;
+ }
+
+
+ public long getChunkSize()
+ {
+  return chunkSize;
+ }
+
+
+ public boolean isChunkSizeInUnits()
+ {
+  return chunkSizeInUnits;
  }
 
 }

@@ -137,6 +137,18 @@
     <url-pattern>/export/*</url-pattern>
   </servlet-mapping>
   
+    <servlet>
+    <description></description>
+    <display-name>ToolsServlet</display-name>
+    <servlet-name>ToolsServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.tools.ToolsServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>ToolsServlet</servlet-name>
+    <url-pattern>/tools/*</url-pattern>
+  </servlet-mapping>
+  
+  
   <servlet>
     <description></description>
     <display-name>AccNoReserveServlet</display-name>
