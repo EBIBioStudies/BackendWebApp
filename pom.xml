@@ -1,54 +1,57 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-  <groupId>uk.ac.ebi.biostd</groupId>
-  <artifactId>BioStdWebApp</artifactId>
-  <version>0.0.1</version>
+	<groupId>uk.ac.ebi.biostd</groupId>
+	<artifactId>BioStdWebApp</artifactId>
+	<version>0.0.1</version>
 
-  <dependencies>
+	<dependencies>
 
-	<dependency>
-		<groupId>javax.servlet</groupId>
-		<artifactId>javax.servlet-api</artifactId>
-		<version>3.1.0</version>
-		<scope>provided</scope>
-	</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>javax.servlet-api</artifactId>
+			<version>3.1.0</version>
+			<scope>provided</scope>
+		</dependency>
 
-	<dependency>
-		<groupId>javax.transaction</groupId>
-		<artifactId>jta</artifactId>
-		<version>1.1</version>
-	</dependency>
-	<dependency>
-		<groupId>org.slf4j</groupId>
-		<artifactId>slf4j-jdk14</artifactId>
-		<version>[1.7.5,)</version>
-	</dependency>
+		<dependency>
+			<groupId>uk.ac.ebi.mg</groupId>
+			<artifactId>SpreadsheetReaders</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 
-	<dependency>
-		<groupId>uk.ac.ebi.biostd</groupId>
-		<artifactId>BioStdCoreModel</artifactId>
-		<version>[0.0.3-SNAPSHOT,)</version>
-	</dependency>
+		<dependency>
+			<groupId>javax.transaction</groupId>
+			<artifactId>jta</artifactId>
+			<version>1.1</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-jdk14</artifactId>
+			<version>[1.7.5,)</version>
+		</dependency>
 
-<!-- 
-	<dependency>
-		<groupId>org.hibernate</groupId>
-		<artifactId>hibernate-entitymanager</artifactId>
-		<version>4.3.11.Final</version>
-	</dependency>
--->
-	<dependency>
-		<groupId>org.hibernate</groupId>
-		<artifactId>hibernate-entitymanager</artifactId>
-		<version>5.1.0.Final</version>
-	</dependency>
+		<dependency>
+			<groupId>uk.ac.ebi.biostd</groupId>
+			<artifactId>BioStdCoreModel</artifactId>
+			<version>[0.0.3-SNAPSHOT,)</version>
+		</dependency>
 
-	<dependency>
-		<groupId>org.hibernate</groupId>
-		<artifactId>hibernate-search-orm</artifactId>
-		<version>5.5.2.Final</version>
-	</dependency>
+		<!-- <dependency> <groupId>org.hibernate</groupId> <artifactId>hibernate-entitymanager</artifactId> 
+			<version>4.3.11.Final</version> </dependency> -->
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+			<version>5.1.0.Final</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-search-orm</artifactId>
+			<version>5.5.2.Final</version>
+		</dependency>
 
 
 		<dependency>
@@ -82,48 +85,48 @@
 		</dependency>
 
 
-	<dependency>
-		<groupId>org.hibernate</groupId>
-		<artifactId>hibernate-c3p0</artifactId>
-		<version>5.1.0.Final</version>
-	</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-c3p0</artifactId>
+			<version>5.1.0.Final</version>
+		</dependency>
 
-	<dependency>
-		<groupId>net.tanesha.recaptcha4j</groupId>
-		<artifactId>recaptcha4j</artifactId>
-		<version>[0.0.7,)</version>
-	</dependency>
+		<dependency>
+			<groupId>net.tanesha.recaptcha4j</groupId>
+			<artifactId>recaptcha4j</artifactId>
+			<version>[0.0.7,)</version>
+		</dependency>
 
-	<dependency>
-		<groupId>commons-fileupload</groupId>
-		<artifactId>commons-fileupload</artifactId>
-		<version>[1.2,)</version>
-	</dependency>
+		<dependency>
+			<groupId>commons-fileupload</groupId>
+			<artifactId>commons-fileupload</artifactId>
+			<version>[1.2,)</version>
+		</dependency>
 
-  	<dependency>
-	 <groupId>commons-io</groupId>
-	 <artifactId>commons-io</artifactId>
-	 <version>2.4</version>
-    </dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.4</version>
+		</dependency>
 
-	<dependency>
-		<groupId>javax.mail</groupId>
-		<artifactId>mail</artifactId>
-		<version>1.4</version>
-	</dependency>
+		<dependency>
+			<groupId>javax.mail</groupId>
+			<artifactId>mail</artifactId>
+			<version>1.4</version>
+		</dependency>
 
-	<dependency>
-		<groupId>com.isomorphic.smartgwt.lgpl</groupId>
-		<artifactId>smartgwt-lgpl</artifactId>
-		<version>5.0-p20150515</version>
-	</dependency>
+		<dependency>
+			<groupId>com.isomorphic.smartgwt.lgpl</groupId>
+			<artifactId>smartgwt-lgpl</artifactId>
+			<version>5.0-p20150515</version>
+		</dependency>
 
-	<dependency>
-		<groupId>org.moxieapps.gwt</groupId>
-		<artifactId>org.moxieapps.gwt.uploader</artifactId>
-		<version>1.1.0</version>
-	</dependency>
-	
+		<dependency>
+			<groupId>org.moxieapps.gwt</groupId>
+			<artifactId>org.moxieapps.gwt.uploader</artifactId>
+			<version>1.1.0</version>
+		</dependency>
+
 
 
 		<!-- dependency> <groupId>com.google.gwt</groupId> <artifactId>gwt-user</artifactId> 
@@ -133,21 +136,11 @@
 			<version>[5.0,)</version> </dependency -->
 
 	</dependencies>
-  
-  <!-- build>
-    <sourceDirectory>src</sourceDirectory>
-    <plugins>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <configuration>
-          <source/>
-          <target/>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build-->
-  	<build>
+
+	<!-- build> <sourceDirectory>src</sourceDirectory> <plugins> <plugin> <artifactId>maven-compiler-plugin</artifactId> 
+		<version>2.3.2</version> <configuration> <source/> <target/> </configuration> 
+		</plugin> </plugins> </build -->
+	<build>
 
 		<plugins>
 			<plugin>
@@ -160,27 +153,29 @@
 			</plugin>
 		</plugins>
 	</build>
-    <repositories>
+	<repositories>
 
 		<repository>
 			<id>fg-artif</id>
 			<name>FG atrifactory</name>
 			<url>http://coconut.ebi.ac.uk:8081/artifactory/local-repo</url>
 		</repository>
-		
+
 		<repository>
 			<id>ebi-repo</id>
 			<name>EBI repo</name>
 			<url>http://www.ebi.ac.uk/~maven/m2repo</url>
 		</repository>
-		
+
 		<repository>
 			<id>ebi-repo-snapshots</id>
 			<name>EBI Repo Snapshots</name>
 			<url>http://www.ebi.ac.uk/~maven/m2repo_snapshots</url>
-			<snapshots><enabled>true</enabled></snapshots>
-		</repository> 
-  
-  </repositories>
-  
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+
+	</repositories>
+
 </project>

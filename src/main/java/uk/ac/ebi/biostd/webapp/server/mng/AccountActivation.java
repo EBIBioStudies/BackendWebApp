@@ -27,8 +27,16 @@ public class AccountActivation
   int xor = (int)( key.getLeastSignificantBits() & 0xFFL );
   
   for( byte b : emailBts )
-   sb.append( Integer.toHexString( Byte.toUnsignedInt(b) ^ xor ) );
-  
+  {
+   String hex = Integer.toHexString( Byte.toUnsignedInt(b) ^ xor );
+   
+   if( hex.length() == 1 )
+    sb.append('0');
+   
+   sb.append( hex );
+  }
+   
+   
   sb.append('O');
   sb.append(key.toString());
   

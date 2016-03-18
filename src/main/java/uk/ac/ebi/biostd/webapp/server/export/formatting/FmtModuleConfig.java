@@ -76,14 +76,12 @@ public class FmtModuleConfig
     
    try
    {
-    chunkSize = Integer.parseInt(Character.isDigit(ch)?pv:pv.substring(0,pv.length()-1));
+    chunkSize = Math.round(Double.parseDouble(Character.isDigit(ch)?pv:pv.substring(0,pv.length()-1)) * mult );
    }
    catch(NumberFormatException e)
    {
     throw new TaskConfigException("FormattingOutputModule: invalid value of parameter: "+pfx+ChunkParameter+"="+pv);
    }
-   
-   chunkSize *= mult;
    
    chunkOutput = true;
 

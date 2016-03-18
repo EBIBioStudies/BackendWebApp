@@ -61,14 +61,10 @@ import uk.ac.ebi.biostd.in.ParserConfig;
 import uk.ac.ebi.biostd.in.ParserException;
 import uk.ac.ebi.biostd.in.SubmissionMapping;
 import uk.ac.ebi.biostd.in.json.JSONReader;
-import uk.ac.ebi.biostd.in.pagetab.CSVTSVSpreadsheetReader;
 import uk.ac.ebi.biostd.in.pagetab.FileOccurrence;
-import uk.ac.ebi.biostd.in.pagetab.ODSpreadsheetReader;
 import uk.ac.ebi.biostd.in.pagetab.PageTabSyntaxParser;
 import uk.ac.ebi.biostd.in.pagetab.SectionOccurrence;
-import uk.ac.ebi.biostd.in.pagetab.SpreadsheetReader;
 import uk.ac.ebi.biostd.in.pagetab.SubmissionInfo;
-import uk.ac.ebi.biostd.in.pagetab.XLSpreadsheetReader;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionAttribute;
@@ -93,6 +89,10 @@ import uk.ac.ebi.biostd.webapp.server.mng.SubmissionSearchRequest;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
+import uk.ac.ebi.mg.spreadsheet.SpreadsheetReader;
+import uk.ac.ebi.mg.spreadsheet.readers.CSVTSVSpreadsheetReader;
+import uk.ac.ebi.mg.spreadsheet.readers.ODSpreadsheetReader;
+import uk.ac.ebi.mg.spreadsheet.readers.XLSpreadsheetReader;
 
 public class JPASubmissionManager implements SubmissionManager
 {
