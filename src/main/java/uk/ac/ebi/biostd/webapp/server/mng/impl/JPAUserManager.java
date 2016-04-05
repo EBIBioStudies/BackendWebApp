@@ -14,10 +14,17 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
-import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.InvalidKeyException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.KeyExpiredException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.SystemUserMngException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.UserAlreadyActiveException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.UserMngException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotActiveException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotFoundException;
 
 
 public class JPAUserManager implements UserManager, SessionListener
@@ -63,7 +70,7 @@ public class JPAUserManager implements UserManager, SessionListener
  @Override
  public User getUserByEmail(String email)
  {
-  return BackendConfig.getServiceManager().getSecurityManager().getuserByEmail(email);
+  return BackendConfig.getServiceManager().getSecurityManager().getUserByEmail(email);
  }
 
  @Override
@@ -92,7 +99,7 @@ public class JPAUserManager implements UserManager, SessionListener
  }
  
  @Override
- public synchronized void addUser(User u, boolean validateEmail, String validateURL) throws ServiceException
+ public synchronized void addUser(User u, boolean validateEmail, String validateURL) throws UserMngException
  {
   
   u.setSecret( UUID.randomUUID().toString() );
@@ -103,14 +110,22 @@ public class JPAUserManager implements UserManager, SessionListener
   {
    u.setActive(false);
    u.setActivationKey(actKey.toString());
+   u.setKeyTime(System.currentTimeMillis());
    
    if( !AccountActivation.sendActivationRequest(u,actKey,validateURL) )
-    throw new ServiceException("Email confirmation request can't be sent. Please try later");
+    throw new SystemUserMngException("Email confirmation request can't be sent. Please try later");
   }
   else
    u.setActive(true);
   
-  BackendConfig.getServiceManager().getSecurityManager().addUser(u);
+  try
+  {
+   BackendConfig.getServiceManager().getSecurityManager().addUser(u);
+  }
+  catch(ServiceException e)
+  {
+   throw new SystemUserMngException("System error",e);
+  }
   
  }
 
@@ -158,7 +173,7 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
  @Override
- public boolean activateUser(ActivationInfo ainf)
+ public boolean activateUser(ActivationInfo ainf) throws UserMngException
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
@@ -182,21 +197,39 @@ public class JPAUserManager implements UserManager, SessionListener
     u = res.get(0);
 
    if(u == null)
-    return false;
+    throw new UserNotFoundException();
 
-   if(u.isActive() || !ainf.key.equals(u.getActivationKey()))
+   
+   if(u.isActive() )
    {
     u=null;
-    return false;
+    throw new UserAlreadyActiveException();
    }
+   
+   if(!ainf.key.equals(u.getActivationKey()))
+   {
+    u=null;
+    throw new InvalidKeyException();
+   }
+   
+   if( ( System.currentTimeMillis() - u.getKeyTime() ) > BackendConfig.getActivationTimeout() )
+    throw new KeyExpiredException();
    
    u.setActive(true);
    u.setActivationKey(null);
 
   }
+  catch(UserMngException e)
+  {
+   trn.rollback();
+   
+   throw e;
+  }
   catch(Exception e)
   {
    trn.rollback();
+   
+   throw new SystemUserMngException("System error",e);
   }
   finally
   {
@@ -205,7 +238,7 @@ public class JPAUserManager implements UserManager, SessionListener
     trn.commit();
     
     if( u != null )
-    {
+    { //We also need to update a user cache
      User cchUsr = BackendConfig.getServiceManager().getSecurityManager().getUserById(u.getId());
      
      if( cchUsr != null )
@@ -219,6 +252,83 @@ public class JPAUserManager implements UserManager, SessionListener
 
   return true;
  }
+ 
+ @Override
+ public void resetPassword(ActivationInfo ainf, String pass) throws UserMngException
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+  EntityTransaction trn = em.getTransaction();
+  
+  User u = null;
+
+  try
+  {
+   trn.begin();
+   
+   Query q = em.createNamedQuery("User.getByEMail");
+
+   q.setParameter("email", ainf.email);
+
+   @SuppressWarnings("unchecked")
+   List<User> res = q.getResultList();
+
+
+   if(res.size() != 0)
+    u = res.get(0);
+
+   if(u == null)
+    throw new UserNotFoundException();
+
+   
+   if( ! u.isActive() )
+   {
+    u=null;
+    throw new UserNotActiveException();
+   }
+   
+   if(!ainf.key.equals(u.getActivationKey()))
+   {
+    u=null;
+    throw new InvalidKeyException();
+   }
+   
+   if( ( System.currentTimeMillis() - u.getKeyTime() ) > BackendConfig.getActivationTimeout() )
+    throw new KeyExpiredException();
+   
+   u.setPassword(pass);
+
+  }
+  catch(UserMngException e)
+  {
+   trn.rollback();
+   
+   throw e;
+  }
+  catch(Exception e)
+  {
+   trn.rollback();
+   
+   throw new SystemUserMngException("System error",e);
+  }
+  finally
+  {
+   if(trn.isActive() && !trn.getRollbackOnly())
+   {
+    trn.commit();
+    
+    if( u != null )
+    { //We also need to update a user cache
+     User cchUsr = BackendConfig.getServiceManager().getSecurityManager().getUserById(u.getId());
+     
+     if( cchUsr != null )
+      cchUsr.setPasswordDigest( u.getPasswordDigest() );
+    }
+   }
+  }
+
+ }
+
 
  @Override
  public Session login(String login, String password) throws SecurityException
@@ -254,6 +364,99 @@ public class JPAUserManager implements UserManager, SessionListener
    sess = sessMngr.createSession(usr);
 
   return sess;
+ }
+
+ @Override
+ public void passwordResetRequest(User usr, String resetURL) throws UserMngException
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+  EntityTransaction trn = em.getTransaction();
+  
+  User u = null;
+
+  try
+  {
+   trn.begin();
+   
+   if( usr.getEmail() != null && usr.getEmail().length() > 0 )
+   {
+    Query q = em.createNamedQuery("User.getByEMail");
+    
+    q.setParameter("email", usr.getEmail());
+    
+    @SuppressWarnings("unchecked")
+    List<User> res = q.getResultList();
+    
+    
+    if(res.size() != 0)
+     u = res.get(0);
+   }
+   else
+   {
+    Query q = em.createNamedQuery("User.getByLogin");
+    
+    q.setParameter("login", usr.getLogin());
+    
+    @SuppressWarnings("unchecked")
+    List<User> res = q.getResultList();
+    
+    
+    if(res.size() != 0)
+     u = res.get(0);
+   }    
+   
+
+   if(u == null)
+    throw new UserNotFoundException();
+
+   
+   if( ! u.isActive() )
+   {
+    u=null;
+    throw new UserNotActiveException();
+   }
+   
+   UUID actKey = UUID.randomUUID();
+   
+   u.setActivationKey(actKey.toString());
+   u.setKeyTime(System.currentTimeMillis());
+    
+   if( !AccountActivation.sendResetRequest(u, actKey, resetURL) )
+    throw new SystemUserMngException("Email with password reset details can't be sent. Please try later");
+
+  }
+  catch(UserMngException e)
+  {
+   trn.rollback();
+   
+   throw e;
+  }
+  catch(Exception e)
+  {
+   trn.rollback();
+   
+   throw new SystemUserMngException("System error",e);
+  }
+  finally
+  {
+   if(trn.isActive() && !trn.getRollbackOnly())
+   {
+    trn.commit();
+    
+    if( u != null )
+    { //We also need to update a user cache
+     User cchUsr = BackendConfig.getServiceManager().getSecurityManager().getUserById(u.getId());
+     
+     if( cchUsr != null )
+     {
+      cchUsr.setActivationKey(u.getActivationKey());
+      cchUsr.setKeyTime(u.getKeyTime());
+     }
+    }
+   }
+  }
+
  }
 
 }

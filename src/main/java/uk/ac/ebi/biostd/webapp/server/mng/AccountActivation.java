@@ -95,13 +95,11 @@ public class AccountActivation
   return res;
  }
  
- public static boolean sendActivationRequest(User u, UUID key, String url)
+ 
+ public static boolean sendRequestEmail(User u, UUID key, String url, Path txtFile, Path htmlFile, String subj )
  {
-  Path txtFile = BackendConfig.getActivationEmailPlainTextFile();
 
   String textBody = null;
-  
-  Path htmlFile = BackendConfig.getActivationEmailHtmlFile();
   
   String htmlBody = null;
   
@@ -147,9 +145,20 @@ public class AccountActivation
    return false;
   }
   
-  return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getActivationEmailSubject(), textBody, htmlBody);
+  return BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), subj, textBody, htmlBody);
+ }
+
+ 
+ public static boolean sendActivationRequest(User u, UUID key, String url)
+ {
+  return sendRequestEmail(u, key, url, BackendConfig.getActivationEmailPlainTextFile(), BackendConfig.getActivationEmailHtmlFile(), BackendConfig.getActivationEmailSubject());
  }
  
+ 
+ public static boolean sendResetRequest(User u, UUID key, String url)
+ {
+  return sendRequestEmail(u, key, url, BackendConfig.getPassResetEmailPlainTextFile(), BackendConfig.getPassResetEmailHtmlFile(), BackendConfig.getPassResetEmailSubject());
+ }
  
  static void testActivationKey(String[] args )
  {
@@ -172,4 +181,6 @@ public class AccountActivation
   
   System.out.println("Mail: "+ainf.email+" UUID: "+ainf.uuidkey+" UUIDstr: "+ainf.key);
  }
+
+
 }

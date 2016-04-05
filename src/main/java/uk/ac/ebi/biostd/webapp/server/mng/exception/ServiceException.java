@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.mng;
+package uk.ac.ebi.biostd.webapp.server.mng.exception;
 
 public class ServiceException extends Exception
 {

@@ -1,7 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -39,6 +38,8 @@ import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.KeyExpiredException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.SystemUserMngException;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
 /**
@@ -61,8 +62,11 @@ public class AuthServlet extends ServiceServlet
  public static final String ReCaptchaResponseParameter="recaptcha_response";   
  public static final String ReCaptcha2ResponseParameter=BackendConfig.googleClientResponseParameter;
  public static final String ActivationURLParameter = "activationURL";   
- public static final String ActivationSuccessURLParameter = "activationSuccessURL";   
- public static final String ActivationFailURLParameter = "activationFailURL";   
+ public static final String PassResetURLParameter = "resetURL";   
+ public static final String SuccessURLParameter = "successURL";   
+ public static final String FailURLParameter = "failURL";   
+ public static final String ResetKeyParameter = "key";   
+  
 	
  /**
   * @see HttpServlet#HttpServlet()
@@ -156,369 +160,21 @@ public class AuthServlet extends ServiceServlet
    return;
   }
   else if( act == Action.signin )
-  {
-   
-   Session sess;
-   try
-   {
-    sess = BackendConfig.getServiceManager().getUserManager().login( prms.getParameter(UserLoginParameter), prms.getParameter(PasswordParameter));
-   }
-   catch(SecurityException e)
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL "+e.getMessage());
-    return;
-   }
-   
-   
-   String skey = sess.getSessionKey();
-   
-   Cookie cke =  new Cookie(BackendConfig.SessionCookie, skey);
-   cke.setPath(getServletContext().getContextPath());
-   
-   resp.addCookie( cke );
-   
-   resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey), new KV(UsernameParameter,sess.getUser().getFullName()));
-   
-   return;
-  }
+   signin(prms, resp);
   else if( act == Action.signout )
-  {
-   prm = prms.getParameter(SessionIdParameter);
-   
-   if( prm == null )
-   {
-    prm  = getCookieSessId(request);
-    
-    if( prm == null )
-    {
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Can't find session id");
-
-     return;
-    }
-   }
-   
-   if( sessMngr.closeSession(prm) )
-   {
-    resp.respond(HttpServletResponse.SC_OK, "OK", "User logged out");
-    return;
-   }
-   
-   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User not logged in");
-
-   return;
-  }
+   signout(prms, request, resp);
   else if( act == Action.signup )
-  {
-   User usr = null;
-
-   String login = prms.getParameter(UserLoginParameter);
-   
-   if( login != null )
-   {
-    login = login.trim();
-    
-    if( login.length() == 0 )
-     login = null;
-    else
-    {
-     if( login.indexOf('@') >= 0 )
-     {
-      resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Character @ in allowed in login");
-
-      return;
-     }
-      
-     
-     usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
-     
-     if( usr != null )
-     {
-      resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Login is taken by another user");
-
-      return;
-     }
-
-    }
-   }
-   
-   String email = prms.getParameter(UserEmailParameter);
-   
-   if( email == null )
-   {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserEmailParameter+"' parameter is not defined");
-
-    return;
-   }
-  
-   email = email.trim();
-   
-   
-   String cptResp = prms.getParameter(ReCaptcha2ResponseParameter);
-   
-   if( cptResp != null )
-   {
-    
-    if ( !checkRecaptcha2(cptResp, request.getRemoteAddr()) ) 
-    {
-     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
-
-     return;
-    }
-    
-   }
-   else
-   {
-    cptResp = prms.getParameter(ReCaptchaResponseParameter);
-    
-    if( cptResp == null )
-    {
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaResponseParameter+"' parameter is not defined");
-     
-     return;
-    }
-    
-    String cptChal = prms.getParameter(ReCaptchaChallengeParameter);
-    
-    if( cptChal == null )
-    {
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaChallengeParameter+"' parameter is not defined");
-     
-     return;
-    }
-    
-    
-    
-    ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
-    
-    ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
-    
-    if ( !reCaptchaResponse.isValid() ) 
-    {
-     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
-     
-     return;
-    }
-   }
-   
-   if( ! EmailValidator.getInstance(false).isValid(email) )
-   {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Email address in not valid");
-
-    return;
-   }
-   
-   usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
-   
-   if( usr != null )
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Email is taken by another user");
-
-    return;
-   }
-   
-   String pass = prms.getParameter(PasswordParameter);
-   
-   if( pass == null )
-   {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' parameter is not defined");
-
-    return;
-   }
-   
-
-   
-   String actvURL = null;
-   
-   if( BackendConfig.isEnableUnsafeRequests() )
-    actvURL =  prms.getParameter(ActivationURLParameter);
-   
-   
-   User u = new User();
-   
-   u.setLogin(login);
-   u.setEmail(email);
-   u.setPassword(pass);
-   u.setFullName(prms.getParameter(UsernameParameter));
-   
-   try
-   {
-    BackendConfig.getServiceManager().getUserManager().addUser(u, BackendConfig.isMandatoryAccountActivation(), actvURL);
-   }
-   catch( Throwable t )
-   {
-    resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Add user error: "+t.getMessage());
-
-    return;
-   } 
-   
-   resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(UsernameParameter,u.getFullName()));
-//   resp.respond(HttpServletResponse.SC_OK, "OK");
-   
-  }
+   signup(prms, request, resp);
   else if( act == Action.activate )
-  {
-
-   String actKey = request.getPathInfo();
-   
-
-   String succURL = null;
-   String failURL = null;
-
-   if( BackendConfig.isEnableUnsafeRequests() )
-   {
-    succURL = request.getParameter(ActivationSuccessURLParameter);
-    failURL = request.getParameter(ActivationFailURLParameter);
-   }
-   
-   actKey = actKey.substring(actKey.lastIndexOf('/')+1);
-   
-   if( actKey == null )
-   {
-    if( failURL == null )
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
-    else
-     activationRespond(response, failURL, "Invalid request");
-    
-    return;
-   }
-
-   ActivationInfo ainf = AccountActivation.decodeActivationKey(actKey);
-   
-   if( ainf == null )
-   {
-    if( failURL == null )
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
-    else
-     activationRespond(response, failURL, "Invalid request");
-
-    return;
-   }
-   
-   if( ! BackendConfig.getServiceManager().getUserManager().activateUser( ainf ) )
-   {
-    if( failURL == null )
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request");
-    else
-     activationRespond(response, failURL, "Invalid request");
-    
-    return;
-   }
-   
-   if( succURL == null )
-    resp.respond(HttpServletResponse.SC_OK, "OK", "User successfully activated. You can log in now");
-   else
-    activationRespond(response, succURL, null);
-  }
+   activate(prms, request, response, resp);
   else if( act == Action.retryact )
-  {
-   String email = prms.getParameter(UserEmailParameter);
-   
-   if( email == null )
-   {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserEmailParameter+"' parameter is not defined");
-
-    return;
-   }
-  
-   email = email.trim();
-   
-   
-   String cptResp = prms.getParameter(ReCaptcha2ResponseParameter);
-   
-   if( cptResp != null )
-   {
-    
-    if ( !checkRecaptcha2(cptResp, request.getRemoteAddr()) ) 
-    {
-     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
-
-     return;
-    }
-    
-   }
-   else
-   {
-    cptResp = prms.getParameter(ReCaptchaResponseParameter);
-    
-    if( cptResp == null )
-    {
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaResponseParameter+"' parameter is not defined");
-     
-     return;
-    }
-    
-    String cptChal = prms.getParameter(ReCaptchaChallengeParameter);
-    
-    if( cptChal == null )
-    {
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaChallengeParameter+"' parameter is not defined");
-     
-     return;
-    }
-    
-    
-    
-    ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
-    
-    ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
-    
-    if ( !reCaptchaResponse.isValid() ) 
-    {
-     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid");
-     
-     return;
-    }
-   }
-
-   User usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
-   
-   if( usr == null )
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account doesn't exist");
-
-    return;
-   }
-   
-   if( usr.isActive() || usr.getActivationKey() == null )
-   {
-    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account is active");
-    
-    return;
-   }
-
-   String actvURL = null;
-   
-   if( BackendConfig.isEnableUnsafeRequests() )
-    actvURL =  prms.getParameter(ActivationURLParameter);
-
-   if( !  AccountActivation.sendActivationRequest(usr, UUID.fromString(usr.getActivationKey()) , actvURL) )
-   {
-    resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Can't send activation email");
-    
-    return;
-   }
-   else
-    resp.respond(HttpServletResponse.SC_OK, "OK", "Activation request email has been sent");
-
-  }
+   retryActivation(prms, request, resp);
+  else if( act == Action.passrstreq )
+   passwordResetRequest(prms, request, resp);
+  else if( act == Action.passreset )
+   passwordReset(prms, request, resp);
  }
- 
- private void activationRespond(HttpServletResponse resp, String url, String msg)
- {
-  if( url != null )
-  {
-   try
-   {
-    url+="?msg="+URLEncoder.encode(msg,"UTF-8");
-   }
-   catch(UnsupportedEncodingException e)
-   {
-   }
-  }
-  
-  resp.setHeader("Location", url);
-  resp.setStatus(HttpServletResponse.SC_MOVED_TEMPORARILY);
- }
+
 
  /**
   * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
@@ -628,6 +284,493 @@ public class AuthServlet extends ServiceServlet
   
   process(act, params, request, response, resp);  
 
+ }
+ 
+ 
+ private void signin( ParameterPool prms, Response resp) throws IOException
+ {
+  
+  Session sess;
+  try
+  {
+   sess = BackendConfig.getServiceManager().getUserManager().login( prms.getParameter(UserLoginParameter), prms.getParameter(PasswordParameter));
+  }
+  catch(SecurityException e)
+  {
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL "+e.getMessage());
+   return;
+  }
+  
+  
+  String skey = sess.getSessionKey();
+  
+  Cookie cke =  new Cookie(BackendConfig.SessionCookie, skey);
+  cke.setPath(getServletContext().getContextPath());
+  
+  resp.addCookie( cke );
+  
+  resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey), new KV(UsernameParameter,sess.getUser().getFullName()));
+ }
+ 
+ 
+ private void signout( ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ {
+  String prm = prms.getParameter(SessionIdParameter);
+  
+  if( prm == null )
+  {
+   prm  = getCookieSessId(request);
+   
+   if( prm == null )
+   {
+    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Can't find session id");
+
+    return;
+   }
+  }
+  
+  if(  BackendConfig.getServiceManager().getSessionManager().closeSession(prm) )
+  {
+   resp.respond(HttpServletResponse.SC_OK, "OK", "User logged out");
+   return;
+  }
+  
+  resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User not logged in");
+ }
+ 
+ 
+ private void signup( ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ {
+  User usr = null;
+
+  String login = prms.getParameter(UserLoginParameter);
+  
+  if( login != null )
+  {
+   login = login.trim();
+   
+   if( login.length() == 0 )
+    login = null;
+   else
+   {
+    if( login.indexOf('@') >= 0 )
+    {
+     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Character @ in allowed in login");
+
+     return;
+    }
+     
+    
+    usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
+    
+    if( usr != null )
+    {
+     resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Login is taken by another user");
+
+     return;
+    }
+
+   }
+  }
+  
+  String email = prms.getParameter(UserEmailParameter);
+  
+  if( email == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserEmailParameter+"' parameter is not defined");
+
+   return;
+  }
+ 
+  email = email.trim();
+  
+  if( ! checkRecaptchas(prms, request, resp, null) )
+   return;
+
+  
+  if( ! EmailValidator.getInstance(false).isValid(email) )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Email address in not valid");
+
+   return;
+  }
+  
+  usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
+  
+  if( usr != null )
+  {
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Email is taken by another user");
+
+   return;
+  }
+  
+  String pass = prms.getParameter(PasswordParameter);
+  
+  if( pass == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' parameter is not defined");
+
+   return;
+  }
+  
+  if( pass.length() < 6 )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' passowrd must be 6 symbols at least");
+
+   return;
+  }
+
+  
+  String actvURL = null;
+  
+  if( BackendConfig.isEnableUnsafeRequests() )
+   actvURL =  prms.getParameter(ActivationURLParameter);
+  
+  
+  User u = new User();
+  
+  u.setLogin(login);
+  u.setEmail(email);
+  u.setPassword(pass);
+  u.setFullName(prms.getParameter(UsernameParameter));
+  
+  try
+  {
+   BackendConfig.getServiceManager().getUserManager().addUser(u, BackendConfig.isMandatoryAccountActivation(), actvURL);
+  }
+  catch( Throwable t )
+  {
+   resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Add user error: "+t.getMessage());
+
+   return;
+  } 
+  
+  resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(UsernameParameter,u.getFullName()));
+//  resp.respond(HttpServletResponse.SC_OK, "OK");
+
+ }
+ 
+ 
+ private void activate( ParameterPool prms, HttpServletRequest request, HttpServletResponse response, Response resp) throws IOException
+ {
+  String actKey = request.getPathInfo();
+  
+
+  String succURL = null;
+  String failURL = null;
+
+  if( BackendConfig.isEnableUnsafeRequests() )
+  {
+   succURL = request.getParameter(SuccessURLParameter);
+   failURL = request.getParameter(FailURLParameter);
+  }
+  
+  actKey = actKey.substring(actKey.lastIndexOf('/')+1);
+  
+  if( actKey == null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request", failURL);
+   
+   return;
+  }
+
+  ActivationInfo ainf = AccountActivation.decodeActivationKey(actKey);
+  
+  if( ainf == null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request",failURL);
+
+   return;
+  }
+  
+  String msg = null;
+  
+  try
+  {
+   BackendConfig.getServiceManager().getUserManager().activateUser( ainf );
+  }
+  catch( KeyExpiredException e)
+  {
+   msg = "Activation key has expired";
+  }
+  catch( SystemUserMngException e)
+  {
+   msg = "System error";
+   
+   log.error("System error : "+e.getCause().getMessage(),e);
+  }
+  catch( Exception e)
+  {
+   msg = "Invalid request";
+  }
+  
+  if( msg != null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", msg, failURL);
+   
+   return;
+  }
+  
+  
+  resp.respondRedir(HttpServletResponse.SC_OK, "OK", "User successfully activated. You can log in now",succURL);
+
+ }
+ 
+ private void retryActivation( ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ {
+  String email = prms.getParameter(UserEmailParameter);
+  
+  if( email == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserEmailParameter+"' parameter is not defined");
+
+   return;
+  }
+ 
+  email = email.trim();
+  
+  
+  if( ! checkRecaptchas(prms, request, resp, null) )
+   return;
+
+
+  User usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
+  
+  if( usr == null )
+  {
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account doesn't exist");
+
+   return;
+  }
+  
+  if( usr.isActive() || usr.getActivationKey() == null )
+  {
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account is active");
+   
+   return;
+  }
+
+  String actvURL = null;
+  
+  if( BackendConfig.isEnableUnsafeRequests() )
+   actvURL =  prms.getParameter(ActivationURLParameter);
+
+  if( !  AccountActivation.sendActivationRequest(usr, UUID.fromString(usr.getActivationKey()) , actvURL) )
+  {
+   resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Can't send activation email");
+   
+   return;
+  }
+  else
+   resp.respond(HttpServletResponse.SC_OK, "OK", "Activation request email has been sent");
+
+ }
+
+ private void passwordResetRequest(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ {
+  String email = prms.getParameter(UserEmailParameter);
+  
+  String succURL = null;
+  String failURL = null;
+
+  if( BackendConfig.isEnableUnsafeRequests() )
+  {
+   succURL = prms.getParameter(SuccessURLParameter);
+   failURL = prms.getParameter(FailURLParameter);
+  }
+  
+  if( email == null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+UserEmailParameter+"' parameter is not defined",failURL);
+
+   return;
+  }
+ 
+  email = email.trim();
+  
+  if( ! checkRecaptchas(prms, request, resp, failURL) )
+   return;
+  
+
+  User usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(email);
+  
+  if( usr == null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account doesn't exist", failURL);
+
+   return;
+  }
+  
+  if( ! usr.isActive() )
+  {
+   resp.respondRedir(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Account is not active", failURL);
+   
+   return;
+  }
+  
+  String actvURL = null;
+  
+  if( BackendConfig.isEnableUnsafeRequests() )
+   actvURL =  prms.getParameter(PassResetURLParameter);
+  
+  String msg = null;
+  
+  try
+  {
+   BackendConfig.getServiceManager().getUserManager().passwordResetRequest( usr, actvURL );
+   
+   resp.respondRedir(HttpServletResponse.SC_OK, "OK", "Password reset request email has been sent",succURL);
+
+  }
+  catch( SystemUserMngException e)
+  {
+   msg = "System error";
+   
+   log.error("System error : "+e.getCause().getMessage(),e);
+  }
+  catch( Exception e)
+  {
+   msg = "Invalid request";
+  }
+  
+  if( msg != null )
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", msg, failURL);
+
+ }
+ 
+ private boolean checkRecaptchas(ParameterPool prms, HttpServletRequest request, Response resp, String failURL) throws IOException
+ {
+  String cptResp = prms.getParameter(ReCaptcha2ResponseParameter);
+  
+  if( cptResp != null )
+  {
+   
+   if ( !checkRecaptcha2(cptResp, request.getRemoteAddr()) ) 
+   {
+    resp.respondRedir(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid", failURL);
+
+    return false;
+   }
+   
+  }
+  else
+  {
+   cptResp = prms.getParameter(ReCaptchaResponseParameter);
+   
+   if( cptResp == null )
+   {
+    resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaResponseParameter+"' parameter is not defined", failURL);
+    
+    return false;
+   }
+   
+   String cptChal = prms.getParameter(ReCaptchaChallengeParameter);
+   
+   if( cptChal == null )
+   {
+    resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+ReCaptchaChallengeParameter+"' parameter is not defined", failURL);
+    
+    return false;
+   }
+   
+   
+   
+   ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
+   
+   ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
+   
+   if ( !reCaptchaResponse.isValid() ) 
+   {
+    resp.respondRedir(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid",failURL);
+    
+    return false;
+   }
+  }
+  
+  return true;
+ }
+
+ private void passwordReset(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ {
+  String actKey = prms.getParameter(ResetKeyParameter);
+  
+
+  String succURL = null;
+  String failURL = null;
+
+  if( BackendConfig.isEnableUnsafeRequests() )
+  {
+   succURL = prms.getParameter(SuccessURLParameter);
+   failURL = prms.getParameter(FailURLParameter);
+  }
+  
+//  actKey = actKey.substring(actKey.lastIndexOf('/')+1);
+  
+  if( ! checkRecaptchas(prms, request, resp, failURL) )
+   return;
+
+  
+  if( actKey == null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request", failURL);
+   
+   return;
+  }
+
+  ActivationInfo ainf = AccountActivation.decodeActivationKey(actKey);
+  
+  if( ainf == null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid request",failURL);
+
+   return;
+  }
+  
+  String pass = prms.getParameter(PasswordParameter);
+  
+  if( pass == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' parameter is not defined");
+
+   return;
+  }
+  
+  if( pass.length() < 6 )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+PasswordParameter+"' passowrd must be 6 symbols at least");
+
+   return;
+  }
+  
+  String msg = null;
+  
+  try
+  {
+   BackendConfig.getServiceManager().getUserManager().resetPassword( ainf, pass );
+  }
+  catch( KeyExpiredException e)
+  {
+   msg = "Reset key has expired";
+  }
+  catch( SystemUserMngException e)
+  {
+   msg = "System error";
+   
+   log.error("System error : "+e.getCause().getMessage(),e);
+  }
+  catch( Exception e)
+  {
+   msg = "Invalid request";
+  }
+  
+  if( msg != null )
+  {
+   resp.respondRedir(HttpServletResponse.SC_BAD_REQUEST, "FAIL", msg, failURL);
+   
+   return;
+  }
+  
+  resp.respondRedir(HttpServletResponse.SC_OK, "OK", "User password has been reset.",succURL);
  }
  
  private boolean checkRecaptcha2( String resp, String cliIP)

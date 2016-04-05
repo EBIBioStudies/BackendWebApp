@@ -38,7 +38,7 @@ import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.DBInitializer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
-import uk.ac.ebi.biostd.webapp.server.mng.ServiceException;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
 
 public class SecurityManagerImpl implements SecurityManager
 {
@@ -312,6 +312,8 @@ public class SecurityManagerImpl implements SecurityManager
   
   return du;
  }
+ 
+
  
  private User detachUser( User u ) // to pull user structure from the DB. We need this to overcome lazy loading
  {
@@ -591,10 +593,11 @@ public class SecurityManagerImpl implements SecurityManager
  }
 
  @Override
- public User getuserByEmail(String email)
+ public User getUserByEmail(String email)
  {
-  // TODO Auto-generated method stub
   return userEmailMap.get(email);
  }
+
+
 
 }

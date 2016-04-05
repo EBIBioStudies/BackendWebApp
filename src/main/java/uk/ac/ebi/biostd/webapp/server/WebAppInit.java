@@ -49,7 +49,7 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
-import uk.ac.ebi.biostd.webapp.server.mng.ServiceInitExceprion;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceInitExceprion;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
@@ -510,6 +510,36 @@ public class WebAppInit implements ServletContextListener
   if( BackendConfig.isMandatoryAccountActivation() && emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
   {
    log.error(ServiceParamPrefix+BackendConfig.ActivationEmailHtmlParameter+" should point to a regular readable file");
+   throw new RuntimeException("Invalid configuration");
+  }
+  
+  
+  if( BackendConfig.getPassResetEmailSubject() == null )
+  {
+   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.PassResetEmailSubjectParameter+" parameter is not set");
+   throw new RuntimeException("Invalid configuration");
+  }
+
+  if( BackendConfig.getPassResetEmailPlainTextFile() == null && BackendConfig.getPassResetEmailHtmlFile() == null )
+  {
+   log.error("At least one of "+ServiceParamPrefix+BackendConfig.PassResetEmailPlainTextParameter+" "+
+     ServiceParamPrefix+BackendConfig.PassResetEmailHtmlParameter+" parameters must be set");
+   throw new RuntimeException("Invalid configuration");
+  }  
+  
+  emailFile = BackendConfig.getPassResetEmailPlainTextFile();
+  
+  if( emailFile == null || ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  {
+   log.error(ServiceParamPrefix+BackendConfig.PassResetEmailPlainTextParameter+" should point to a regular readable file");
+   throw new RuntimeException("Invalid configuration");
+  }
+
+  emailFile = BackendConfig.getPassResetEmailHtmlFile();
+  
+  if( emailFile == null || ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  {
+   log.error(ServiceParamPrefix+BackendConfig.PassResetEmailHtmlParameter+" should point to a regular readable file");
    throw new RuntimeException("Invalid configuration");
   }
 

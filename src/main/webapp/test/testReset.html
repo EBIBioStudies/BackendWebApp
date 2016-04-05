@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+
+<script src='https://www.google.com/recaptcha/api.js'></script>
+
+<script type="text/javascript">
+
+String.prototype.escapeSpecialChars = function() {
+    return this.replace(/\\n/g, "\\n")
+               .replace(/\\'/g, "\\'")
+               .replace(/\\"/g, '\\"')
+               .replace(/\\&/g, "\\&")
+               .replace(/\\r/g, "\\r")
+               .replace(/\\t/g, "\\t")
+               .replace(/\\b/g, "\\b")
+               .replace(/\\f/g, "\\f");
+};
+
+
+ function getParameter(name) 
+ {
+  if( name = (new RegExp('[?&]' + encodeURIComponent(name) + '=([^&]*)')).exec(location.search) )
+   return decodeURIComponent(name[1].replace(/\+/g,' '));
+ }
+
+ function doRequest() {
+  var pass = document.getElementById("pass").value;
+  var key = decodeURIComponent(location.search.substring(location.search.lastIndexOf('?')+1) );
+
+  var successURL = document.getElementById("successURL").value.trim();
+  var failURL = document.getElementById("failURL").value.trim();
+
+  var xmlhttp = new XMLHttpRequest();
+
+  xmlhttp.onreadystatechange = function() {
+   if (xmlhttp.readyState == 4) {
+    var ctype = xmlhttp.getResponseHeader("Content-type");
+
+    if (ctype != null) {
+     var pos = ctype.indexOf(';');
+
+     if (pos != -1)
+      ctype = ctype.substring(0, pos);
+
+     ctype = ctype.trim();
+    }
+
+    var jsonObj;
+
+    if (ctype == "application/json")
+     jsonObj = JSON.parse(xmlhttp.responseText);
+
+    var msg = "";
+
+    if (xmlhttp.status == 200) {
+     msg += "Request succeeded Status: 200";
+
+     if (jsonObj != null)
+      msg += "\nHello " + jsonObj.username + "\nSession key: " + jsonObj.sessid;
+
+    } else {
+     msg += "Request failed. Status: " + xmlhttp.status;
+
+     if (jsonObj != null)
+      msg += "\nError message: " + jsonObj.message;
+    }
+
+    document.getElementById("report").innerHTML = msg;
+   }
+
+  };
+
+  xmlhttp.open("POST", "../auth/passreset", true);
+  xmlhttp.setRequestHeader("Content-type", "application/json");
+
+  var req = "{\"password\": \"" + pass.escapeSpecialChars()  +  "\",\n"
+  +"\"key\": \"" + key.escapeSpecialChars()  +  "\",\n"
+   +"\"recaptcha2-response\": \"" + grecaptcha.getResponse().escapeSpecialChars()  +  "\""
+  
+    
+  if( successURL.lenght > 0 )
+   req+= ",\n\"successURL\": \""+successURL.escapeSpecialChars()  +  "\"";
+
+  if( failURL.length > 0 )
+   req+= ",\n\"failURL\": \""+failURL.escapeSpecialChars()  +  "\"";
+
+  req+="}";
+  
+  xmlhttp.send(req);
+
+ }
+
+ 
+ function showMessage()
+ {
+  var msg = getParameter("msg");
+  
+  if( msg != null )
+   document.writeln(msg);
+ }
+ 
+</script>
+
+</head>
+<body>
+
+<br/>
+<script type="text/javascript">
+showMessage();
+</script>
+<br/>
+<br/>
+
+<table>
+<tr>
+<td>New password : </td><td><input type="text" id="pass" style="width: 200px"/></td>
+</tr>
+<tr>
+<td>Success URL : </td><td><input type="text" id="successURL" style="width: 200px"/></td>
+</tr>
+<tr>
+<td>Fail URL : </td><td><input type="text" id="failURL" style="width: 200px"/></td>
+</tr>
+<tr>
+<td><button onClick="doRequest()">Reset</button></td><td></td>
+</tr>
+</table>
+
+<form>
+<!--  <div id="captcha"></div>  -->
+<div class="g-recaptcha" data-sitekey="6Lcmlv0SAAAAAHofnIcb29l1LMZsnGFcSlH8Reve"></div>
+</form>
+
+<pre id="report">
+</pre>
+
+</body>
+</html>

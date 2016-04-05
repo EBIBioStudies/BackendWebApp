@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceInitExceprion;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.FileManagerImpl;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPAAccessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.impl.JPAReleaser;

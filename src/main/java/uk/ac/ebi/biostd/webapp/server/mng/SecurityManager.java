@@ -4,6 +4,7 @@ import uk.ac.ebi.biostd.authz.AuthorizationTemplate;
 import uk.ac.ebi.biostd.authz.AuthzObject;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
 
 public interface SecurityManager
 {
@@ -27,7 +28,7 @@ public interface SecurityManager
 
  User getUserById( long id );
  User getUserByLogin( String login );
- User getuserByEmail( String email );
+ User getUserByEmail( String email );
  
  User getAnonymousUser();
 

@@ -7,5 +7,7 @@ public enum Action
  signout,
  check,
  activate,
- retryact
+ retryact,
+ passrstreq,
+ passreset
 }

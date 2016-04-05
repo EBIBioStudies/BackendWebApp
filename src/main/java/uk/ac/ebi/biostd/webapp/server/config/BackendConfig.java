@@ -36,9 +36,9 @@ public class BackendConfig
  public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
  public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
 
- public static final String UserNamePlaceHolderRx = "\\{ACTIVATION:USERNAME\\}";
- public static final String ActivateKeyPlaceHolderRx= "\\{ACTIVATION:KEY\\}";
- public static final String ActivateURLPlaceHolderRx= "\\{ACTIVATION:URL\\}";
+ public static final String UserNamePlaceHolderRx = "\\{USERNAME\\}";
+ public static final String ActivateKeyPlaceHolderRx= "\\{KEY\\}";
+ public static final String ActivateURLPlaceHolderRx= "\\{URL\\}";
  
  public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
  public static final String googleSecretParam = "secret";
@@ -46,6 +46,9 @@ public class BackendConfig
  public static final String googleRemoteipParam = "remoteip";
  public static final String googleClientResponseParameter="recaptcha2-response";
  public static final String googleSuccessField = "success";
+ 
+ public static final long defaultActivationTimeout = 2*24*60*60*1000L; 
+ public static final long defaultPassResetTimeout  = 1*24*60*60*1000L; 
  
  
 // public static final String GuestsGroup = "@Guests";
@@ -83,6 +86,11 @@ public class BackendConfig
  public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
  public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";
  public static final String             ActivationEmailHtmlParameter        = "activationEmailHtmlFile";
+ public static final String             ActivationTimeoutParameter          = "activationTimeout";
+ public static final String             PassResetTimeoutParameter           = "passwordResetTimeout";
+ public static final String             PassResetEmailSubjectParameter      = "passwordResetEmailSubject";
+ public static final String             PassResetEmailPlainTextParameter    = "passwordResetEmailPlainTextFile";
+ public static final String             PassResetEmailHtmlParameter         = "passwordResetEmailHtmlFile";
  
  public static final String             DefaultSubmissionAccPrefixParameter = "defaultSubmissionAccNoPrefix";
  public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
@@ -123,8 +131,12 @@ public class BackendConfig
  private static String updateListenerURLSfx;
  
  private static String activationEmailSubject;
+ private static String passResetEmailSubject;
+ 
  private static Path activationEmailPlainTextFile;
  private static Path activationEmailHtmlFile;
+ private static Path passResetEmailPlainTextFile;
+ private static Path passResetEmailHtmlFile;
  
  private static String defaultSubmissionAccPrefix = null;
  private static String defaultSubmissionAccSuffix = null;
@@ -138,6 +150,9 @@ public class BackendConfig
  private static boolean mandatoryAccountActivation=true;
  
  private static boolean searchEnabled=false;
+ 
+ private static long activationTimeout = defaultActivationTimeout;
+ private static long passResetTimeout = defaultPassResetTimeout;
 
  private static Map<String, Object> databaseConfig;
  
@@ -350,6 +365,14 @@ public class BackendConfig
    
    return true;
   }
+  
+  if( PassResetEmailSubjectParameter.equals(param) )
+  {
+   passResetEmailSubject=val;
+   
+   return true;
+  }
+
 
   
   if( ActivationEmailPlainTextParameter.equals(param) )
@@ -365,7 +388,50 @@ public class BackendConfig
    
    return true;
   }
+  
+  
+  if( ActivationTimeoutParameter.equals(param) )
+  {
+   try
+   {
+    activationTimeout = Integer.parseInt(val) * 60 * 60 * 1000L;
+   }
+   catch(Exception e)
+   {
+    throw new ServiceConfigException(ActivationTimeoutParameter+": integer value expected '"+val+"'");
+   }
+   
+   return true;
+  }
+  
+  if( PassResetEmailPlainTextParameter.equals(param) )
+  {
+   passResetEmailPlainTextFile=createPath(PassResetEmailPlainTextParameter,val);
+   
+   return true;
+  }
 
+  if( PassResetEmailHtmlParameter.equals(param) )
+  {
+   passResetEmailHtmlFile=createPath(PassResetEmailHtmlParameter,val);
+   
+   return true;
+  }
+  
+  
+  if( PassResetTimeoutParameter.equals(param) )
+  {
+   try
+   {
+    passResetTimeout = Integer.parseInt(val) * 60 * 60 * 1000L;
+   }
+   catch(Exception e)
+   {
+    throw new ServiceConfigException(PassResetTimeoutParameter+": integer value expected '"+val+"'");
+   }
+   
+   return true;
+  }
   
   return false;
 
@@ -620,5 +686,31 @@ public class BackendConfig
  {
   BackendConfig.searchEnabled = searchEnabled;
  }
+
+ public static long getActivationTimeout()
+ {
+  return activationTimeout;
+ }
+ 
+ public static long getPasswordResetTimeout()
+ {
+  return passResetTimeout;
+ }
+
+ public static Path getPassResetEmailHtmlFile()
+ {
+  return passResetEmailHtmlFile;
+ }
+
+ public static Path getPassResetEmailPlainTextFile()
+ {
+  return passResetEmailPlainTextFile;
+ }
+
+ public static String getPassResetEmailSubject()
+ {
+  return passResetEmailSubject;
+ }
+
 
 }
