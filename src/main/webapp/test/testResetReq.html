@@ -80,10 +80,10 @@ String.prototype.escapeSpecialChars = function() {
   
   resetURL
   
-  if( resetURL.lenght > 0 )
+  if( resetURL.length > 0 )
    req+= ",\n\"resetURL\": \""+resetURL.escapeSpecialChars()  +  "\"";
 
-  if( successURL.lenght > 0 )
+  if( successURL.length > 0 )
    req+= ",\n\"successURL\": \""+successURL.escapeSpecialChars()  +  "\"";
 
   if( failURL.length > 0 )

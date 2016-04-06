@@ -1,5 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
+import java.util.List;
+
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
@@ -25,5 +27,7 @@ public interface UserManager
  void passwordResetRequest(User usr, String resetURL) throws UserMngException;
 
  void resetPassword(ActivationInfo ainf, String pass) throws UserMngException;
+
+ List<UserData> getAllUserData(User user);
 
 }

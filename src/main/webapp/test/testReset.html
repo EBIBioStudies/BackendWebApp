@@ -81,7 +81,7 @@ String.prototype.escapeSpecialChars = function() {
    +"\"recaptcha2-response\": \"" + grecaptcha.getResponse().escapeSpecialChars()  +  "\""
   
     
-  if( successURL.lenght > 0 )
+  if( successURL.length > 0 )
    req+= ",\n\"successURL\": \""+successURL.escapeSpecialChars()  +  "\"";
 
   if( failURL.length > 0 )

@@ -1,10 +1,15 @@
 package uk.ac.ebi.biostd.webapp.server.endpoint.userdata;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.UserData;
@@ -17,13 +22,15 @@ public class UserDataServlet extends ServiceServlet
  private static final long serialVersionUID = 1L;
 
  public static final String keyParameter = "key";
- public static final String dataParameter = "data";
+ public static final String dataParameter = "value";
  public static final String opParameter = "op";
  
  public enum Op
  {
   GET,
-  SET
+  SET,
+  LIST,
+  LISTJSON
  }
 
  @Override
@@ -71,6 +78,52 @@ public class UserDataServlet extends ServiceServlet
   String key = req.getParameter(keyParameter);
   String data = req.getParameter(dataParameter);
   
+  if( op == Op.LISTJSON )
+  {
+   List<UserData> list = BackendConfig.getServiceManager().getUserManager().getAllUserData(sess.getUser());
+   
+   resp.setCharacterEncoding("UTF-8");
+   
+   PrintWriter out  = resp.getWriter();
+   out.append("[");
+   for( int i=0; i < list.size(); i++ )
+   {
+    if( i > 0 )
+     out.append(',');
+     
+    out.append("\n").append(list.get(i).getData());
+   }
+   
+   out.append("\n]");
+   
+   return;
+  }
+  
+  if( op == Op.LIST )
+  {
+   List<UserData> list = BackendConfig.getServiceManager().getUserManager().getAllUserData(sess.getUser());
+   
+   JSONObject jsn = new JSONObject();
+   
+   resp.setCharacterEncoding("UTF-8");
+   
+   PrintWriter out  = resp.getWriter();
+   for( int i=0; i < list.size(); i++ )
+   {
+    try
+    {
+     jsn.put(list.get(i).getDataKey(),list.get(i).getData());
+    }
+    catch(JSONException e)
+    {
+    }
+   }
+   
+   out.append(jsn.toString());
+   
+   return;
+  }
+  
   if( key == null )
   {
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -78,6 +131,7 @@ public class UserDataServlet extends ServiceServlet
    return;
   }
   
+
   
   if( op == Op.GET )
   {
