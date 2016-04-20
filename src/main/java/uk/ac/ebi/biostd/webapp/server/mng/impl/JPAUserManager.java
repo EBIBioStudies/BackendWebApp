@@ -174,7 +174,7 @@ public class JPAUserManager implements UserManager, SessionListener
 
  
  @Override
- public void storeUserData(UserData ud )
+ public void storeUserData( UserData ud )
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
   
@@ -182,7 +182,20 @@ public class JPAUserManager implements UserManager, SessionListener
 
   trn.begin();
 
-  em.merge( ud );
+  if( ud.getData() == null )
+  {
+   Query q = em.createNamedQuery("UserData.get");
+   
+   q.setParameter("uid", ud.getUserId());
+   q.setParameter("key", ud.getDataKey());
+
+   List<UserData> res = q.getResultList();
+   
+   if( res.size() != 0 )
+    em.remove(res.get(0));
+  }
+  else
+   em.merge( ud );
   
   trn.commit();
  }

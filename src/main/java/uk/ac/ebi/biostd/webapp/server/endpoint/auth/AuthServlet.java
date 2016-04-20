@@ -88,13 +88,18 @@ public class AuthServlet extends ServiceServlet
  
  public static String getCookieSessId( HttpServletRequest req )
  {
+  String sessId = req.getHeader(BackendConfig.getSessionTokenHeader());
+  
+  if( sessId != null )
+   return sessId;
+  
   Cookie[] cuks = req.getCookies();
   
   if( cuks!= null && cuks.length != 0)
   {
    for (int i = cuks.length - 1; i >= 0; i--)
    {
-    if (cuks[i].getName().equals(BackendConfig.SessionCookie) )
+    if (cuks[i].getName().equals(BackendConfig.getSessionCookieName()) )
      return cuks[i].getValue();
    }
   }
@@ -133,7 +138,7 @@ public class AuthServlet extends ServiceServlet
     
     if( prm == null )
     {
-     resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Can't find session id");
+     resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "Can't find session id");
 
      return;
     }
@@ -155,7 +160,7 @@ public class AuthServlet extends ServiceServlet
     return;
    }
    
-   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User not logged in");
+   resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
 
    return;
   }
@@ -304,8 +309,8 @@ public class AuthServlet extends ServiceServlet
   
   String skey = sess.getSessionKey();
   
-  Cookie cke =  new Cookie(BackendConfig.SessionCookie, skey);
-  cke.setPath(getServletContext().getContextPath());
+  Cookie cke =  new Cookie(BackendConfig.getSessionCookieName(), skey);
+  cke.setPath(getServletContext().getContextPath()); //Setting path is a right idea but doesn't work with proxies 
   
   resp.addCookie( cke );
   
@@ -331,6 +336,13 @@ public class AuthServlet extends ServiceServlet
   
   if(  BackendConfig.getServiceManager().getSessionManager().closeSession(prm) )
   {
+   Cookie cke =  new Cookie(BackendConfig.getSessionCookieName(), "");
+   cke.setPath(getServletContext().getContextPath());
+   cke.setMaxAge(0); //To delete the cookie
+   
+   resp.addCookie( cke );
+
+   
    resp.respond(HttpServletResponse.SC_OK, "OK", "User logged out");
    return;
   }

@@ -63,8 +63,7 @@ public class SubmissionListServlet extends ServiceServlet
 
   if( sess == null || sess.isAnonymouns() )
   {
-   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-   
+   resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
    out.print("{\n\"status\": \"FAIL\",\n\"message\": \"User not logged in\"\n}");
    return;
   }

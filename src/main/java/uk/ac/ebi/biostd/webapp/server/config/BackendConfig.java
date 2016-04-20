@@ -29,7 +29,6 @@ public class BackendConfig
  }
 
 
- public static final String SessionCookie = "BIOSTDSESS";   //think about security issues on system that ignore file name cases
  
  public static final String SessionDir = "sessions";
 
@@ -96,12 +95,17 @@ public class BackendConfig
  public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
 
  
+ 
  public static final String DataMountPathParameter = "dataMountPath";
  public static final String RecapchaPrivateKeyParameter = "recapcha_private_key";
  
  public static final int maxPageTabSize=5000000;
 
- 
+ private static final String sessionCookieName = "BIOSTDSESS";   //think about security issues on system that ignore file name cases
+ private static final String sessionTokenHeader = "X-Session-Token";   //think about security issues on system that ignore file name cases
+
+
+
  private static String dataMountPath;
  private static String recapchaPrivateKey;
 
@@ -712,5 +716,15 @@ public class BackendConfig
   return passResetEmailSubject;
  }
 
+
+ public static String getSessionCookieName()
+ {
+  return sessionCookieName;
+ }
+
+ public static String getSessionTokenHeader()
+ {
+  return sessionTokenHeader;
+ }
 
 }

@@ -22,31 +22,35 @@ public abstract class ServiceServlet extends HttpServlet
  {
   String sessID = null;
   
-  sessID = req.getParameter(BackendConfig.SessionCookie);
+  sessID = req.getHeader(BackendConfig.getSessionTokenHeader());
   
-  if( sessID == null && ! "GET".equalsIgnoreCase(req.getMethod()) )
+  if( sessID == null )
   {
-   
-   String qryStr = req.getQueryString();
-   
-   if( qryStr != null )
+   sessID = req.getParameter(BackendConfig.getSessionCookieName());
+
+   if(sessID == null && !"GET".equalsIgnoreCase(req.getMethod()))
    {
-    String[] parts = qryStr.split("&");
-    
-    String pfx = BackendConfig.SessionCookie+"=";
-    
-    for( String prm : parts )
+
+    String qryStr = req.getQueryString();
+
+    if(qryStr != null)
     {
-     if( prm.startsWith(pfx) )
+     String[] parts = qryStr.split("&");
+
+     String pfx = BackendConfig.getSessionCookieName() + "=";
+
+     for(String prm : parts)
      {
-      sessID = prm.substring(pfx.length());
-      break;
+      if(prm.startsWith(pfx))
+      {
+       sessID = prm.substring(pfx.length());
+       break;
+      }
      }
     }
+
    }
-   
   }
-  
   
   if( sessID == null )
   {
@@ -56,7 +60,7 @@ public abstract class ServiceServlet extends HttpServlet
    {
     for (int i = cuks.length - 1; i >= 0; i--)
     {
-     if (cuks[i].getName().equals(BackendConfig.SessionCookie) )
+     if (cuks[i].getName().equals(BackendConfig.getSessionCookieName()) )
      {
       sessID = cuks[i].getValue();
       break;

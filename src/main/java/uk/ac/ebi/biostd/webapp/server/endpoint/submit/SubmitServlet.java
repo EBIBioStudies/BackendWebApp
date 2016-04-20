@@ -61,7 +61,7 @@ public class SubmitServlet extends ServiceServlet
  {
   if( sess == null || sess.isAnonymouns() )
   {
-   response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+   response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
    response.getWriter().print("FAIL User not logged in");
    return;
   }

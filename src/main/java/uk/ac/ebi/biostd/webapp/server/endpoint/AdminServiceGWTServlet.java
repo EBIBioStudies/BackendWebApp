@@ -26,20 +26,25 @@ public class AdminServiceGWTServlet extends RemoteServiceServlet implements BioS
   
   String sessID = null;
   
-  sessID = req.getParameter(BackendConfig.SessionCookie);
-  
+  sessID = req.getHeader(BackendConfig.getSessionTokenHeader());
+
   if( sessID == null )
   {
-   Cookie[] cuks = req.getCookies();
-   
-   if( cuks!= null && cuks.length != 0)
+   sessID = req.getParameter(BackendConfig.getSessionCookieName());
+
+   if(sessID == null)
    {
-    for (int i = cuks.length - 1; i >= 0; i--)
+    Cookie[] cuks = req.getCookies();
+
+    if(cuks != null && cuks.length != 0)
     {
-     if (cuks[i].getName().equals(BackendConfig.SessionCookie) )
+     for(int i = cuks.length - 1; i >= 0; i--)
      {
-      sessID = cuks[i].getValue();
-      break;
+      if(cuks[i].getName().equals(BackendConfig.getSessionCookieName()))
+      {
+       sessID = cuks[i].getValue();
+       break;
+      }
      }
     }
    }
@@ -85,7 +90,7 @@ public class AdminServiceGWTServlet extends RemoteServiceServlet implements BioS
   
   String skey = sess.getSessionKey();
   
-  Cookie cke =  new Cookie(BackendConfig.SessionCookie, skey);
+  Cookie cke =  new Cookie(BackendConfig.getSessionCookieName(), skey);
   cke.setPath(getServletContext().getContextPath());
   
   getThreadLocalResponse().addCookie( cke );

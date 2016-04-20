@@ -38,7 +38,7 @@ public class UserDataServlet extends ServiceServlet
  {
   if(sess == null || sess.isAnonymouns() )
   {
-   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+   resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
    resp.getWriter().print("FAIL User not logged in");
    return;
   }

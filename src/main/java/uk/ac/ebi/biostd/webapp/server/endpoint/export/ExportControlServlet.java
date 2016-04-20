@@ -30,7 +30,7 @@ public class ExportControlServlet extends ServiceServlet
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
  {
-  if( ! sess.getUser().isSuperuser() )
+  if( sess == null || ! sess.getUser().isSuperuser() )
   {
    sendMessageNoExp("Only superuser can run this service", resp.getWriter(), "red");
    return;

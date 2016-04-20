@@ -4,9 +4,7 @@
 .project
 /build/
 /war
-/war
 /target/
-/war/
 /resout/
 /gwt-unitCache/
 /dist/
