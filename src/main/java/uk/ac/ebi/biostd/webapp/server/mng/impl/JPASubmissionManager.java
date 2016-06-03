@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.AccessTag;
+import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.db.TagResolver;
 import uk.ac.ebi.biostd.idgen.Counter;
@@ -69,6 +71,7 @@ import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionAttribute;
 import uk.ac.ebi.biostd.model.SubmissionAttributeException;
+import uk.ac.ebi.biostd.model.SubmissionTagRef;
 import uk.ac.ebi.biostd.out.cell.CellFormatter;
 import uk.ac.ebi.biostd.out.cell.XSVCellStream;
 import uk.ac.ebi.biostd.out.json.JSONFormatter;
@@ -89,6 +92,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.SubmissionSearchRequest;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
+import uk.ac.ebi.biostd.webapp.shared.tags.TagRef;
 import uk.ac.ebi.mg.spreadsheet.SpreadsheetReader;
 import uk.ac.ebi.mg.spreadsheet.readers.CSVTSVSpreadsheetReader;
 import uk.ac.ebi.mg.spreadsheet.readers.ODSpreadsheetReader;
@@ -882,8 +886,13 @@ public class JPASubmissionManager implements SubmissionManager
      {
       FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), basePath);
 
-      if(fp != null || (oldSbm != null && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null))
+      if(fp != null )
        foc.setFilePointer(fp);
+      else if(oldSbm != null && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null)
+      {
+       foc.setFilePointer(fp);
+       foc.getLogNode().log(Level.WARN, "File reference '" + foc.getFileRef().getName() + "' can't be resolved in user directory. Using file from previous submission");
+      }
       else
       {
        foc.getLogNode().log(Level.ERROR, "File reference '" + foc.getFileRef().getName() + "' can't be resolved. Check files in the user directory");
@@ -2648,4 +2657,228 @@ public class JPASubmissionManager implements SubmissionManager
   return res;
  }
 
+
+ @Override
+ public LogNode updateSubmissionMeta(String acc, Collection<TagRef> tgRefs, Set<String> access, long rTime, User usr)
+ {
+  ErrorCounter ec = new ErrorCounterImpl();
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Amending submission '"+acc+"' meta information", ec);
+
+  if( shutdown )
+  {
+   gln.log(Level.ERROR, "Service is shut down");
+   return gln;
+  } 
+  
+  EntityManager em = emf.createEntityManager();
+
+  
+  boolean trnOk=true;
+
+  Submission sbm = null;
+
+  EntityTransaction trn = null;
+  
+  try
+  {
+   trn = em.getTransaction();
+   
+   trn.begin();
+
+   Query q = em.createNamedQuery("Submission.getByAcc");
+
+   q.setParameter("accNo", acc);
+
+
+   try
+   {
+    sbm = (Submission) q.getSingleResult();
+   }
+   catch(NoResultException e)
+   {
+   }
+
+   if(sbm == null)
+   {
+    gln.log(Level.ERROR, "Submission not found");
+    return gln;
+   }
+
+   if(!BackendConfig.getServiceManager().getSecurityManager().mayUserUpdateSubmission(sbm, usr))
+   {
+    gln.log(Level.ERROR, "User has no permission to amend this submission");
+    return gln;
+   }
+   
+   List<SubmissionTagRef> tags = Collections.emptyList();
+   
+   if( tgRefs != null && tgRefs.size() > 0 )
+   {
+    tags = new ArrayList<SubmissionTagRef>(tgRefs.size());
+    
+    Query tagq = em.createNamedQuery("Tag.getByName");
+    
+
+    for( TagRef tr: tgRefs )
+    {
+     tagq.setParameter("tname", tr.getTagName());
+     tagq.setParameter("cname", tr.getClassiferName());
+     
+     @SuppressWarnings("unchecked")
+     List<Tag> res = tagq.getResultList();
+     
+     if( res.size() == 0 )
+     {
+      gln.log(Level.ERROR, "Tag "+tr.getClassiferName()+":"+tr.getTagName()+" can't be resolved");
+      trnOk=false;
+     }
+     else
+     {
+      SubmissionTagRef str = new SubmissionTagRef();
+      
+      str.setTag(res.get(0));
+      str.setParameter(tr.getTagValue());
+      
+      tags.add(str);
+     }
+    }
+   }
+   
+   List<AccessTag> accTags = Collections.emptyList();
+   
+   if( access != null && access.size() > 0 )
+   {
+    accTags = new ArrayList<AccessTag>(access.size());
+   
+    Query acctq = em.createNamedQuery("AccessTag.getByName");
+    
+    for( String tName : access )
+    {
+     acctq.setParameter("name", tName);
+     
+     @SuppressWarnings("unchecked")
+     List<AccessTag> res = acctq.getResultList();
+     
+     if( res.size() == 0 )
+     {
+      gln.log(Level.ERROR, "Access tag "+tName+" can't be resolved");
+      trnOk=false;
+     }
+     else
+      accTags.add(res.get(0));
+    }
+    
+   }
+   
+   if( ! trnOk )
+    return gln;
+   
+   trnOk = false;
+   
+   if( access != null )
+   {
+    sbm.setAccessTags(accTags);
+    trnOk = true;
+   }
+   
+   
+   if( tgRefs != null )
+   {
+    if( sbm.getTagRefs() != null )
+    {
+     for( SubmissionTagRef str: sbm.getTagRefs() )
+      em.remove(str);
+    }
+    
+    sbm.setTagRefs(tags);
+    trnOk=true;
+   }
+   
+   if( rTime >=0 )
+   {
+    sbm.setRTime(rTime/1000);
+    sbm.setReleased(false);
+    trnOk=true;
+   }
+   
+  }
+  catch( Exception e )
+  {
+   e.printStackTrace();
+   
+   gln.log(Level.ERROR, "Internal server error");
+
+   trnOk=false;
+  }
+  finally
+  {
+   
+   try
+   {
+    if( trnOk )
+    {
+     trn.commit();
+     gln.log(Level.INFO, "Transaction successful");
+    }
+    else
+     trn.rollback();
+   }
+   catch(Throwable t)
+   {
+    trnOk = false;
+    
+    String err = "Database transaction failed: " + t.getMessage();
+
+    gln.log(Level.ERROR, err);
+
+    if(trn.isActive())
+     trn.rollback();
+   }
+
+  }
+  
+  if( trnOk )
+  {
+   PMDoc doc = new PMDoc();
+   doc.addSubmission(new SubmissionInfo(sbm) );
+   
+   Path trnSbmPath = BackendConfig.getSubmissionPath(sbm);
+   
+   try( PrintStream out = new PrintStream( trnSbmPath.resolve(sbm.getAccNo()+".xml").toFile() ) )
+   {
+    new PageMLFormatter(out).format(doc);
+   }
+   catch (Exception e) 
+   {
+    gln.log(Level.WARN,"Can't generate XML source file");
+    log.error("Can't generate XML source file: "+e.getMessage());
+    e.printStackTrace();
+   }
+   
+   
+   try( PrintStream out = new PrintStream( trnSbmPath.resolve(sbm.getAccNo()+".json").toFile() ) )
+   {
+    new JSONFormatter(out).format(doc);
+   }
+   catch (Exception e) 
+   {
+    gln.log(Level.WARN,"Can't generate JSON source file");
+    log.error("Can't generate JSON source file: "+e.getMessage());
+    e.printStackTrace();
+   }
+
+   try( PrintStream out = new PrintStream( trnSbmPath.resolve(sbm.getAccNo()+".pagetab.tsv").toFile() ) )
+   {
+    new CellFormatter( XSVCellStream.getTSVCellStream(out) ).format(doc);
+   }
+   catch (Exception e) 
+   {
+    gln.log(Level.WARN,"Can't generate Page-Tab source file");
+    log.error("Can't generate Page-Tab source file: "+e.getMessage());
+    e.printStackTrace();
+   }
+  }
+  
+  return gln;
+ }
 }

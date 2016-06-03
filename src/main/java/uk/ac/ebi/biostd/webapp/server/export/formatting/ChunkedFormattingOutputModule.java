@@ -3,7 +3,6 @@ package uk.ac.ebi.biostd.webapp.server.export.formatting;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -13,9 +12,11 @@ import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.out.TextStreamFormatter;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.export.ExporterStat;
+import uk.ac.ebi.biostd.webapp.server.export.FSProvider;
+import uk.ac.ebi.biostd.webapp.server.export.FTPFSProvider;
+import uk.ac.ebi.biostd.webapp.server.export.FileFSProvider;
 import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
-import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.util.MapParamPool;
 
 public class ChunkedFormattingOutputModule implements OutputModule
@@ -34,6 +35,8 @@ public class ChunkedFormattingOutputModule implements OutputModule
 
  private StreamPartitioner tmpStream;
  
+ private FSProvider fsys;
+ 
  private static Logger log = null;
  
  public ChunkedFormattingOutputModule(String name, Map<String, String> cfgMap) throws TaskConfigException
@@ -48,6 +51,15 @@ public class ChunkedFormattingOutputModule implements OutputModule
   
   cfg.loadParameters(new MapParamPool(cfgMap), "");
   
+  boolean ftp = false;
+  
+  if( cfg.getFsProvider() == null || cfg.getFsProvider().trim().length() == 0 || cfg.getFsProvider().equalsIgnoreCase("file") )
+   fsys = new FileFSProvider();
+  else if( cfg.getFsProvider().startsWith("ftp:") )
+  {
+   fsys = new FTPFSProvider(cfg.getFsProvider());
+   ftp = true;
+  }
   
   String fmtr = cfg.getFormat(null);
   
@@ -108,7 +120,7 @@ public class ChunkedFormattingOutputModule implements OutputModule
   
   tmpDir = FileSystems.getDefault().getPath(tmpDirName);
   
-  if( ! tmpDir.isAbsolute() )
+  if( ! tmpDir.isAbsolute() && ! ftp )
   {
    if( BackendConfig.getBaseDirectory() == null )
    {
@@ -120,25 +132,34 @@ public class ChunkedFormattingOutputModule implements OutputModule
   }
   
 
-  if( ! Files.exists(tmpDir) && BackendConfig.isCreateFileStructure() )
+  try
   {
-   try
+   if(!fsys.exists(tmpDir) && BackendConfig.isCreateFileStructure())
    {
-    Files.createDirectories(tmpDir);
-   }
-   catch(IOException e)
-   {
-    log.error("Output module '"+name+"': Can't create temporary directory: " + tmpDir);
-    throw new TaskConfigException("Output module '"+name+"': Can't create temporary directory: " + tmpDir);
+    fsys.createDirectories(tmpDir);
    }
   }
-  
-  if( ! Files.isWritable( tmpDir ) )
+  catch(IOException e)
   {
-   log.error("Output module '"+name+"': Temporary directory is not writable: " + tmpDir);
-   throw new TaskConfigException("Output module '"+name+"': Temporary directory is not writable: " + tmpDir);
+   log.error("Output module '" + name + "': Can't create temporary directory: " + tmpDir);
+   throw new TaskConfigException("Output module '" + name + "': Can't create temporary directory: " + tmpDir,e);
   }
+
   
+  try
+  {
+   if( ! fsys.isWritable( tmpDir ) )
+   {
+    log.error("Output module '"+name+"': Temporary directory is not writable: " + tmpDir);
+    throw new TaskConfigException("Output module '"+name+"': Temporary directory is not writable: " + tmpDir);
+   }
+  }
+  catch( IOException e )
+  {
+   log.error("Output module '" + name + "': IO error: " + e.getMessage());
+   throw new TaskConfigException("Output module '" + name + "': IO error: " + e.getMessage(),e);
+  }
+
   
   String outFileName = cfg.getOutputFile(null);
   
@@ -147,7 +168,7 @@ public class ChunkedFormattingOutputModule implements OutputModule
   
   outDir = FileSystems.getDefault().getPath(outFileName);
 
-  if( ! outDir.isAbsolute() )
+  if( ! outDir.isAbsolute() && ! ftp )
   {
    if( BackendConfig.getBaseDirectory() == null )
    {
@@ -162,24 +183,34 @@ public class ChunkedFormattingOutputModule implements OutputModule
   
   outDir = outDir.getParent();
 
-  if( ! Files.exists(outDir) && BackendConfig.isCreateFileStructure() )
+  try
   {
-   try
+   if(!fsys.exists(outDir) && BackendConfig.isCreateFileStructure())
    {
-    Files.createDirectories(outDir);
+    fsys.createDirectories(outDir);
    }
-   catch(IOException e)
-   {
-    log.error("Output module '"+name+"': Can't create output directory: " + outDir);
-    throw new TaskConfigException("Output module '"+name+"': Can't create output directory: " + outDir);
-   }
+  }
+  catch(IOException e)
+  {
+   log.error("Output module '" + name + "': Can't create output directory: " + outDir);
+   throw new TaskConfigException("Output module '" + name + "': Can't create output directory: " + outDir);
   }
   
-  if(! Files.isDirectory(outDir) || ! Files.isWritable(outDir) )
+  try
   {
-   log.error("Output module '"+name+"': Output file directory is not writable: " + outDir);
-   throw new TaskConfigException("Output module '"+name+"': Output file directory is not writable: " + outDir);
+   if(! fsys.isDirectory(outDir) || ! fsys.isWritable(outDir) )
+   {
+    log.error("Output module '"+name+"': Output file directory is not writable: " + outDir);
+    throw new TaskConfigException("Output module '"+name+"': Output file directory is not writable: " + outDir);
+   }
+   
   }
+  catch( IOException e )
+  {
+   log.error("Output module '" + name + "': IO error: " + e.getMessage());
+   throw new TaskConfigException("Output module '" + name + "': IO error: " + e.getMessage(),e);
+  }
+  
  
   String sfx,pfx;
   
@@ -198,7 +229,9 @@ public class ChunkedFormattingOutputModule implements OutputModule
   
   
   
-  tmpStream = new StreamPartitioner(formatter, tmpDir, pfx, sfx, cfg.isChunkOutput()?cfg.getChunkSize():Long.MAX_VALUE, cfg.isChunkSizeInUnits());
+  tmpStream = new StreamPartitioner(formatter, fsys, tmpDir, pfx, sfx, cfg.isChunkOutput()?cfg.getChunkSize():Long.MAX_VALUE, cfg.isChunkSizeInUnits());
+  
+  fsys.close();
  }
  
  
@@ -221,6 +254,10 @@ public class ChunkedFormattingOutputModule implements OutputModule
  {
   log.debug("Starting export module for task '" + name + "'");
   tmpStream.reset();
+  
+
+  fsys.deleteDirectoryContents(tmpDir);
+
  }
  
  @Override
@@ -233,19 +270,19 @@ public class ChunkedFormattingOutputModule implements OutputModule
  
   Path tmpOutDir =outParent.resolve( "biostdMovingChunkedDir."+System.currentTimeMillis() );
   
-  FileManager fmgr = BackendConfig.getServiceManager().getFileManager();
+//  FileManager fmgr = BackendConfig.getServiceManager().getFileManager();
   
   try
   {
-   Files.move(tmpDir, tmpOutDir);
+   fsys.move(tmpDir, tmpOutDir);
    
-   Files.createDirectories(tmpDir);
+   fsys.createDirectories(tmpDir);
   }
   catch(Exception e)
   {
-   fmgr.copyDirectory(tmpDir, tmpOutDir);
+   fsys.copyDirectory(tmpDir, tmpOutDir);
    
-   fmgr.deleteDirectoryContents(tmpDir);
+   fsys.deleteDirectoryContents(tmpDir);
   }
   
   Path tmpOutDir2 = outParent.resolve( "biostdMovingDirBackup."+System.currentTimeMillis() );
@@ -253,15 +290,19 @@ public class ChunkedFormattingOutputModule implements OutputModule
   
   try
   {
-   Files.move(outDir, tmpOutDir2);
-   Files.move(tmpOutDir, outDir);
+   fsys.move(outDir, tmpOutDir2);
+   fsys.move(tmpOutDir, outDir);
 
-   fmgr.deleteDirectory(tmpOutDir2);
+   fsys.deleteDirectory(tmpOutDir2);
   }
   catch(Exception e)
   {
    e.printStackTrace();
    log.error("Task '"+name+"': Can't rename files in directiry: " + outParent);
+  }
+  finally
+  {
+   fsys.close();
   }
 
  }
@@ -281,6 +322,10 @@ public class ChunkedFormattingOutputModule implements OutputModule
     e.printStackTrace();
     
     log.error("Task '"+name+"': Can't clean up task");
+   }
+   finally
+   {
+    fsys.close();
    }
   
  }

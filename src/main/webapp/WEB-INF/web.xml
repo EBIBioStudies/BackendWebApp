@@ -160,6 +160,7 @@
     <url-pattern>/reserve</url-pattern>
   </servlet-mapping>
 
+<!-- 
   <filter>
    <filter-name>CorsFilter</filter-name>
    <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>
@@ -169,6 +170,7 @@
   <filter-name>CorsFilter</filter-name>
   <url-pattern>/*</url-pattern>
  </filter-mapping>
+-->
   
   <listener>
     <listener-class>uk.ac.ebi.biostd.webapp.server.WebAppInit</listener-class>

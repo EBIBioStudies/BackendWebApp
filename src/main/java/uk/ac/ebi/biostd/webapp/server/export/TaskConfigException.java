@@ -12,5 +12,10 @@ public class TaskConfigException extends Exception
   super( msg );
  }
 
+ public TaskConfigException( String msg, Throwable cause )
+ {
+  super( msg, cause );
+ }
+
  
 }

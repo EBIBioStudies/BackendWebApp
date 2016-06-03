@@ -39,6 +39,7 @@ public class UserDataServlet extends ServiceServlet
   if(sess == null || sess.isAnonymouns() )
   {
    resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+   resp.setContentType("text/plain");
    resp.getWriter().print("FAIL User not logged in");
    return;
   }
@@ -70,6 +71,7 @@ public class UserDataServlet extends ServiceServlet
   if( op == null )
   {
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   resp.setContentType("text/plain");
    resp.getWriter().print("FAIL "+opParameter+" is not defined or has invalid value ( valid: get, set)");
    return;
   }
@@ -127,6 +129,7 @@ public class UserDataServlet extends ServiceServlet
   if( key == null )
   {
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   resp.setContentType("text/plain");
    resp.getWriter().print("FAIL "+keyParameter+" is not defined");
    return;
   }

@@ -1,6 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
 import java.util.Collection;
+import java.util.Set;
 
 import org.apache.lucene.queryparser.classic.ParseException;
 
@@ -9,6 +10,7 @@ import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.treelog.LogNode;
 import uk.ac.ebi.biostd.treelog.SubmissionReport;
 import uk.ac.ebi.biostd.util.DataFormat;
+import uk.ac.ebi.biostd.webapp.shared.tags.TagRef;
 
 public interface SubmissionManager
 {
@@ -18,7 +20,8 @@ public interface SubmissionManager
   UPDATE,
   REPLACE,
   DELETE,
-  TRANKLUCATE
+  TRANKLUCATE,
+  SETMETA
  }
  
  Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
@@ -38,6 +41,7 @@ public interface SubmissionManager
  
  SubmissionReport createSubmission(byte[] data, DataFormat fmt, String charset, Operation op, User usr, boolean validateOnly);
 
+ LogNode updateSubmissionMeta(String sbmAcc, Collection<TagRef> tags, Set<String> access, long rTime, User user);
  
  LogNode deleteSubmissionByAccession(String acc, User usr);
  

@@ -51,7 +51,15 @@ public class FileManagerImpl implements FileManager
   
   FilePointer fp = new FilePointer();
   
+  Path relPath = FileSystems.getDefault().getPath(name);
+  
+  Path rt = relPath.getRoot();
+  
+  if( rt != null )
+   relPath = rt.relativize(relPath);
+  
   fp.setFullPath(p);
+  fp.setRelativePath(relPath);
   
   return fp;
  }

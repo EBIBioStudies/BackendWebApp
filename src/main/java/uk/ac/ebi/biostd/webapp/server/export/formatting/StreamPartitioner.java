@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 
 import uk.ac.ebi.biostd.out.TextStreamFormatter;
+import uk.ac.ebi.biostd.webapp.server.export.FSProvider;
 
 public class StreamPartitioner implements Appendable
 {
@@ -21,9 +22,11 @@ public class StreamPartitioner implements Appendable
  private int chunkCounter;
  private long counter;
  
+ private FSProvider fsys;
+ 
  private PrintStream cStream;
 
- public StreamPartitioner( TextStreamFormatter fmt, Path outPath, String fnPfx, String fnSfx, long chSize, boolean unit )
+ public StreamPartitioner( TextStreamFormatter fmt, FSProvider fsys, Path outPath, String fnPfx, String fnSfx, long chSize, boolean unit )
  {
   formatter = fmt;
   
@@ -37,6 +40,8 @@ public class StreamPartitioner implements Appendable
   
   counter = 0;
   chunkCounter = 0;
+  
+  this.fsys = fsys;
  }
  
  @Override
@@ -99,7 +104,8 @@ public class StreamPartitioner implements Appendable
   
   try
   {
-   cStream = new PrintStream(outPath.resolve(fn).toFile(), "UTF-8" );
+   cStream = fsys.createPrintStream(outPath.resolve(fn), "UTF-8" );
+//   cStream = new PrintStream(outPath.resolve(fn).toFile(), "UTF-8" );
   }
   catch(UnsupportedEncodingException e)
   {

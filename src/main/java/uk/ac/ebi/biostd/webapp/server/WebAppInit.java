@@ -265,7 +265,7 @@ public class WebAppInit implements ServletContextListener
     }
     catch( ClassNotFoundException e )
     {
-     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': output module class '"+outtaskCls+"' not found");
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': output module class '"+type+"' not found");
     }
     
     if( ! OutputModule.class.isAssignableFrom(outtaskCls) )
@@ -661,7 +661,7 @@ public class WebAppInit implements ServletContextListener
   catch( TaskConfigException e )
   {
    log.error("Configuration error : "+e.getMessage());
-   throw new RuntimeException("BioStd webapp initialization failed");
+   throw new RuntimeException("BioStd webapp initialization failed",e);
   }
 
   if(tinf.getTimeZero() >= 0)

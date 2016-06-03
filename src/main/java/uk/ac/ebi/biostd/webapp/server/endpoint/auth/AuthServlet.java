@@ -210,6 +210,7 @@ public class AuthServlet extends ServiceServlet
    catch( Throwable e )
    {
     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.setContentType("text/plain");
     response.getWriter().print("FAIL Invalid path: "+pi);
     return;
    }
@@ -269,6 +270,7 @@ public class AuthServlet extends ServiceServlet
    if( reqBody == null || reqBody.length() == 0 )
    {
     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.setContentType("text/plain");
     response.getWriter().print("FAIL Empty JSON request body");
     return;
    }

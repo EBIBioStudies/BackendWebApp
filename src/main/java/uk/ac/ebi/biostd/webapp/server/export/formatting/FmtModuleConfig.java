@@ -17,12 +17,14 @@ public class FmtModuleConfig
  public static final String OutputFileParameter        = "outfile";
  public static final String FormatParameter            = "format";
  public static final String TmpDirParameter            = "tmpdir";
- public static final String ChunkParameter            = "chunkSize";
+ public static final String ChunkParameter             = "chunkSize";
+ public static final String FSProviderParameter        = "fsProvider";
 
  private String      format;
  private Boolean     publicOnly;
  private String      outputFile;
  private String      tmpDir;
+ private String      fsProvider;
  private Map<String, String> formatterParams=new HashMap<String, String>();
  private boolean chunkOutput;
  private long chunkSize;
@@ -39,7 +41,7 @@ public class FmtModuleConfig
   
   tmpDir = params.getParameter(pfx+TmpDirParameter);
   
-  
+  fsProvider = params.getParameter(pfx+FSProviderParameter);
   
   String pv = params.getParameter(pfx+PublicOnlyParameter);
   
@@ -102,6 +104,12 @@ public class FmtModuleConfig
  }
 
  
+ public String getFsProvider()
+ {
+  return fsProvider;
+ }
+
+
  public Boolean getPublicOnly(boolean def)
  {
   return publicOnly!=null?publicOnly:def;
