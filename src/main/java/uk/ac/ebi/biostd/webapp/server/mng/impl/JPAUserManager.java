@@ -173,6 +173,27 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
  
+
+ @Override
+ public List<UserData> getUserDataByTopic(User user, String topic)
+ {
+  if( topic.length() == 0 )
+   topic = null;
+  
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  Query q = em.createNamedQuery("UserData.getByTopic");
+  
+  q.setParameter("uid", user.getId());
+  q.setParameter("topic", topic);
+
+  List<UserData> res = q.getResultList();
+ 
+  return res;
+ }
+
+
+ 
  @Override
  public void storeUserData( UserData ud )
  {
@@ -315,7 +336,9 @@ public class JPAUserManager implements UserManager, SessionListener
     throw new UserNotActiveException();
    }
    
-   if(!ainf.key.equals(u.getActivationKey()))
+   String dbKey = u.getActivationKey();
+   
+   if(dbKey == null || dbKey.length() == 0 || !ainf.key.equals(dbKey))
    {
     u=null;
     throw new InvalidKeyException();
@@ -325,6 +348,7 @@ public class JPAUserManager implements UserManager, SessionListener
     throw new KeyExpiredException();
    
    u.setPassword(pass);
+   u.setActivationKey(null);
 
   }
   catch(UserMngException e)
@@ -486,5 +510,6 @@ public class JPAUserManager implements UserManager, SessionListener
   }
 
  }
+
 
 }

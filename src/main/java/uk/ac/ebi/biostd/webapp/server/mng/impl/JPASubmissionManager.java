@@ -739,9 +739,9 @@ public class JPASubmissionManager implements SubmissionManager
     if( submission.getTitle() == null )
      submission.setTitle( submission.createTitle() );
     
-    if( op == Operation.UPDATE || op == Operation.REPLACE )
+    if( op == Operation.UPDATE || op == Operation.REPLACE || op == Operation.OVERRIDE )
     {
-     if( (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || submission.getAccNo() == null ) && op == Operation.REPLACE )
+     if( (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || submission.getAccNo() == null ) && ( op == Operation.REPLACE || op == Operation.OVERRIDE ) )
      {
       si.getLogNode().log(Level.ERROR, "Submission must have accession number for "+op.name()+" operation");
       submOk = false;
@@ -755,9 +755,9 @@ public class JPASubmissionManager implements SubmissionManager
 //      if( __accVerMap.containsKey(submission.getAccNo()) )
 //       System.out.println(submission.getAccNo()+" invisible update "+System.currentTimeMillis());
       
-      if( op == Operation.REPLACE )
+      if( op == Operation.REPLACE || op == Operation.OVERRIDE )
       {
-       si.getLogNode().log(Level.ERROR, "Submission '" + submission.getAccNo() + "' doesn't exist and can't be replced");
+       si.getLogNode().log(Level.ERROR, "Submission '" + submission.getAccNo() + "' doesn't exist and can't be replaced");
        submOk = false;
        continue;
       }
@@ -1104,7 +1104,10 @@ public class JPASubmissionManager implements SubmissionManager
 
     if(si.getOriginalSubmission() != null)
     {
-     si.getOriginalSubmission().setVersion(-si.getOriginalSubmission().getVersion());
+     if( op == Operation.OVERRIDE )
+      em.remove(si.getOriginalSubmission());
+     else
+      si.getOriginalSubmission().setVersion(-si.getOriginalSubmission().getVersion());
     }
     
     em.persist(subm);
@@ -1118,7 +1121,7 @@ public class JPASubmissionManager implements SubmissionManager
    
    trans = new ArrayList<JPASubmissionManager.FileTransactionUnit>( doc.getSubmissions().size() );
    
-   if( ! prepareFileTransaction(fileMngr, trans, doc.getSubmissions(), trnPath) )
+   if( ! prepareFileTransaction(fileMngr, trans, doc.getSubmissions(), trnPath, op) )
    {
     gln.log(Level.ERROR, "File operation failed. Contact system administrator");
     submOk = false;
@@ -1162,7 +1165,7 @@ public class JPASubmissionManager implements SubmissionManager
       {
        try
        {
-        commitFileTransaction(fileMngr, trans, trnPath);
+        commitFileTransaction( fileMngr, trans, trnPath, op );
        }
        catch(IOException ioe)
        {
@@ -1523,7 +1526,7 @@ public class JPASubmissionManager implements SubmissionManager
   
  }
  
- private void commitFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans,  Path trnPath ) throws IOException
+ private void commitFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans,  Path trnPath, Operation op ) throws IOException
  {
   for(FileTransactionUnit ftu : trans)
   {
@@ -1532,13 +1535,21 @@ public class JPASubmissionManager implements SubmissionManager
    
    if( ftu.state == SubmissionDirState.COPIED )
    {
-    Files.move(ftu.historyPathTmp, ftu.historyPath);
-
+    if( op != Operation.OVERRIDE )
+     Files.move(ftu.historyPathTmp, ftu.historyPath);
+    else
+     fileMngr.deleteDirectory(ftu.historyPathTmp);
+    
     dirToDel = ftu.submissionPathTmp.getParent().resolve(ftu.submissionPath.getFileName() + "~");
     Files.move(ftu.submissionPath, dirToDel);
    }
    else if( ftu.state == SubmissionDirState.HOME )
-    Files.move(ftu.submissionPath, ftu.historyPath);
+   {
+    if( op != Operation.OVERRIDE )
+     Files.move(ftu.submissionPath, ftu.historyPath);
+    else
+     dirToDel=ftu.submissionPath;
+   }
    else if( ftu.state == SubmissionDirState.LINKED )
    {
     Files.move(ftu.historyPathTmp, ftu.historyPath);
@@ -1546,8 +1557,6 @@ public class JPASubmissionManager implements SubmissionManager
    }
    
 
-   if( ftu.submissionPathTmp != null )
-    Files.move(ftu.submissionPathTmp, ftu.submissionPath);
 
    if(dirToDel != null)
    {
@@ -1560,6 +1569,9 @@ public class JPASubmissionManager implements SubmissionManager
      log.error("Can't delete directory of dirsymlink: " + dirToDel + " " + ex3.getMessage());
     }
    }
+
+   if( ftu.submissionPathTmp != null )
+    Files.move(ftu.submissionPathTmp, ftu.submissionPath);
 
   }
 
@@ -1574,19 +1586,18 @@ public class JPASubmissionManager implements SubmissionManager
   
  }
  
- private boolean prepareFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans, Collection<SubmissionInfo> subs, Path trnPath )
+ private boolean prepareFileTransaction( FileManager fileMngr, List<FileTransactionUnit> trans, Collection<SubmissionInfo> subs, Path trnPath, Operation op  )
  {
 
   for( SubmissionInfo si : subs )
   {
-   
+
    FileTransactionUnit ftu = new FileTransactionUnit();
    trans.add(ftu);
 
-   
-   Path origDir = BackendConfig.getSubmissionPath( si.getSubmission() );
+   Path origDir = BackendConfig.getSubmissionPath(si.getSubmission());
    ftu.submissionPath = origDir;
-   
+
    try
    {
     Files.createDirectories(origDir.getParent());
@@ -1596,16 +1607,16 @@ public class JPASubmissionManager implements SubmissionManager
     log.error("Can't create directory: " + origDir.getParent());
     return false; // Bad. We have to break the operation
    }
-   
+
    si.getSubmission().setRelPath(BackendConfig.getSubmissionRelativePath(si.getSubmission()));
 
-   ftu.state =SubmissionDirState.ABSENT;
-   
+   ftu.state = SubmissionDirState.ABSENT;
+
    if(si.getOriginalSubmission() != null)
    {
     Path histDir = BackendConfig.getSubmissionHistoryPath(si.getOriginalSubmission());
 
-    if( Files.exists(histDir) )
+    if(Files.exists(histDir))
     {
      log.error("History directory already exists");
      return false;
@@ -1613,50 +1624,57 @@ public class JPASubmissionManager implements SubmissionManager
 
     if(Files.exists(origDir))
     {
-     ftu.historyPath = histDir;
-
-     Path histDirTmp = histDir.resolveSibling(histDir.getFileName() + "#tmp");
-
-     try
+     if(op != Operation.OVERRIDE)
      {
-      fileMngr.moveDirectory(origDir, histDirTmp); // trying to move submission directory to the history dir
-      ftu.historyPathTmp = histDirTmp;
+      ftu.historyPath = histDir;
+
+      Path histDirTmp = histDir.resolveSibling(histDir.getFileName() + "#tmp");
 
       try
       {
-       Files.createSymbolicLink(origDir, histDirTmp); //to provide access to the submission before the commit
-       ftu.state =SubmissionDirState.LINKED;
+       fileMngr.moveDirectory(origDir, histDirTmp); // trying to move submission directory to the history dir
+       ftu.historyPathTmp = histDirTmp;
+
+       try
+       {
+        Files.createSymbolicLink(origDir, histDirTmp); //to provide access to the submission before the commit
+        ftu.state = SubmissionDirState.LINKED;
+       }
+       catch(Exception ex2)
+       {
+        fileMngr.moveDirectory(histDirTmp, origDir); //if we can't make a symbolic link (FAT?) let's return the directory back
+        ftu.historyPathTmp = null; // Signaling that the directory was not neither moved nor copied
+        ftu.state = SubmissionDirState.HOME;
+       }
       }
-      catch(Exception ex2)
+      catch(Exception e)
       {
-       fileMngr.moveDirectory(histDirTmp, origDir); //if we can't make a symbolic link (FAT?) let's return the directory back
-       ftu.historyPathTmp = null; // Signaling that the directory was not neither moved nor copied
-       ftu.state =SubmissionDirState.HOME;
+       // If we can't move the directory we have to make a copy of it
+
+       try
+       {
+        Files.createDirectories(histDirTmp);
+        fileMngr.copyDirectory(origDir, histDirTmp);
+        ftu.historyPathTmp = histDirTmp;
+        ftu.state = SubmissionDirState.COPIED;
+       }
+       catch(Exception ex1)
+       {
+        log.error("Can't copy directory " + origDir + " to " + histDirTmp + " : " + ex1.getMessage());
+
+        return false; // Bad. We have to break the operation
+       }
+
       }
      }
-     catch(Exception e)
+     else
      {
-      // If we can't move the directory we have to make a copy of it
-
-      try
-      {
-       Files.createDirectories(histDirTmp);
-       fileMngr.copyDirectory(origDir, histDirTmp);
-       ftu.historyPathTmp = histDirTmp;
-       ftu.state =SubmissionDirState.COPIED;
-      }
-      catch(Exception ex1)
-      {
-       log.error("Can't copy directory " + origDir + " to " + histDirTmp + " : " + ex1.getMessage());
-
-       return false; // Bad. We have to break the operation
-      }
-
+      ftu.historyPathTmp = null;
+      ftu.state = SubmissionDirState.HOME;
      }
     }
-
    }
-   else if( Files.exists( origDir ) )
+   else if(Files.exists(origDir))
    {
     log.warn("Directory " + origDir + " exists unexpectedly");
 
@@ -1675,7 +1693,6 @@ public class JPASubmissionManager implements SubmissionManager
     }
    }
 
-   
    Path trnSbmPath = trnPath.resolve(si.getSubmission().getAccNo());
 
    try
@@ -1714,20 +1731,20 @@ public class JPASubmissionManager implements SubmissionManager
    if(si.getFileOccurrences() != null)
    {
     Set<FileOccurrence> foSet = new HashSet<FileOccurrence>();
-    
+
     for(FileOccurrence fo : si.getFileOccurrences())
     {
-     if( foSet.contains(fo) )
+     if(foSet.contains(fo))
       continue;
-     
+
      foSet.add(fo);
-     
+
      try
      {
       fileMngr.linkOrCopy(sbmFilesPath, fo.getFilePointer());
       si.getLogNode().log(Level.INFO, "File '" + fo.getFileRef().getName() + "' transfer success");
-      
-      fo.getFileRef().setSize( fo.getFilePointer().getSize() );
+
+      fo.getFileRef().setSize(fo.getFilePointer().getSize());
       fo.getFileRef().setDirectory(fo.getFilePointer().isDirectory());
      }
      catch(IOException e)
@@ -1738,41 +1755,40 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
    }
-  
+
    PMDoc doc = new PMDoc();
    doc.addSubmission(si);
-   
-   try( PrintStream out = new PrintStream( trnSbmPath.resolve(si.getSubmission().getAccNo()+".xml").toFile() ) )
+
+   try (PrintStream out = new PrintStream(trnSbmPath.resolve(si.getSubmission().getAccNo() + ".xml").toFile()))
    {
     new PageMLFormatter(out).format(doc);
    }
-   catch (Exception e) 
+   catch(Exception e)
    {
-    si.getLogNode().log(Level.ERROR,"Can't generate XML source file");
-    log.error("Can't generate XML source file: "+e.getMessage());
-    e.printStackTrace();
-   }
-   
-   
-   try( PrintStream out = new PrintStream( trnSbmPath.resolve(si.getSubmission().getAccNo()+".json").toFile() ) )
-   {
-    new JSONFormatter(out).format(doc);
-   }
-   catch (Exception e) 
-   {
-    si.getLogNode().log(Level.ERROR,"Can't generate JSON source file");
-    log.error("Can't generate JSON source file: "+e.getMessage());
+    si.getLogNode().log(Level.ERROR, "Can't generate XML source file");
+    log.error("Can't generate XML source file: " + e.getMessage());
     e.printStackTrace();
    }
 
-   try( PrintStream out = new PrintStream( trnSbmPath.resolve(si.getSubmission().getAccNo()+".pagetab.tsv").toFile() ) )
+   try (PrintStream out = new PrintStream(trnSbmPath.resolve(si.getSubmission().getAccNo() + ".json").toFile()))
    {
-    new CellFormatter( XSVCellStream.getTSVCellStream(out) ).format(doc);
+    new JSONFormatter(out).format(doc);
    }
-   catch (Exception e) 
+   catch(Exception e)
    {
-    si.getLogNode().log(Level.ERROR,"Can't generate Page-Tab source file");
-    log.error("Can't generate Page-Tab source file: "+e.getMessage());
+    si.getLogNode().log(Level.ERROR, "Can't generate JSON source file");
+    log.error("Can't generate JSON source file: " + e.getMessage());
+    e.printStackTrace();
+   }
+
+   try (PrintStream out = new PrintStream(trnSbmPath.resolve(si.getSubmission().getAccNo() + ".pagetab.tsv").toFile()))
+   {
+    new CellFormatter(XSVCellStream.getTSVCellStream(out)).format(doc);
+   }
+   catch(Exception e)
+   {
+    si.getLogNode().log(Level.ERROR, "Can't generate Page-Tab source file");
+    log.error("Can't generate Page-Tab source file: " + e.getMessage());
     e.printStackTrace();
    }
   }

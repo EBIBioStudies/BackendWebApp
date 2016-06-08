@@ -18,6 +18,7 @@ public interface SubmissionManager
  {
   CREATE,
   UPDATE,
+  OVERRIDE,
   REPLACE,
   DELETE,
   TRANKLUCATE,

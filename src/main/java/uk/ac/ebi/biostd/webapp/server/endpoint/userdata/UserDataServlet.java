@@ -23,6 +23,8 @@ public class UserDataServlet extends ServiceServlet
 
  public static final String keyParameter = "key";
  public static final String dataParameter = "value";
+ public static final String topicParameter = "topic";
+ public static final String ctypeParameter = "contentType";
  public static final String opParameter = "op";
  
  public enum Op
@@ -79,11 +81,18 @@ public class UserDataServlet extends ServiceServlet
   
   String key = req.getParameter(keyParameter);
   String data = req.getParameter(dataParameter);
+  String topic = req.getParameter(topicParameter);
   
   if( op == Op.LISTJSON )
   {
-   List<UserData> list = BackendConfig.getServiceManager().getUserManager().getAllUserData(sess.getUser());
+   List<UserData> list = null;
    
+   if( topic == null )
+    list = BackendConfig.getServiceManager().getUserManager().getAllUserData(sess.getUser());
+   else
+    list = BackendConfig.getServiceManager().getUserManager().getUserDataByTopic(sess.getUser(), topic );   
+
+   resp.setContentType("application/json; charset=UTF-8");
    resp.setCharacterEncoding("UTF-8");
    
    PrintWriter out  = resp.getWriter();
@@ -103,10 +112,19 @@ public class UserDataServlet extends ServiceServlet
   
   if( op == Op.LIST )
   {
-   List<UserData> list = BackendConfig.getServiceManager().getUserManager().getAllUserData(sess.getUser());
+//   if( topic == null )
+//    topic = "submission";   // This is temporary hack requested by Olga
    
+   List<UserData> list = null;
+     
+   if( topic == null )
+    list = BackendConfig.getServiceManager().getUserManager().getAllUserData(sess.getUser());
+   else
+    list = BackendConfig.getServiceManager().getUserManager().getUserDataByTopic(sess.getUser(), topic );
+    
    JSONObject jsn = new JSONObject();
    
+   resp.setContentType("application/json; charset=UTF-8");
    resp.setCharacterEncoding("UTF-8");
    
    PrintWriter out  = resp.getWriter();
@@ -138,20 +156,30 @@ public class UserDataServlet extends ServiceServlet
   
   if( op == Op.GET )
   {
-   UserData udata = BackendConfig.getServiceManager().getUserManager().getUserData(sess.getUser(),key);
+   UserData udata = null;
+   
+   udata = BackendConfig.getServiceManager().getUserManager().getUserData(sess.getUser(),key);
 
    if( udata != null && udata.getData() != null )
    {
+    if( udata.getContentType() != null )
+     resp.setContentType(udata.getContentType());
+    
     resp.setCharacterEncoding("UTF-8");
     resp.getWriter().append(udata.getData());
    }
   }
   else
   {
+//   if( topic == null )
+//    topic = "submission";   // This is temporary hack requested by Olga
+
    UserData udata = new UserData();
 
    udata.setDataKey(key);
    udata.setData(data);
+   udata.setTopic(topic);
+   udata.setContentType(req.getParameter(ctypeParameter));
    udata.setUserId(sess.getUser().getId());
    
    BackendConfig.getServiceManager().getUserManager().storeUserData(udata);
