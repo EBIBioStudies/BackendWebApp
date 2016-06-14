@@ -10,6 +10,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.TagManager;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 
@@ -28,6 +29,7 @@ public class ServiceManagerImpl implements ServiceManager
  private ReleaseManager releaser;
  private AccessionManager accManager;
  private EmailService emailService;
+ private TagManager tagManager;
  
  @Override
  public EmailService getEmailService()
@@ -145,6 +147,16 @@ public class ServiceManagerImpl implements ServiceManager
  public void setAccessionManager(AccessionManager accManager)
  {
   this.accManager = accManager;
+ }
+
+ public TagManager getTagManager()
+ {
+  return tagManager;
+ }
+
+ public void setTagManager(TagManager tagManager)
+ {
+  this.tagManager = tagManager;
  }
 
 

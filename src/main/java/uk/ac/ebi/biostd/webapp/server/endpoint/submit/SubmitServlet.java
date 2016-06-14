@@ -77,6 +77,7 @@ public class SubmitServlet extends ServiceServlet
   if( sess == null || sess.isAnonymouns() )
   {
    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+   response.setContentType("text/plain");
    response.getWriter().print("FAIL User not logged in");
    return;
   }
@@ -103,6 +104,7 @@ public class SubmitServlet extends ServiceServlet
   if( act == null )
   {
    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.setContentType("text/plain");
    response.getWriter().print("FAIL Invalid path: " + pi);
    return;
   }

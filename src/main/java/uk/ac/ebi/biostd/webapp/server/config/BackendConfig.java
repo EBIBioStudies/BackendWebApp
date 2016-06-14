@@ -38,6 +38,8 @@ public class BackendConfig
  public static final String UserNamePlaceHolderRx = "\\{USERNAME\\}";
  public static final String ActivateKeyPlaceHolderRx= "\\{KEY\\}";
  public static final String ActivateURLPlaceHolderRx= "\\{URL\\}";
+ public static final String TextPlaceHolderRx= "\\{TEXT\\}";
+ public static final String AccNoPlaceHolderRx= "\\{ACCNO\\}";
  
  public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
  public static final String googleSecretParam = "secret";
@@ -81,11 +83,17 @@ public class BackendConfig
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
  public static final String             FTPRootPathParameter                = "FTPRootPath";
  public static final String             DropBoxPathParameter                = "dropboxPath";
+ 
  public static final String             MandatoryAccountActivationParameter = "mandatoryAccountActivation";
  public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
  public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";
  public static final String             ActivationEmailHtmlParameter        = "activationEmailHtmlFile";
  public static final String             ActivationTimeoutParameter          = "activationTimeout";
+
+ public static final String             SubscriptionEmailSubjectParameter     = "subscriptionEmailSubject";
+ public static final String             SubscriptionEmailPlainTextParameter   = "subscriptionEmailPlainTextFile";
+ public static final String             SubscriptionEmailHtmlParameter        = "subscriptionEmailHtmlFile";
+ 
  public static final String             PassResetTimeoutParameter           = "passwordResetTimeout";
  public static final String             PassResetEmailSubjectParameter      = "passwordResetEmailSubject";
  public static final String             PassResetEmailPlainTextParameter    = "passwordResetEmailPlainTextFile";
@@ -136,11 +144,15 @@ public class BackendConfig
  
  private static String activationEmailSubject;
  private static String passResetEmailSubject;
+ private static String subscriptionEmailSubject;
  
  private static Path activationEmailPlainTextFile;
  private static Path activationEmailHtmlFile;
  private static Path passResetEmailPlainTextFile;
  private static Path passResetEmailHtmlFile;
+ 
+ private static Path subscriptionEmailHtmlFile;
+ private static Path subscriptionEmailPlainTextFile;
  
  private static String defaultSubmissionAccPrefix = null;
  private static String defaultSubmissionAccSuffix = null;
@@ -407,6 +419,30 @@ public class BackendConfig
    
    return true;
   }
+  
+  
+  if( SubscriptionEmailSubjectParameter.equals(param) )
+  {
+   subscriptionEmailSubject=val;
+   
+   return true;
+  }
+
+
+  if( SubscriptionEmailPlainTextParameter.equals(param) )
+  {
+   subscriptionEmailPlainTextFile=createPath(SubscriptionEmailPlainTextParameter,val);
+   
+   return true;
+  }
+
+  if( SubscriptionEmailHtmlParameter.equals(param) )
+  {
+   subscriptionEmailHtmlFile=createPath(SubscriptionEmailHtmlParameter,val);
+   
+   return true;
+  }
+
   
   if( PassResetEmailPlainTextParameter.equals(param) )
   {
@@ -727,4 +763,18 @@ public class BackendConfig
   return sessionTokenHeader;
  }
 
+ public static Path getSubscriptionEmailHtmlFile()
+ {
+  return subscriptionEmailHtmlFile;
+ }
+
+ public static Path getSubscriptionEmailPlainTextFile()
+ {
+  return subscriptionEmailPlainTextFile;
+ }
+ 
+ public static String getSubscriptionEmailSubject()
+ {
+  return subscriptionEmailSubject;
+ }
 }

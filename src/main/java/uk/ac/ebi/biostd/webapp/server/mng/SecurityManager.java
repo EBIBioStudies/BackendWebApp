@@ -32,4 +32,6 @@ public interface SecurityManager
  
  User getAnonymousUser();
 
+ boolean mayUserManageTags(User user);
+
 }

@@ -739,9 +739,9 @@ public class JPASubmissionManager implements SubmissionManager
     if( submission.getTitle() == null )
      submission.setTitle( submission.createTitle() );
     
-    if( op == Operation.UPDATE || op == Operation.REPLACE || op == Operation.OVERRIDE )
+    if( op == Operation.UPDATE || op == Operation.CREATEUPDATE || op == Operation.OVERRIDE || op == Operation.CREATEOVERRIDE )
     {
-     if( (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || submission.getAccNo() == null ) && ( op == Operation.REPLACE || op == Operation.OVERRIDE ) )
+     if( (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || submission.getAccNo() == null ) && ( op == Operation.UPDATE || op == Operation.OVERRIDE ) )
      {
       si.getLogNode().log(Level.ERROR, "Submission must have accession number for "+op.name()+" operation");
       submOk = false;
@@ -755,9 +755,9 @@ public class JPASubmissionManager implements SubmissionManager
 //      if( __accVerMap.containsKey(submission.getAccNo()) )
 //       System.out.println(submission.getAccNo()+" invisible update "+System.currentTimeMillis());
       
-      if( op == Operation.REPLACE || op == Operation.OVERRIDE )
+      if( op == Operation.UPDATE || op == Operation.OVERRIDE )
       {
-       si.getLogNode().log(Level.ERROR, "Submission '" + submission.getAccNo() + "' doesn't exist and can't be replaced");
+       si.getLogNode().log(Level.ERROR, "Submission '" + submission.getAccNo() + "' doesn't exist and can't be updated");
        submOk = false;
        continue;
       }
@@ -1104,7 +1104,7 @@ public class JPASubmissionManager implements SubmissionManager
 
     if(si.getOriginalSubmission() != null)
     {
-     if( op == Operation.OVERRIDE )
+     if( op == Operation.OVERRIDE || op == Operation.CREATEOVERRIDE )
       em.remove(si.getOriginalSubmission());
      else
       si.getOriginalSubmission().setVersion(-si.getOriginalSubmission().getVersion());
@@ -1246,6 +1246,17 @@ public class JPASubmissionManager implements SubmissionManager
    
   }
   
+  
+  if( BackendConfig.getSubscriptionEmailSubject() != null )
+  {
+   for(SubmissionInfo si : doc.getSubmissions())
+   {
+    Submission s = si.getSubmission();
+
+    if(s.getTagRefs() != null && s.getTagRefs().size() > 0 && BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(s))
+     SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+   }
+  }
   
   return res;
  }
@@ -1535,20 +1546,20 @@ public class JPASubmissionManager implements SubmissionManager
    
    if( ftu.state == SubmissionDirState.COPIED )
    {
-    if( op != Operation.OVERRIDE )
-     Files.move(ftu.historyPathTmp, ftu.historyPath);
-    else
+    if( op == Operation.OVERRIDE || op == Operation.CREATEOVERRIDE  )
      fileMngr.deleteDirectory(ftu.historyPathTmp);
+    else
+     Files.move(ftu.historyPathTmp, ftu.historyPath);
     
     dirToDel = ftu.submissionPathTmp.getParent().resolve(ftu.submissionPath.getFileName() + "~");
     Files.move(ftu.submissionPath, dirToDel);
    }
    else if( ftu.state == SubmissionDirState.HOME )
    {
-    if( op != Operation.OVERRIDE )
-     Files.move(ftu.submissionPath, ftu.historyPath);
-    else
+    if( op == Operation.OVERRIDE || op == Operation.CREATEOVERRIDE )
      dirToDel=ftu.submissionPath;
+    else
+     Files.move(ftu.submissionPath, ftu.historyPath);
    }
    else if( ftu.state == SubmissionDirState.LINKED )
    {
@@ -1624,7 +1635,7 @@ public class JPASubmissionManager implements SubmissionManager
 
     if(Files.exists(origDir))
     {
-     if(op != Operation.OVERRIDE)
+     if(op != Operation.OVERRIDE && op != Operation.CREATEOVERRIDE )
      {
       ftu.historyPath = histDir;
 
@@ -2695,6 +2706,9 @@ public class JPASubmissionManager implements SubmissionManager
 
   EntityTransaction trn = null;
   
+  boolean wasPublic=false;
+  boolean nowPublic=false;
+  
   try
   {
    trn = em.getTransaction();
@@ -2725,6 +2739,8 @@ public class JPASubmissionManager implements SubmissionManager
     gln.log(Level.ERROR, "User has no permission to amend this submission");
     return gln;
    }
+
+   
    
    List<SubmissionTagRef> tags = Collections.emptyList();
    
@@ -2764,6 +2780,10 @@ public class JPASubmissionManager implements SubmissionManager
    
    if( access != null && access.size() > 0 )
    {
+    if( BackendConfig.getSubscriptionEmailSubject() != null )
+     wasPublic = BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(sbm);
+
+    
     accTags = new ArrayList<AccessTag>(access.size());
    
     Query acctq = em.createNamedQuery("AccessTag.getByName");
@@ -2791,11 +2811,6 @@ public class JPASubmissionManager implements SubmissionManager
    
    trnOk = false;
    
-   if( access != null )
-   {
-    sbm.setAccessTags(accTags);
-    trnOk = true;
-   }
    
    
    if( tgRefs != null )
@@ -2809,6 +2824,16 @@ public class JPASubmissionManager implements SubmissionManager
     sbm.setTagRefs(tags);
     trnOk=true;
    }
+   
+   if( access != null )
+   {
+    sbm.setAccessTags(accTags);
+    trnOk = true;
+    
+    if( BackendConfig.getSubscriptionEmailSubject() != null && sbm.getTagRefs() != null && sbm.getTagRefs().size() > 0 )
+     nowPublic = BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(sbm);
+   }
+
    
    if( rTime >=0 )
    {
@@ -2860,6 +2885,35 @@ public class JPASubmissionManager implements SubmissionManager
    
    Path trnSbmPath = BackendConfig.getSubmissionPath(sbm);
    
+   
+   if( queueProc != null )
+   {
+    StringBuilder sb = new StringBuilder(10000);
+
+    try
+    {
+     new PageMLFormatter(sb).format(sbm, sb);
+    }
+    catch(IOException e)
+    {
+    }
+
+    String msg = sb.toString();
+
+    while(!shutdown)
+    {
+     try
+     {
+      queueProc.put(msg);
+      break;
+     }
+     catch(InterruptedException e)
+     {
+     }
+    }
+
+   }
+   
    try( PrintStream out = new PrintStream( trnSbmPath.resolve(sbm.getAccNo()+".xml").toFile() ) )
    {
     new PageMLFormatter(out).format(doc);
@@ -2893,6 +2947,10 @@ public class JPASubmissionManager implements SubmissionManager
     log.error("Can't generate Page-Tab source file: "+e.getMessage());
     e.printStackTrace();
    }
+  
+   if( BackendConfig.getSubscriptionEmailSubject() != null && nowPublic && ! wasPublic )
+    SubscriptionNotifier.notifyByTags(sbm.getTagRefs(), sbm);
+  
   }
   
   return gln;

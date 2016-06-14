@@ -3,6 +3,8 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -14,17 +16,20 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.out.pageml.PageMLFormatter;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ReleaseManager;
 
 public class JPAReleaser implements ReleaseManager
 {
  private static Logger log;
-
+ 
  public JPAReleaser()
  {
   if( log == null )
    log = LoggerFactory.getLogger(getClass());
+  
+
  }
  
  @Override
@@ -49,7 +54,12 @@ public class JPAReleaser implements ReleaseManager
    @SuppressWarnings("unchecked")
    List<Submission> res = q.getResultList();
    
+   if( res.size() == 0 )
+    return;
+   
    AccessTag pubTag = null;
+   
+   Collection<Submission> released = new ArrayList<Submission>( res.size() );
    
    subs: for( Submission s : res )
    {
@@ -80,6 +90,8 @@ public class JPAReleaser implements ReleaseManager
      
     }
     
+    released.add(s);
+    
     s.addAccessTag(pubTag);
     s.setReleased(true);
     
@@ -100,10 +112,58 @@ public class JPAReleaser implements ReleaseManager
       e1.printStackTrace();
      }
     }
+   
    }
    
    trn.commit();
+
    
+   if( BackendConfig.getSubmissionUpdatePath() != null && res.size() > 0 )
+   {
+    UpdateQueueProcessor queueProc = new UpdateQueueProcessor();
+    queueProc.start();
+
+    StringBuilder sb = new StringBuilder(10000);
+    
+    for(Submission subm : released)
+    {
+     sb.setLength(0);
+     
+     try
+     {
+      new PageMLFormatter(sb).format(subm, sb);
+     }
+     catch(IOException e)
+     {
+     }
+     
+     String msg = sb.toString();
+     
+     while( true )
+     {
+      try
+      {
+       queueProc.put(msg);
+       break;       
+      }
+      catch(InterruptedException e)
+      {
+      }
+     }
+    }
+    
+    queueProc.shutdown();
+   }
+   
+   if( BackendConfig.getSubscriptionEmailSubject() != null )
+   {
+    for(Submission s : released)
+    {
+     if( s.getTagRefs() != null && s.getTagRefs().size() > 0 && BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(s) )
+      SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+    }
+   }
+     
   }
   catch(Exception e)
   {

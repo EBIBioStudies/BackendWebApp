@@ -598,6 +598,12 @@ public class SecurityManagerImpl implements SecurityManager
   return userEmailMap.get(email);
  }
 
+ @Override
+ public boolean mayUserManageTags(User usr)
+ {
+  return checkSystemPermission(SystemAction.MANAGETAGS, usr);
+ }
+
 
 
 }

@@ -544,6 +544,36 @@ public class WebAppInit implements ServletContextListener
   }
 
   
+  if( BackendConfig.getSubscriptionEmailSubject() != null || BackendConfig.getSubscriptionEmailPlainTextFile() != null || BackendConfig.getSubscriptionEmailHtmlFile() != null )
+  {
+   if( BackendConfig.getSubscriptionEmailSubject() == null || BackendConfig.getSubscriptionEmailPlainTextFile() == null || BackendConfig.getSubscriptionEmailHtmlFile() == null )
+   {
+    log.error("To activate tag subscriptions service the following parameters should be set: "
+     +ServiceParamPrefix+BackendConfig.SubscriptionEmailSubjectParameter
+     +", "+ServiceParamPrefix+BackendConfig.SubscriptionEmailPlainTextParameter
+     +", "+ServiceParamPrefix+BackendConfig.SubscriptionEmailHtmlParameter
+      );
+    throw new RuntimeException("Invalid configuration");
+   }
+   
+   emailFile = BackendConfig.getSubscriptionEmailPlainTextFile();
+
+   if(  ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) )
+   {
+    log.error(ServiceParamPrefix+BackendConfig.SubscriptionEmailPlainTextParameter+" should point to a regular readable file");
+    throw new RuntimeException("Invalid configuration");
+   }
+
+   emailFile = BackendConfig.getSubscriptionEmailHtmlFile();
+   
+   if(  ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile)  )
+   {
+    log.error(ServiceParamPrefix+BackendConfig.SubscriptionEmailHtmlParameter+" should point to a regular readable file");
+    throw new RuntimeException("Invalid configuration");
+   }
+  }
+  
+  
   Path sbmTestDir = BackendConfig.getSubmissionsPath().resolve("~tmp");
   try
   {

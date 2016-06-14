@@ -29,4 +29,6 @@ public interface ServiceManager
  EmailService getEmailService();
 
  void setEmailService(EmailService emailService);
+
+ TagManager getTagManager();
 }

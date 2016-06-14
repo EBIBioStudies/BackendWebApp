@@ -17,9 +17,10 @@ public interface SubmissionManager
  enum Operation
  {
   CREATE,
+  CREATEUPDATE,
   UPDATE,
   OVERRIDE,
-  REPLACE,
+  CREATEOVERRIDE,
   DELETE,
   TRANKLUCATE,
   SETMETA

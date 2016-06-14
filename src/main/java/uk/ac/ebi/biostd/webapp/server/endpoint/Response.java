@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.endpoint.auth;
+package uk.ac.ebi.biostd.webapp.server.endpoint;
 
 import java.io.IOException;
 
