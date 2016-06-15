@@ -151,6 +151,18 @@
   
   <servlet>
     <description></description>
+    <display-name>SubscribeServlet</display-name>
+    <servlet-name>SubscribeServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.subscription.SubscribeServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SubscribeServlet</servlet-name>
+    <url-pattern>/subscription/*</url-pattern>
+  </servlet-mapping>
+
+
+  <servlet>
+    <description></description>
     <display-name>TagsServlet</display-name>
     <servlet-name>TagsServlet</servlet-name>
     <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.tags.TagsServlet</servlet-class>
@@ -159,6 +171,7 @@
     <servlet-name>TagsServlet</servlet-name>
     <url-pattern>/tags/*</url-pattern>
   </servlet-mapping>
+  
   
   <servlet>
     <description></description>

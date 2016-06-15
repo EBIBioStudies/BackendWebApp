@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 
+import uk.ac.ebi.biostd.authz.Classifier;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.util.StringUtils;
@@ -34,6 +35,7 @@ public class TagsServlet extends ServiceServlet
  public static final String FormatParameter="format";
 
  private static final String TagParameter = "tag";   
+ private static final String NewNameParameter = "newname";   
  private static final String ClassifierParameter = "classifier";   
  private static final String DescParameter = "description";   
  private static final String ParentParameter = "parent";   
@@ -196,7 +198,7 @@ public class TagsServlet extends ServiceServlet
     break;
 
    case LISTCLASSIFIERS:
-    listClassifiers(params, request, resp, sess);
+    listClassifiers(request, response, jsonresp, sess);
     break;
 
    default:
@@ -207,10 +209,64 @@ public class TagsServlet extends ServiceServlet
 
  }
 
- private void listClassifiers(ParameterPool params, HttpServletRequest request, Response resp, Session sess)
+ private void listClassifiers(HttpServletRequest request, HttpServletResponse response, boolean json, Session sess) throws IOException
  {
-  // TODO Auto-generated method stub
+  PrintWriter out = response.getWriter();
   
+  try
+  {
+   Collection<Classifier> clsfss=BackendConfig.getServiceManager().getTagManager().listClassifiers();
+
+   if(json)
+   {
+    response.setContentType("application/json; charset=UTF-8"); 
+    out.print("[\n");
+   }
+   else
+    response.setContentType("text/plain; charset=UTF-8");
+
+   
+   boolean first = true;
+   
+   for( Classifier cl : clsfss )
+   {
+    if(json)
+    {
+     if( ! first )
+      out.print(",\n");
+     else
+      first=false;
+     
+     out.print("{\n\"id\": "+cl.getId()+",\n");
+     out.print("\"name\": \"");
+     StringUtils.appendAsJSONStr(out, cl.getName());
+     out.print("\",\n");
+     out.print("\"description\": \"");
+     StringUtils.appendAsJSONStr(out, cl.getDescription());
+     out.print("\"\n}");
+ }
+    else
+    {
+     out.print(cl.getId());
+     out.print(",");
+     out.print(cl.getName());
+     out.print(",");
+     out.print(cl.getDescription());
+     out.print("\n");
+
+    }
+   }
+   
+   if(json)
+   {
+    out.print("\n]\n");
+   }
+
+  }
+  catch( ServiceException e)
+  {
+   response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+  } 
  }
 
  private void listTags(HttpServletRequest request, HttpServletResponse response, boolean json, Session sess) throws IOException
@@ -300,15 +356,91 @@ public class TagsServlet extends ServiceServlet
   } 
  }
 
- private void renameTag(ParameterPool params, HttpServletRequest request, Response resp, Session sess)
+ private void renameTag(ParameterPool params, HttpServletRequest request, Response resp, Session sess) throws IOException
  {
-  // TODO Auto-generated method stub
+  String classifierName = null;
+  String tagName = null;
+  String tag = params.getParameter(TagParameter);
+  
+  if( tag == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Missing '"+TagParameter+"' parameter");
+   return;
+  }
+  
+  int pos = tag.indexOf(":");
+  
+  if( pos <= 0 )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid '"+TagParameter+"' parameter value");
+   return;
+  }
+  
+  classifierName = tag.substring(0,pos);
+  tagName = tag.substring(pos+1);
+  
+  if( classifierName.length() == 0 || tagName.length() == 0 )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid '"+TagParameter+"' parameter value");
+   return;
+  }
+
+  String newname= params.getParameter(NewNameParameter);
+  String description= params.getParameter(DescParameter);
+  
+  if( ( newname == null || newname.length() == 0 ) && description == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "At least one of '"+NewNameParameter+"' or '"+DescParameter+"' parameters must be set");
+   return;
+  }
+  
+  try
+  {
+   BackendConfig.getServiceManager().getTagManager().renameTag(tagName, classifierName, newname, description, sess.getUser());
+
+   resp.respond(HttpServletResponse.SC_OK, "OK", "Tag renamed successfully");
+  }
+  catch(SecurityException | ServiceException e)
+  {
+   resp.respond(HttpServletResponse.SC_OK, "FAIL", e.getMessage());
+  }
   
  }
 
- private void renameClassifier(ParameterPool params, HttpServletRequest request, Response resp, Session sess)
+ private void renameClassifier(ParameterPool params, HttpServletRequest request, Response resp, Session sess) throws IOException
  {
-  // TODO Auto-generated method stub
+  String classifierName= params.getParameter(ClassifierParameter);
+  String newname= params.getParameter(NewNameParameter);
+  String description= params.getParameter(DescParameter);
+  
+  if( classifierName == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Missing '"+ClassifierParameter+"' parameter");
+   return;
+  }
+  
+  if( classifierName.length() == 0 )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid '"+ClassifierParameter+"' parameter value");
+   return;
+  }
+  
+  if( ( newname == null || newname.length() == 0 ) && description == null )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "At least one of '"+NewNameParameter+"' or '"+DescParameter+"' parameters must be set");
+   return;
+  }
+  
+  try
+  {
+   BackendConfig.getServiceManager().getTagManager().renameClassifier(classifierName, newname, description, sess.getUser());
+
+   resp.respond(HttpServletResponse.SC_OK, "OK", "Classifier renamed successfully");
+  }
+  catch(SecurityException | ServiceException e)
+  {
+   resp.respond(HttpServletResponse.SC_OK, "FAIL", e.getMessage());
+  }
   
  }
 

@@ -9,6 +9,7 @@ import javax.persistence.Query;
 
 import uk.ac.ebi.biostd.authz.Classifier;
 import uk.ac.ebi.biostd.authz.Tag;
+import uk.ac.ebi.biostd.authz.TagSubscription;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
@@ -273,6 +274,57 @@ public class JPATagManager implements TagManager
   }
  }
 
+ 
+ @Override
+ public Collection<Classifier> listClassifiers() throws ServiceException
+ {
+  EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+  
+  boolean trnOk=true;
+  
+  try
+  {
+   trn.begin();
+   
+   Query clq = em.createNamedQuery(Classifier.GetAllQuery);
+   
+   List<Classifier> res = clq.getResultList();
+   
+  
+   return res;
+  }
+  catch( Throwable t )
+  {
+   trnOk = false;
+   
+   throw new ServiceException( t.getMessage(), t );
+  }
+  finally
+  {
+   if( trn.isActive() )
+   {
+    try
+    {
+     if( trnOk )
+      trn.commit();
+     else
+      trn.rollback();
+    }
+    catch(Exception e)
+    {
+     e.printStackTrace();
+    }
+   }
+   
+   em.close();
+  }
+
+ }
+
+ 
+ 
  @Override
  public Collection<Tag> listTags() throws ServiceException
  {
@@ -325,6 +377,308 @@ public class JPATagManager implements TagManager
    em.close();
   }
 
+ }
+
+ @Override
+ public void renameClassifier(String classifierName, String newname, String description, User user) throws SecurityException, ServiceException
+ {
+  if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserManageTags( user ) )
+   throw new SecurityException("User has no perimission to manage classifiers");
+  
+  EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+  
+  boolean trnOk=false;
+  
+  try
+  {
+   trn.begin();
+   
+   Query clq = em.createNamedQuery(Classifier.GetByNameQuery);
+   
+   clq.setParameter(Classifier.NameQueryParameter, classifierName);
+   
+   List<Classifier> clres = clq.getResultList();
+   
+   if( clres.size() == 0 )
+    throw new ServiceException("Classifier doesn't exist: '"+classifierName+"'");
+   
+   Classifier c = clres.get(0);
+   
+   if( newname != null && newname.length() > 0 )
+   {
+    clq.setParameter(Classifier.NameQueryParameter, newname);
+    
+    clres = clq.getResultList();
+    
+    if( clres.size() != 0 )
+     throw new ServiceException("Classifier alredy exists: '"+newname+"'");
+
+    c.setName(newname);
+   }
+   
+   if( description != null )
+    c.setDescription(description);
+   
+   trnOk = true;
+  }
+  finally
+  {
+   if( trn.isActive() )
+   {
+    try
+    {
+     if( trnOk )
+      trn.commit();
+     else
+      trn.rollback();
+    }
+    catch(Exception e)
+    {
+     e.printStackTrace();
+    }
+   }
+   
+   em.close();
+  }
+ }
+
+ @Override
+ public void renameTag(String tagName, String classifierName, String newname, String description, User user) throws SecurityException, ServiceException
+ {
+  if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserManageTags( user ) )
+   throw new SecurityException("User has no perimission to manage tags");
+  
+  EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+  
+  boolean trnOk=false;
+  
+  try
+  {
+   trn.begin();
+   
+   Query clq = em.createNamedQuery(Tag.GetByNameQuery);
+   
+   clq.setParameter(Tag.ClassifierNameQueryParameter, classifierName);
+   clq.setParameter(Tag.TagNameQueryParameter, tagName);
+   
+   List<Tag> clres = clq.getResultList();
+   
+   if( clres.size() == 0 )
+    throw new ServiceException("Tag doesn't exist: '"+classifierName+"."+tagName+"'");
+   
+   Tag t = clres.get(0);
+   
+   
+   if( newname != null && newname.length() > 0 )
+   {
+    clq.setParameter(Tag.TagNameQueryParameter, newname);
+    
+    clres = clq.getResultList();
+    
+    if( clres.size() != 0 )
+     throw new ServiceException("Tag alredy exists: '"+classifierName+"."+newname+"'");
+
+    t.setName(newname);
+   }
+
+   if( description != null )
+    t.setDescription(description);
+   
+   trnOk = true;
+  }
+  finally
+  {
+   if( trn.isActive() )
+   {
+    try
+    {
+     if( trnOk )
+      trn.commit();
+     else
+      trn.rollback();
+    }
+    catch(Exception e)
+    {
+     e.printStackTrace();
+    }
+   }
+   
+   em.close();
+  }
+ }
+
+ @Override
+ public void subscribeUser(String tagName, String classifierName, User user) throws ServiceException
+ {
+  EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+  EntityTransaction trn = em.getTransaction();
+
+  boolean trnOk = false;
+
+  try
+  {
+   trn.begin();
+
+   Query tgq = em.createNamedQuery(Tag.GetByNameQuery);
+   
+   tgq.setParameter(Tag.TagNameQueryParameter,tagName);
+   tgq.setParameter(Tag.ClassifierNameQueryParameter,classifierName);
+   
+   List<Tag> tgres = tgq.getResultList();
+   
+   if( tgres.size() != 1 )
+    throw new ServiceException("Tag doesn't exist: '"+classifierName+"."+tagName+"'");
+   
+   Tag t = tgres.get(0);
+   
+   Query clq = em.createNamedQuery(TagSubscription.GetByTagIdAndUserQuery);
+
+   clq.setParameter(TagSubscription.TagIdQueryParameter, t.getId());
+   clq.setParameter(TagSubscription.UserIdQueryParameter, user.getId());
+
+   List<TagSubscription> clres = clq.getResultList();
+   
+   if( clres.size() != 0 )
+    throw new ServiceException("Subscription exists");
+   
+   TagSubscription ts = new TagSubscription();
+   
+   ts.setTag(t);
+   ts.setUser(user);
+   
+   em.persist(ts);
+   trnOk = true;
+
+  }
+  finally
+  {
+   if(trn.isActive())
+   {
+    try
+    {
+     if(trnOk)
+      trn.commit();
+     else
+      trn.rollback();
+    }
+    catch(Exception e)
+    {
+     e.printStackTrace();
+    }
+   }
+
+   em.close();
+  }
+ }
+
+ @Override
+ public void unsubscribeUser(String tagName, String classifierName, User user) throws ServiceException
+ {
+  EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+  EntityTransaction trn = em.getTransaction();
+
+  boolean trnOk = false;
+
+  try
+  {
+   trn.begin();
+
+   
+   Query clq = em.createNamedQuery(TagSubscription.GetByTagAndUserQuery);
+
+   clq.setParameter(TagSubscription.TagNameQueryParameter, tagName);
+   clq.setParameter(TagSubscription.ClassifierNameQueryParameter, classifierName);
+   clq.setParameter(TagSubscription.UserIdQueryParameter, user.getId());
+
+   List<TagSubscription> clres = clq.getResultList();
+   
+   if( clres.size() == 0 )
+    throw new ServiceException("Subscription doesn't exists");
+   
+   TagSubscription ts = clres.get(0);
+   
+   em.remove(ts);
+   trnOk = true;
+
+  }
+  finally
+  {
+   if(trn.isActive())
+   {
+    try
+    {
+     if(trnOk)
+      trn.commit();
+     else
+      trn.rollback();
+    }
+    catch(Exception e)
+    {
+     e.printStackTrace();
+    }
+   }
+
+   em.close();
+  }
+ }
+
+ @Override
+ public Collection<TagSubscription> listSubscriptions(User user) throws ServiceException
+ {
+  EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+  
+  boolean trnOk=true;
+  
+  try
+  {
+   trn.begin();
+   
+   Query clq = em.createNamedQuery(TagSubscription.GetAllByUserQuery);
+   
+   clq.setParameter(TagSubscription.UserIdQueryParameter, user.getId());
+   
+   List<TagSubscription> res = clq.getResultList();
+   
+   for( TagSubscription ts : res )
+   {
+    ts.getTag().getClassifier().getName().length();
+   }
+   
+   return res;
+  }
+  catch( Throwable t )
+  {
+   trnOk = false;
+   
+   throw new ServiceException( t.getMessage(), t );
+  }
+  finally
+  {
+   if( trn.isActive() )
+   {
+    try
+    {
+     if( trnOk )
+      trn.commit();
+     else
+      trn.rollback();
+    }
+    catch(Exception e)
+    {
+     e.printStackTrace();
+    }
+   }
+   
+   em.close();
+  }
  }
 
 }

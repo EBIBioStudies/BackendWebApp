@@ -15,6 +15,7 @@ import javax.persistence.Query;
 import org.apache.commons.io.Charsets;
 
 import uk.ac.ebi.biostd.authz.Tag;
+import uk.ac.ebi.biostd.authz.TagSubscription;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
@@ -23,7 +24,7 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public class SubscriptionNotifier implements Runnable
 {
- public static int IDLE_TIME_SEC=30;
+ public static final int IDLE_TIME_SEC=30;
  
  static class NotificationRequest
  {
@@ -129,7 +130,7 @@ public class SubscriptionNotifier implements Runnable
 
   EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
   
-  Query q = em.createNamedQuery("TagSubscription.getUsersByTagIds");
+  Query q = em.createNamedQuery(TagSubscription.GetUsersByTagIdsQuery);
   
   while( true )
   {
@@ -152,7 +153,7 @@ public class SubscriptionNotifier implements Runnable
     break;
    }
    
-   q.setParameter("ids", req.tagIds);
+   q.setParameter(TagSubscription.TagIdQueryParameter, req.tagIds);
    
    List<User> res = q.getResultList();
    
