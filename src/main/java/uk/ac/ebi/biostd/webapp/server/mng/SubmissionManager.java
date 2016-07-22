@@ -41,7 +41,7 @@ public interface SubmissionManager
  LogNode updatePageTabSubmission(String txt, User usr);
 */
  
- SubmissionReport createSubmission(byte[] data, DataFormat fmt, String charset, Operation op, User usr, boolean validateOnly);
+ SubmissionReport createSubmission(byte[] data, DataFormat fmt, String charset, Operation op, User usr, boolean validateOnly, boolean ignoreAbsFiles);
 
  LogNode updateSubmissionMeta(String sbmAcc, Collection<TagRef> tags, Set<String> access, long rTime, User user);
  

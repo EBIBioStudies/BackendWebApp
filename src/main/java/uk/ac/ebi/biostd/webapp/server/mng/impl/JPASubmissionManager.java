@@ -73,7 +73,6 @@ import uk.ac.ebi.biostd.model.SubmissionAttribute;
 import uk.ac.ebi.biostd.model.SubmissionAttributeException;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
 import uk.ac.ebi.biostd.out.cell.CellFormatter;
-import uk.ac.ebi.biostd.out.cell.XSVCellStream;
 import uk.ac.ebi.biostd.out.json.JSONFormatter;
 import uk.ac.ebi.biostd.out.pageml.PageMLFormatter;
 import uk.ac.ebi.biostd.treelog.ErrorCounter;
@@ -94,6 +93,7 @@ import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.shared.tags.TagRef;
 import uk.ac.ebi.mg.spreadsheet.SpreadsheetReader;
+import uk.ac.ebi.mg.spreadsheet.cell.XSVCellStream;
 import uk.ac.ebi.mg.spreadsheet.readers.CSVTSVSpreadsheetReader;
 import uk.ac.ebi.mg.spreadsheet.readers.ODSpreadsheetReader;
 import uk.ac.ebi.mg.spreadsheet.readers.XLSpreadsheetReader;
@@ -179,7 +179,7 @@ public class JPASubmissionManager implements SubmissionManager
   {
    trn.begin();
 
-   Query q = em.createNamedQuery("Submission.getByOwner");
+   Query q = em.createNamedQuery(Submission.GetByOwnerQuery);
 
    q.setParameter("uid", u.getId());
 
@@ -242,7 +242,7 @@ public class JPASubmissionManager implements SubmissionManager
    
    trn.begin();
 
-   Query q = em.createNamedQuery("Submission.getByAcc");
+   Query q = em.createNamedQuery(Submission.GetByAccQuery);
 
    q.setParameter("accNo", acc);
 
@@ -450,7 +450,7 @@ public class JPASubmissionManager implements SubmissionManager
   {
    trn.begin();
 
-   Query q = em.createNamedQuery("Submission.getByAcc");
+   Query q = em.createNamedQuery(Submission.GetByAccQuery);
 
    q.setParameter("accNo", acc);
    
@@ -471,11 +471,11 @@ public class JPASubmissionManager implements SubmissionManager
  }
 
  @Override
- public SubmissionReport createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
+ public SubmissionReport createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly, boolean ignoreAbsntFiles )
  {
   try
   {
-   return createSubmissionUnsafe(data, type, charset, op, usr, validateOnly);
+   return createSubmissionUnsafe(data, type, charset, op, usr, validateOnly, ignoreAbsntFiles );
   }
   catch(Throwable e)
   {
@@ -636,7 +636,7 @@ public class JPASubmissionManager implements SubmissionManager
   return submOk;
  }
  
- private SubmissionReport createSubmissionUnsafe( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly )
+ private SubmissionReport createSubmissionUnsafe( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly, boolean ignoreFileAbs )
  {
   ErrorCounter ec = new ErrorCounterImpl();
 
@@ -736,9 +736,6 @@ public class JPASubmissionManager implements SubmissionManager
 
     Submission oldSbm = null;
 
-    if( submission.getTitle() == null )
-     submission.setTitle( submission.createTitle() );
-    
     if( op == Operation.UPDATE || op == Operation.CREATEUPDATE || op == Operation.OVERRIDE || op == Operation.CREATEOVERRIDE )
     {
      if( (si.getAccNoPrefix() != null || si.getAccNoSuffix() != null || submission.getAccNo() == null ) && ( op == Operation.UPDATE || op == Operation.OVERRIDE ) )
@@ -893,11 +890,19 @@ public class JPASubmissionManager implements SubmissionManager
        foc.setFilePointer(fp);
        foc.getLogNode().log(Level.WARN, "File reference '" + foc.getFileRef().getName() + "' can't be resolved in user directory. Using file from previous submission");
       }
+      else if( ignoreFileAbs )
+      {
+       foc.getLogNode().log(Level.WARN, "File reference '" + foc.getFileRef().getName() + "' can't be resolved. Ignoring in test mode");
+      }
       else
       {
        foc.getLogNode().log(Level.ERROR, "File reference '" + foc.getFileRef().getName() + "' can't be resolved. Check files in the user directory");
        submOk = false;
       }
+      
+      if( fp != null && fp.getSize() == 0 )
+       foc.getLogNode().log(Level.WARN, "File reference: '" + foc.getFileRef().getName() + "' File size is zero");
+
      }
     }
 
@@ -1253,7 +1258,7 @@ public class JPASubmissionManager implements SubmissionManager
    {
     Submission s = si.getSubmission();
 
-    if(s.getTagRefs() != null && s.getTagRefs().size() > 0 && BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(s))
+    if(s.getTagRefs() != null && s.getTagRefs().size() > 0 )
      SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
    }
   }
@@ -1745,6 +1750,12 @@ public class JPASubmissionManager implements SubmissionManager
 
     for(FileOccurrence fo : si.getFileOccurrences())
     {
+     if( fo.getFilePointer() == null ) // test mode. Ignoring absent files
+      continue;
+     
+     fo.getFileRef().setSize(fo.getFilePointer().getSize());
+     fo.getFileRef().setDirectory(fo.getFilePointer().isDirectory());
+
      if(foSet.contains(fo))
       continue;
 
@@ -1754,9 +1765,6 @@ public class JPASubmissionManager implements SubmissionManager
      {
       fileMngr.linkOrCopy(sbmFilesPath, fo.getFilePointer());
       si.getLogNode().log(Level.INFO, "File '" + fo.getFileRef().getName() + "' transfer success");
-
-      fo.getFileRef().setSize(fo.getFilePointer().getSize());
-      fo.getFileRef().setDirectory(fo.getFilePointer().isDirectory());
      }
      catch(IOException e)
      {
@@ -2270,7 +2278,7 @@ public class JPASubmissionManager implements SubmissionManager
 
  private Submission getSubmissionByAcc(String accNo, EntityManager em)
  {
-  Query q =  em.createNamedQuery("Submission.getByAcc");
+  Query q =  em.createNamedQuery(Submission.GetByAccQuery);
  
   q.setParameter("accNo", accNo);
   
@@ -2285,7 +2293,7 @@ public class JPASubmissionManager implements SubmissionManager
 
  private boolean checkSubmissionIdUniq(String accNo, EntityManager em)
  {
-  Query q =  em.createNamedQuery("Submission.countByAcc");
+  Query q =  em.createNamedQuery(Submission.GetCountByAccQuery);
   q.setParameter("accNo", accNo);
   
   return ((Number)q.getSingleResult()).intValue() == 0;
@@ -2341,7 +2349,7 @@ public class JPASubmissionManager implements SubmissionManager
   
   try
   {
-   TypedQuery<String> pq = em.createNamedQuery("Submission.getAccByPat",String.class);
+   TypedQuery<String> pq = em.createNamedQuery(Submission.GetAccByPatQuery,String.class);
    
    pq.setParameter("pattern", accPfx);
    
@@ -2356,7 +2364,7 @@ public class JPASubmissionManager implements SubmissionManager
     
    gln.log(Level.INFO, "Found "+res.size()+" matches");
 
-   Query q = em.createNamedQuery("Submission.getAllByAcc");
+   Query q = em.createNamedQuery(Submission.GetAllByAccQuery);
 
    for( String acc : res )
    {
@@ -2397,7 +2405,7 @@ public class JPASubmissionManager implements SubmissionManager
 
   try
   {
-   Query q = em.createNamedQuery("Submission.getAllByAcc");
+   Query q = em.createNamedQuery(Submission.GetAllByAccQuery);
 
    tranklucateSubmissionByAccession(acc, usr, gln, em, q);
   }
@@ -2715,7 +2723,7 @@ public class JPASubmissionManager implements SubmissionManager
    
    trn.begin();
 
-   Query q = em.createNamedQuery("Submission.getByAcc");
+   Query q = em.createNamedQuery(Submission.GetByAccQuery);
 
    q.setParameter("accNo", acc);
 

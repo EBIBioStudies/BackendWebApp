@@ -319,7 +319,9 @@ public class AuthServlet extends ServiceServlet
   
   resp.addCookie( cke );
   
-  resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey), new KV(UsernameParameter,sess.getUser().getFullName()));
+  resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey),
+    new KV(UsernameParameter,sess.getUser().getFullName()),
+    new KV(UserEmailParameter,String.valueOf(sess.getUser().getEmail())) ); // safe for null emails
  }
  
  

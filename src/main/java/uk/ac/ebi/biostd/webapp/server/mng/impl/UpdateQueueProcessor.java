@@ -218,6 +218,7 @@ public class UpdateQueueProcessor implements Runnable
     
     HttpURLConnection conn = (HttpURLConnection)lUrl.openConnection();
     conn.setConnectTimeout(5000);
+    conn.setReadTimeout(20000);
     
     if( conn.getResponseCode() != HttpURLConnection.HTTP_OK )
      log.error("Update listener '"+lUrl+"' returned invalid responce code: "+conn.getResponseCode());

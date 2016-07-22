@@ -30,7 +30,8 @@ public class ToolsServlet extends ServiceServlet
 
  private static enum Operation
  {
-  FIX_FILE_TYPE;
+  FIX_FILE_TYPE,
+  FIX_FILE_SIZE;
  }
  
  @Override
@@ -85,12 +86,106 @@ public class ToolsServlet extends ServiceServlet
     
     break;
 
+   case FIX_FILE_SIZE:
+    
+    resp.setContentType("text/plain");
+    fixFileSize(resp.getWriter());
+    
+    break;
    default:
     break;
   }
   
  }
 
+ private void fixFileSize(PrintWriter out)
+ {
+  EntityManager mngr=null;
+  
+  int blockSz = 5000;
+  
+  int success=0;
+  int fail=0;
+  int skip=0;
+  
+  try
+  {
+   while( true )
+   {
+    if( mngr != null )
+     mngr.close();
+    
+    mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
+    
+    EntityTransaction t = mngr.getTransaction();
+    
+    t.begin();
+    
+    Query q = mngr.createQuery("select fr from FileRef fr WHERE size=0 AND directory=0 ");
+    
+    q.setMaxResults(blockSz);
+    
+    if( skip > 0 )
+     q.setFirstResult(skip);
+    
+    List<FileRef> res = q.getResultList();
+    
+    if( res.size() == 0 )
+     break;
+    
+    for( FileRef fr : res )
+    {
+     Submission s = fr.getHostSection().getSubmission();
+     Path filesPath = null;
+     
+     if( s.getVersion() > 0 )
+      filesPath = BackendConfig.getSubmissionFilesPath(s);
+     else
+      filesPath = BackendConfig.getSubmissionHistoryPath(s).resolve("Files");
+     
+     Path file =  filesPath.resolve(fr.getName());
+     
+     if( Files.exists(file))
+     {
+      fr.setDirectory(Files.isDirectory(file));
+      fr.setSize(Files.size(file));
+      
+      if( fr.getSize() == 0 )
+      {
+       skip++;
+       out.println("Zero length file: "+file);
+      }
+      
+      success++;
+     }
+     else
+     {
+      out.println("Missing: "+file);
+      fail++;
+     }
+    }
+    
+    t.commit();
+    
+    out.append( "Processed "+(success+fail)+"\n" );
+    out.flush();
+   }
+   
+  }
+  catch(Exception e)
+  {
+   e.printStackTrace();
+   e.printStackTrace(out);
+  }
+  finally
+  {
+   if( mngr != null && mngr.isOpen() )
+    mngr.close();
+  }
+  
+  out.append( "Finished success: "+success+" fail: "+fail);
+ }
+ 
  private void fixFileType(PrintWriter out)
  {
   EntityManager mngr=null;

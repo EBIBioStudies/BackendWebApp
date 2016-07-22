@@ -37,6 +37,7 @@ public class SubmitServlet extends ServiceServlet
  private static final long serialVersionUID = 1L;
 
  public static final String validateOnlyParameter = "validateOnly";
+ public static final String ignoreAbsentFilesParameter = "ignoreAbsentFiles";
  public static final String idParameter = "id";
  public static final String accnoParameter = "accno";
  public static final String accnoPatternParameter = "accnoPattern";
@@ -171,10 +172,12 @@ public class SubmitServlet extends ServiceServlet
   }
   
   String vldPrm = request.getParameter(validateOnlyParameter);
+  String ignPrm = request.getParameter(ignoreAbsentFilesParameter);
   
   boolean validateOnly = vldPrm != null && ("true".equalsIgnoreCase(vldPrm) || "yes".equalsIgnoreCase(vldPrm) || "1".equals(vldPrm) );
+  boolean ignAbsFiles = ignPrm != null && ("true".equalsIgnoreCase(ignPrm) || "yes".equalsIgnoreCase(ignPrm) || "1".equals(ignPrm) );
 
-  SubmissionReport res = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act, sess.getUser(), validateOnly);
+  SubmissionReport res = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act, sess.getUser(), validateOnly,ignAbsFiles);
   
   LogNode topLn = res.getLog();
   

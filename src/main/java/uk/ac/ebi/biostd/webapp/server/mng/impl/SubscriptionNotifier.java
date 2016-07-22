@@ -2,8 +2,10 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -11,16 +13,22 @@ import java.util.concurrent.TimeUnit;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.apache.commons.io.Charsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.authz.TagSubscription;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.model.SectionAttribute;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
 import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
+
 
 public class SubscriptionNotifier implements Runnable
 {
@@ -29,11 +37,22 @@ public class SubscriptionNotifier implements Runnable
  static class NotificationRequest
  {
   Set<Long> tagIds;
+  long sbmId;
   String accNo;
   String text;
  }
  
+ private static Logger log = null; 
+ 
  private static LinkedBlockingQueue<NotificationRequest> queue;
+ 
+ private static Logger logger()
+ {
+  if( log == null )
+   log = LoggerFactory.getLogger(NotificationRequest.class);
+  
+  return log;
+ }
  
  public static void notifyByTags(Collection<SubmissionTagRef> tags, Submission subm )
  {
@@ -60,6 +79,7 @@ public class SubscriptionNotifier implements Runnable
   nreq.tagIds = tgIds;
   nreq.text = subm.getTitle();
   nreq.accNo=subm.getAccNo();
+  nreq.sbmId=subm.getId();
   
   while( true )
   {
@@ -130,7 +150,7 @@ public class SubscriptionNotifier implements Runnable
 
   EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
   
-  Query q = em.createNamedQuery(TagSubscription.GetUsersByTagIdsQuery);
+  TypedQuery<Submission> sbmq = em.createNamedQuery(Submission.GetByIdQuery,Submission.class);
   
   while( true )
   {
@@ -139,6 +159,7 @@ public class SubscriptionNotifier implements Runnable
    {
     try
     {
+     req=null;
      req = queue.poll(IDLE_TIME_SEC, TimeUnit.SECONDS);
      break;
     }
@@ -153,38 +174,225 @@ public class SubscriptionNotifier implements Runnable
     break;
    }
    
-   q.setParameter(TagSubscription.TagIdQueryParameter, req.tagIds);
+   sbmq.setParameter("id", req.sbmId);
    
-   List<User> res = q.getResultList();
+   List<Submission> subms = sbmq.getResultList();
    
-   for( User u : res )
+   if( subms.size() != 1 )
    {
-    if( ! u.isActive() || u.getEmail() == null || u.getEmail().length() < 6 )
-     continue;
-    
+    logger().warn("SubscriptionNotifier: submission not found or multiple results id="+req.sbmId);
+    continue;
+   }
+   
+   Submission subm = subms.get(0);
+   
+
+   if( req.tagIds.size() == 1 )
+    procSingleTagSubmission(em, req, subm, textBody, htmlBody);
+   else if( req.tagIds.size() > 1 )
+    procMultyTagSubmission(em, req, subm, textBody, htmlBody);
+  }
+  
+  em.close();
+  
+ }
+ 
+ private void procSingleTagSubmission(EntityManager em, NotificationRequest req, Submission subm, String textBody, String htmlBody)
+ {
+  String sbTitle = subm.getTitle();
+  String rsType = "";
+  String rsTitle = "";
+  
+  SubmissionTagRef tr = subm.getTagRefs().iterator().next();
+  
+  String tagsName = tr.getTag().getClassifier().getName()+":"+tr.getTag().getName();
+  
+  if( subm.getRootSection() != null )
+  {
+   rsType = subm.getRootSection().getType();
+   
+   for( SectionAttribute at : subm.getRootSection().getAttributes() )
+   {
+    if( at.getName().equals(Submission.titleAttribute) )
+    {
+     rsTitle = at.getValue();
+     break;
+    }
+   }
+  }
+  
+  SecurityManager smng = BackendConfig.getServiceManager().getSecurityManager();
+
+  TypedQuery<User> q = em.createNamedQuery(TagSubscription.GetUsersByTagIdsQuery, User.class);
+
+  q.setParameter(TagSubscription.TagIdQueryParameter, req.tagIds);
+  
+  List<User> res = q.getResultList();
+  
+  for( User u : res )
+  {
+   if( ! u.isActive() || u.getEmail() == null || u.getEmail().length() < 6 || ! smng.mayUserReadSubmission(subm, u) )
+    continue;
+   
+  
+   String tBody = textBody;
+   String hBody = htmlBody;
+   
+   if(u.getFullName() != null )
+   {
+    tBody = tBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
+    hBody = hBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
+   }
+   
+   tBody = tBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
+   hBody = hBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
+
+   tBody = tBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
+   hBody = hBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
+
+   tBody = tBody.replaceAll(BackendConfig.TitlePlaceHolderRx, rsTitle);
+   hBody = hBody.replaceAll(BackendConfig.TitlePlaceHolderRx, rsTitle);
+
+   tBody = tBody.replaceAll(BackendConfig.TypePlaceHolderRx, rsType);
+   hBody = hBody.replaceAll(BackendConfig.TypePlaceHolderRx, rsType);
+
+   tBody = tBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
+   hBody = hBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
+
+   tBody = tBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
+   hBody = hBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
+
+   
+   BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getSubscriptionEmailSubject(), tBody, hBody);
+  }
+  
+ }
+ 
+ 
+ private void procMultyTagSubmission(EntityManager em, NotificationRequest req, Submission subm, String textBody, String htmlBody)
+ {
+  String sbTitle = subm.getTitle();
+  String rsType = "";
+  String rsTitle = "";
+  
+  final StringBuilder sb = new StringBuilder();
+  
+  Map<Long, Tag> tmap = new HashMap<Long, Tag>();
+  
+  for( Long tgId : req.tagIds  )
+  {
+   Tag t = em.find(Tag.class, tgId);
+   
+   tmap.put(t.getId(), t);
+  }
+  
+  
+  if( subm.getRootSection() != null )
+  {
+   rsType = subm.getRootSection().getType();
+   
+   for( SectionAttribute at : subm.getRootSection().getAttributes() )
+   {
+    if( at.getName().equals(Submission.titleAttribute) )
+    {
+     rsTitle = at.getValue();
+     break;
+    }
+   }
+  }
+  
+  SecurityManager smng = BackendConfig.getServiceManager().getSecurityManager();
+
+  Query q = em.createNamedQuery(TagSubscription.GetSubsByTagIdsQuery);
+
+  q.setParameter(TagSubscription.TagIdQueryParameter, req.tagIds);
+  
+  List<Object[]> res = q.getResultList();
+  
+  User u = null;
+  boolean userOk = false;
+  
+  Collection<Tag> tags = new HashSet<Tag>();
+  
+  
+  final String secTitle = rsTitle;
+  final String secType = rsType;
+  
+  class Subst
+  {
+   void subst(User u, Collection<Tag> tags)
+   {
     String tBody = textBody;
     String hBody = htmlBody;
-    
+
     if(u.getFullName() != null )
     {
      tBody = tBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
      hBody = hBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
     }
-    
+
     tBody = tBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
     hBody = hBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
 
     tBody = tBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
     hBody = hBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
 
+    tBody = tBody.replaceAll(BackendConfig.TitlePlaceHolderRx, secTitle);
+    hBody = hBody.replaceAll(BackendConfig.TitlePlaceHolderRx, secTitle);
+
+    tBody = tBody.replaceAll(BackendConfig.TypePlaceHolderRx, secType);
+    hBody = hBody.replaceAll(BackendConfig.TypePlaceHolderRx, secType);
+
+    tBody = tBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
+    hBody = hBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
+
+    sb.setLength(0);
+    
+    for( Tag t : tags )
+     sb.append(t.getClassifier().getName()).append(':').append(t.getName()).append(", ");
+
+    sb.setLength(sb.length()-2);
+    
+    String tagsName = sb.toString();
+    
+    tBody = tBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
+    hBody = hBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
+
+
     BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getSubscriptionEmailSubject(), tBody, hBody);
-    
    }
-    
-   
   }
   
-  em.close();
+  Subst subst = new Subst();
+  
+  for( Object[] pair : res )
+  {
+   if( u == null || ((Long)pair[0]).longValue() != u.getId() )
+   {
+    if( u != null )
+     subst.subst(u, tags);
+    
+    tags.clear();
+    u = em.find(User.class, pair[0]);
+    
+    if( ! u.isActive() || u.getEmail() == null || u.getEmail().length() < 6 || ! smng.mayUserReadSubmission(subm, u) )
+     userOk = false;
+    else
+     userOk=true;
+    
+   }
+   else if( ! userOk )
+    continue;
+   
+
+   tags.add(tmap.get(pair[1]));
+
+  }
+  
+  if( userOk )
+   subst.subst(u, tags);
   
  }
+
+ 
 }
