@@ -53,10 +53,28 @@ String.prototype.escapeSpecialChars = function() {
     if (xmlhttp.status == 200) {
      msg += "Request succeeded Status: 200";
 
-     if (jsonObj != null)
+
+     if (jsonObj != null) 
+     {
       msg += "\nHello " + jsonObj.username + "\nSession key: " + jsonObj.sessid;
 
-    } else {
+      msg += "\n\nParameters:"
+
+      for ( var k in jsonObj) 
+      {
+       if (Array.isArray(jsonObj[k])) 
+       {
+        for (var j = 0; j < jsonObj[k].length; j++)
+         msg += "\n" + k + "[" + j + "]=" + jsonObj[k][j];
+       } 
+       else
+        msg += "\n"+ k + "=" + jsonObj[k];
+      }
+     }
+
+    }
+    else
+    {
      msg += "Request failed. Status: " + xmlhttp.status;
 
      if (jsonObj != null)
@@ -91,15 +109,13 @@ String.prototype.escapeSpecialChars = function() {
   xmlhttp.open("GET", "../auth/check?format=json", true);
   xmlhttp.send();
  }
- 
- function showMessage()
- {
+
+ function showMessage() {
   var msg = getParameter("msg");
-  
-  if( msg != null )
+
+  if (msg != null)
    document.writeln(msg);
  }
- 
 </script>
 
 </head>

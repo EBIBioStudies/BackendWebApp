@@ -39,6 +39,9 @@
   var email = document.getElementById("email").value.trim();
   var uname = document.getElementById("username").value.trim();
   var activationURL = document.getElementById("activationURL").value.trim();
+  var aux1 = document.getElementById("aux1").value.trim();
+  var aux2 = document.getElementById("aux2").value.trim();
+  var aux3 = document.getElementById("aux3").value.trim();
   
   if( email.length == 0 )
   {
@@ -86,7 +89,22 @@
     msg +="Request succeeded Status: 200";
     
     if( jsonObj != null )
+    {
      msg+="\nHello "+jsonObj.username+"\nSession key: "+jsonObj.sessid;
+
+     msg+="\n\nParameters:"
+     
+      for ( var k in jsonObj) 
+      {
+       if (Array.isArray(jsonObj[k])) 
+       {
+        for (var j = 0; j < jsonObj[k].length; j++)
+         msg += "\n" + k + "[" + j + "]=" + jsonObj[k][j];
+       } 
+       else
+        msg += "\n"+ k + "=" + jsonObj[k];
+      }
+    }
     
    }
    else
@@ -102,6 +120,19 @@
    document.getElementById("response").innerHTML = msg;
   }
   
+  var auxp = "";
+  
+  if( aux1.length > 0 )
+   auxp += "\""+aux1.escapeSpecialChars()+"\",\n";
+
+  if( aux2.length > 0 )
+   auxp += "\""+aux2.escapeSpecialChars()+"\",\n";
+  
+  if( aux3.length > 0 )
+   auxp += "\""+aux3.escapeSpecialChars()+"\",\n";
+  
+  if( auxp.length > 0 )
+   auxp = ",\n\"aux\": ["+auxp.substring(0, auxp.length-2)+"\n]\n"
   
   xmlhttp.open("POST", "../auth/signup", true);
   xmlhttp.setRequestHeader("Content-type", "application/json");
@@ -112,6 +143,7 @@
    +"email: \"" + email.escapeSpecialChars()  +  "\","
    +"activationURL: \"" + activationURL.escapeSpecialChars()  +  "\","
    +"recaptcha2-response: \"" + grecaptcha.getResponse().escapeSpecialChars()  +  "\""
+   +auxp
    + "}");
 //   +"recaptcha_challenge: \"" + Recaptcha.get_challenge().escapeSpecialChars()  +  "\","
 //   +"recaptcha_response: \"" + Recaptcha.get_response().escapeSpecialChars()  +  "\","
@@ -142,6 +174,9 @@
 <tr><td>Password:</td><td><input type="password" id="pass1" style="width: 200px"></td></tr>
 <tr><td>Password confirm:</td><td><input type="password" id="pass2" style="width: 200px"></td></tr>
 <tr><td>Activation URL:</td><td><input type="text" id="activationURL" style="width: 200px"> Optional technical field</td></tr>
+<tr><td>Aux param 1:</td><td><input type="text" id="aux1" style="width: 200px"> Auxiliary parameter 1 (format name:value)</td></tr>
+<tr><td>Aux param 2:</td><td><input type="text" id="aux2" style="width: 200px"> Auxiliary parameter 2 (format name:value)</td></tr>
+<tr><td>Aux param 3:</td><td><input type="text" id="aux3" style="width: 200px"> Auxiliary parameter 3 (format name:value)</td></tr>
 
 </table>
 <br/>

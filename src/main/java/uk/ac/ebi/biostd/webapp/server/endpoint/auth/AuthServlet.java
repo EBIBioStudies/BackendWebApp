@@ -6,6 +6,8 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import javax.servlet.ServletConfig;
@@ -40,7 +42,7 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.TextHttpResponse;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
-import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.UserAuxXMLFormatter;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.KeyExpiredException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.SystemUserMngException;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
@@ -69,7 +71,10 @@ public class AuthServlet extends ServiceServlet
  public static final String SuccessURLParameter = "successURL";   
  public static final String FailURLParameter = "failURL";   
  public static final String ResetKeyParameter = "key";   
-  
+ public static final String AuxParameter = "aux";   
+ 
+ public static final String AuxParameterSeparator = ":";   
+
 	
  /**
   * @see HttpServlet#HttpServlet()
@@ -129,44 +134,8 @@ public class AuthServlet extends ServiceServlet
    }
   }
   
-  SessionManager sessMngr = BackendConfig.getServiceManager().getSessionManager();
-  
   if( act == Action.check )
-  {
-   prm = prms.getParameter(SessionIdParameter);
-   
-   if( prm == null )
-   {
-    prm  = getCookieSessId(request);
-    
-    if( prm == null )
-    {
-     resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "Can't find session id");
-
-     return;
-    }
-   }
-   
-   Session sess = sessMngr.getSession(prm);
-   
-   if( sess != null )
-   {
-    User u = sess.getUser();
-    
-    KV[] vars = null;
-    if( u.getLogin() != null )
-     vars = new KV[]{new KV(UserLoginParameter,u.getLogin()), new KV(UserEmailParameter,u.getEmail()), new KV(UsernameParameter,u.getFullName())};
-    else
-     vars = new KV[]{new KV(UserEmailParameter,u.getEmail()), new KV(UsernameParameter,u.getFullName())};
-    
-    resp.respond(HttpServletResponse.SC_OK, "OK", null, vars );
-    return;
-   }
-   
-   resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
-
-   return;
-  }
+   checkLoggedIn(prms, request, resp);
   else if( act == Action.signin )
    signin(prms, resp);
   else if( act == Action.signout )
@@ -296,6 +265,60 @@ public class AuthServlet extends ServiceServlet
 
  }
  
+ private void checkLoggedIn(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ {
+  String prm = prms.getParameter(SessionIdParameter);
+  
+  if( prm == null )
+  {
+   prm  = getCookieSessId(request);
+   
+   if( prm == null )
+   {
+    resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "Can't find session id");
+
+    return;
+   }
+  }
+  
+  Session sess =  BackendConfig.getServiceManager().getSessionManager().getSession(prm);
+  
+  if( sess == null )
+  {
+   resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
+
+   return;
+  }
+  
+  int auxLen = 0;
+  
+  User u = sess.getUser();
+  String auxText = u.getAuxProfileInfo();
+  List<String[]> aux = null;
+  
+  if( auxText != null && auxText.length() > 0 )
+  {
+   aux = UserAuxXMLFormatter.readXML( auxText );
+   auxLen = aux.size();
+  }
+  
+  KV[] outInfo = new KV[3+auxLen+ (u.getLogin() != null?1:0)];
+  
+  int n=0;
+  
+  outInfo[n++] = new KV(SessionIdParameter, sess.getSessionKey());
+  outInfo[n++] = new KV(UsernameParameter,sess.getUser().getFullName());
+  outInfo[n++] = new KV(UserEmailParameter,String.valueOf(sess.getUser().getEmail()));
+  
+  if( u.getLogin() != null )
+   outInfo[n++] = new KV(UserLoginParameter,u.getLogin());
+  
+  
+  for( int i=0; i < auxLen; i++ )
+   outInfo[i+n] = new KV(aux.get(i)[0],aux.get(i)[1]);
+  
+  resp.respond(HttpServletResponse.SC_OK, "OK", null, outInfo ); // safe for null emails
+ }
  
  private void signin( ParameterPool prms, Response resp) throws IOException
  {
@@ -319,9 +342,27 @@ public class AuthServlet extends ServiceServlet
   
   resp.addCookie( cke );
   
-  resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(SessionIdParameter, skey),
-    new KV(UsernameParameter,sess.getUser().getFullName()),
-    new KV(UserEmailParameter,String.valueOf(sess.getUser().getEmail())) ); // safe for null emails
+  int auxLen = 0;
+  
+  String auxText = sess.getUser().getAuxProfileInfo();
+  List<String[]> aux = null;
+  
+  if( auxText != null && auxText.length() > 0 )
+  {
+   aux = UserAuxXMLFormatter.readXML( auxText );
+   auxLen = aux.size();
+  }
+  
+  KV[] outInfo = new KV[3+auxLen];
+  
+  outInfo[0] = new KV(SessionIdParameter, skey);
+  outInfo[1] = new KV(UsernameParameter,sess.getUser().getFullName());
+  outInfo[2] = new KV(UserEmailParameter,String.valueOf(sess.getUser().getEmail()));
+  
+  for( int i=0; i < auxLen; i++ )
+   outInfo[i+3] = new KV(aux.get(i)[0],aux.get(i)[1]);
+  
+  resp.respond(HttpServletResponse.SC_OK, "OK", null, outInfo ); // safe for null emails
  }
  
  
@@ -362,6 +403,34 @@ public class AuthServlet extends ServiceServlet
  {
   User usr = null;
 
+  if( ! checkRecaptchas(prms, request, resp, null) )
+   return;
+  
+  List<String[]> aux = null;
+  String[] auxP = prms.getParameters(AuxParameter);
+  
+  if( auxP != null && auxP.length > 0 )
+  {
+   aux = new ArrayList<String[]>(auxP.length);
+   
+   for( String s : auxP )
+   {
+    int pos = s.indexOf(AuxParameterSeparator);
+    
+    String[] tuple = new String[2];
+
+    if( pos>=0 )
+    {
+     tuple[0] = s.substring(0,pos);
+     tuple[1] = s.substring(pos+AuxParameterSeparator.length());
+    }
+    else
+     tuple[0]=s;
+    
+    aux.add(tuple);
+   }
+  }
+  
   String login = prms.getParameter(UserLoginParameter);
   
   if( login != null )
@@ -392,6 +461,7 @@ public class AuthServlet extends ServiceServlet
    }
   }
   
+  
   String email = prms.getParameter(UserEmailParameter);
   
   if( email == null )
@@ -403,8 +473,7 @@ public class AuthServlet extends ServiceServlet
  
   email = email.trim();
   
-  if( ! checkRecaptchas(prms, request, resp, null) )
-   return;
+
 
   
   if( ! EmailValidator.getInstance(false).isValid(email) )
@@ -455,7 +524,7 @@ public class AuthServlet extends ServiceServlet
   
   try
   {
-   BackendConfig.getServiceManager().getUserManager().addUser(u, BackendConfig.isMandatoryAccountActivation(), actvURL);
+   BackendConfig.getServiceManager().getUserManager().addUser(u, aux, BackendConfig.isMandatoryAccountActivation(), actvURL);
   }
   catch( Throwable t )
   {

@@ -5,4 +5,6 @@ public interface ParameterPool
  String getParameter(String pName);
  
  String getClientAddress();
+
+ String[] getParameters(String pName);
 }

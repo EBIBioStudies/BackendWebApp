@@ -32,7 +32,8 @@ public class UserDataServlet extends ServiceServlet
   GET,
   SET,
   LIST,
-  LISTJSON
+  LISTJSON,
+  DEL
  }
 
  @Override
@@ -169,11 +170,16 @@ public class UserDataServlet extends ServiceServlet
     resp.getWriter().append(udata.getData());
    }
   }
-  else
+  else if( op == Op.SET )
   {
-//   if( topic == null )
-//    topic = "submission";   // This is temporary hack requested by Olga
-
+   if( data == null )
+   {
+    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    resp.setContentType("text/plain");
+    resp.getWriter().print("FAIL "+dataParameter+" is not defined");
+    return;
+   }
+   
    UserData udata = new UserData();
 
    udata.setDataKey(key);
@@ -184,9 +190,16 @@ public class UserDataServlet extends ServiceServlet
    
    BackendConfig.getServiceManager().getUserManager().storeUserData(udata);
   }
-  
-  
-  
+  else if( op == Op.DEL )
+  {
+   UserData udata = new UserData();
+
+   udata.setDataKey(key);
+   udata.setData(null);
+   udata.setTopic(topic);
+   udata.setUserId(sess.getUser().getId());
+   
+   BackendConfig.getServiceManager().getUserManager().storeUserData(udata);  }
  }
 
 }

@@ -4,11 +4,15 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.Arrays;
+import java.util.Comparator;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
+
+import com.pri.util.StringUtils;
 
 public class JSONHttpResponse implements Response
 {
@@ -28,24 +32,57 @@ public class JSONHttpResponse implements Response
   PrintWriter out = response.getWriter();
   
   out.print("{\n\"status\": \"");
-  out.print(sts);
+  StringUtils.appendAsJSONStr(out, sts);
   out.print("\"");
   
   if( msg != null )
   {
    out.print(",\n\"message\": \"");
-   out.print(msg);
+   StringUtils.appendAsJSONStr(out, msg);
    out.print("\"");
   }
   
-  
-  for( KV res : kvs )
+  Arrays.sort(kvs, new Comparator<KV>()
   {
-   out.print(",\n\"");
-   out.print(res.getKey());
-   out.print("\": \"");
-   out.print(res.getValue());
-   out.print("\"");
+   @Override
+   public int compare(KV o1, KV o2)
+   {
+    return o1.getKey().compareTo(o2.getKey());
+   }
+  });
+  
+  for(int i=0; i < kvs.length; i++ )
+  {
+   String ckey = kvs[i].getKey();
+   
+   if( i == kvs.length-1 || ! ckey.equals(kvs[i+1].getKey()) )
+   {
+    out.print(",\n\"");
+    StringUtils.appendAsJSONStr(out, ckey);
+    out.print("\": \"");
+    StringUtils.appendAsJSONStr(out, kvs[i].getValue());
+    out.print("\"");
+   }
+   else
+   {
+    out.print(",\n\"");
+    StringUtils.appendAsJSONStr(out, ckey);
+    out.print("\": [\n\"");
+    StringUtils.appendAsJSONStr(out, kvs[i].getValue());
+      
+    i++;
+    
+    while( kvs[i].getKey().equals(ckey) )
+    {
+     out.print("\",\n\"");
+     StringUtils.appendAsJSONStr(out, kvs[i].getValue());
+     i++;
+    }
+    
+    i--;
+    
+    out.print("\"\n]");
+   }
   }
  
   out.print("\n}\n");

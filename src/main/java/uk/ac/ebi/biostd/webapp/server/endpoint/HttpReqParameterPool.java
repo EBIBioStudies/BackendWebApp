@@ -27,4 +27,11 @@ public class HttpReqParameterPool implements ParameterPool
   return req.getRemoteAddr();
  }
 
+
+ @Override
+ public String[] getParameters(String pName)
+ {
+  return req.getParameterValues(pName);
+ }
+
 }

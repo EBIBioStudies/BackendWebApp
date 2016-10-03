@@ -16,6 +16,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.UserAuxXMLFormatter;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.InvalidKeyException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.KeyExpiredException;
@@ -99,7 +100,7 @@ public class JPAUserManager implements UserManager, SessionListener
  }
  
  @Override
- public synchronized void addUser(User u, boolean validateEmail, String validateURL) throws UserMngException
+ public synchronized void addUser(User u, List<String[]> aux, boolean validateEmail, String validateURL) throws UserMngException
  {
   
   u.setSecret( UUID.randomUUID().toString() );
@@ -111,6 +112,9 @@ public class JPAUserManager implements UserManager, SessionListener
    u.setActive(false);
    u.setActivationKey(actKey.toString());
    u.setKeyTime(System.currentTimeMillis());
+   
+   if( aux != null )
+    u.setAuxProfileInfo(UserAuxXMLFormatter.buildXML(aux));
    
    if( !AccountActivation.sendActivationRequest(u,actKey,validateURL) )
     throw new SystemUserMngException("Email confirmation request can't be sent. Please try later");
