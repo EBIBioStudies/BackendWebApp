@@ -48,7 +48,7 @@ public class JPAUserManager implements UserManager, SessionListener
    
    trn.begin();
    
-   Query q = em.createNamedQuery("User.getByLogin");
+   Query q = em.createNamedQuery(User.GetByLoginQuery);
 
    q.setParameter("login", uName);
 
@@ -85,7 +85,7 @@ public class JPAUserManager implements UserManager, SessionListener
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
-  Query q = em.createNamedQuery("User.getByEMail");
+  Query q = em.createNamedQuery(User.GetByEMailQuery);
 
   q.setParameter("email", prm);
 
@@ -238,7 +238,7 @@ public class JPAUserManager implements UserManager, SessionListener
   {
    trn.begin();
    
-   Query q = em.createNamedQuery("User.getByEMail");
+   Query q = em.createNamedQuery(User.GetByEMailQuery);
 
    q.setParameter("email", ainf.email);
 
@@ -319,7 +319,7 @@ public class JPAUserManager implements UserManager, SessionListener
   {
    trn.begin();
    
-   Query q = em.createNamedQuery("User.getByEMail");
+   Query q = em.createNamedQuery(User.GetByEMailQuery);
 
    q.setParameter("email", ainf.email);
 
@@ -437,7 +437,7 @@ public class JPAUserManager implements UserManager, SessionListener
    
    if( usr.getEmail() != null && usr.getEmail().length() > 0 )
    {
-    Query q = em.createNamedQuery("User.getByEMail");
+    Query q = em.createNamedQuery(User.GetByEMailQuery);
     
     q.setParameter("email", usr.getEmail());
     
@@ -450,7 +450,7 @@ public class JPAUserManager implements UserManager, SessionListener
    }
    else
    {
-    Query q = em.createNamedQuery("User.getByLogin");
+    Query q = em.createNamedQuery(User.GetByLoginQuery);
     
     q.setParameter("login", usr.getLogin());
     

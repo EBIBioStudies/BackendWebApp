@@ -801,8 +801,12 @@ public class JPASubmissionManager implements SubmissionManager
      submission.setVersion(1);
     }
 
-   
-    
+    if( submission.getVersion() == 1 && si.getAccNoPrefix() == null && si.getAccNoSuffix() == null && submission.getAccNo() != null )
+    {
+     submission.setVersion( correctVersion( submission.getAccNo(), em ) );
+    }
+     
+     
     try
     {
      submission.normalizeAttributes();
@@ -1033,7 +1037,7 @@ public class JPASubmissionManager implements SubmissionManager
       {
        String newAcc = BackendConfig.getServiceManager().getAccessionManager().getNextAccNo(si.getAccNoPrefix(), si.getAccNoSuffix(), usr);
 
-       if(checkSubmissionIdUniq(newAcc, em))
+       if(checkGeneratedSubmissionIdUniq(newAcc, em))
        {
         subm.setAccNo(newAcc);
         si.getLogNode().log(Level.INFO, "Submission generated accNo: " + newAcc);
@@ -1053,7 +1057,7 @@ public class JPASubmissionManager implements SubmissionManager
     }
     
     if( subm.getTitle() == null )
-     subm.setTitle( subm.getAccNo()+" "+SimpleDateFormat.getDateTimeInstance().format( new Date(subm.getCTime()) ) );
+     subm.setTitle( subm.getAccNo()+" "+SimpleDateFormat.getDateTimeInstance().format( new Date(subm.getCTime()*1000) ) );
 
     if( si.getGlobalSections() != null  )
     {
@@ -1634,7 +1638,7 @@ public class JPASubmissionManager implements SubmissionManager
 
     if(Files.exists(histDir))
     {
-     log.error("History directory already exists");
+     log.error("History directory already exists: "+histDir);
      return false;
     }
 
@@ -2298,6 +2302,34 @@ public class JPASubmissionManager implements SubmissionManager
   
   return ((Number)q.getSingleResult()).intValue() == 0;
  }
+ 
+ private int correctVersion( String accNo, EntityManager em )
+ {
+  Query q =  em.createNamedQuery(Submission.GetMinVer);
+  q.setParameter("accNo", accNo);
+  
+  List<?> res = q.getResultList();
+  
+  if( res.size() == 0 || res.get(0) == null )
+   return 1;
+  
+  int ver = ((Number)res.get(0)).intValue();
+  
+  if( ver < 0 )
+   ver = - ver;
+  
+  return ver+1;
+
+ }
+ 
+ private boolean checkGeneratedSubmissionIdUniq(String accNo, EntityManager em)
+ {
+  Query q =  em.createNamedQuery(Submission.GetCountAllByAccQuery);
+  q.setParameter("accNo", accNo);
+  
+  return ((Number)q.getSingleResult()).intValue() == 0;
+ }
+
 
  private boolean checkSectionIdUniq(String accNo, EntityManager em)
  {

@@ -93,6 +93,7 @@ public class BackendConfig
  public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";
  public static final String             ActivationEmailHtmlParameter        = "activationEmailHtmlFile";
  public static final String             ActivationTimeoutParameter          = "activationTimeout";
+ public static final String             ActivationTimeoutParameterHours     = "activationTimeoutHours";
 
  public static final String             SubscriptionEmailSubjectParameter     = "subscriptionEmailSubject";
  public static final String             SubscriptionEmailPlainTextParameter   = "subscriptionEmailPlainTextFile";
@@ -410,11 +411,11 @@ public class BackendConfig
   }
   
   
-  if( ActivationTimeoutParameter.equals(param) )
+  if( ActivationTimeoutParameter.equals(param) || ActivationTimeoutParameterHours.equals(param) )
   {
    try
    {
-    activationTimeout = Integer.parseInt(val) * 60 * 60 * 1000L;
+    activationTimeout = (long) ( Double.parseDouble(val) * 60 * 60 * 1000L );
    }
    catch(Exception e)
    {

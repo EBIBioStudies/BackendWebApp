@@ -34,4 +34,6 @@ public interface SecurityManager
 
  boolean mayUserManageTags(User user);
 
+ void removeExpiredUsers();
+
 }

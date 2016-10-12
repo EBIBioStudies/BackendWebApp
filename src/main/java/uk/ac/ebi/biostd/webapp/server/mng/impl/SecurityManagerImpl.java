@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -175,7 +176,7 @@ public class SecurityManagerImpl implements SecurityManager
    if( anonUser == null )
    {
 
-    q = em.createNamedQuery("User.getByLogin");
+    q = em.createNamedQuery(User.GetByLoginQuery);
     q.setParameter("login", BuiltInUsers.Guest.getUserName());
 
     @SuppressWarnings("unchecked")
@@ -213,7 +214,7 @@ public class SecurityManagerImpl implements SecurityManager
   try
   {
    
-   Query q = em.createNamedQuery("User.getCount");
+   Query q = em.createNamedQuery(User.GetCountQuery);
    
    if( (Long)q.getSingleResult() == 0)
    {
@@ -228,6 +229,7 @@ public class SecurityManagerImpl implements SecurityManager
    
    trn.begin();
    
+   @SuppressWarnings("unchecked")
    List<AuthorizationTemplate> tpls = ctq.getResultList();
    
    if( tpls.size() == 1 )
@@ -313,7 +315,64 @@ public class SecurityManagerImpl implements SecurityManager
   return du;
  }
  
+ @Override
+ public synchronized void removeExpiredUsers()
+ {
+  List<Long> expUsers = new ArrayList<Long>();
+  
+  long now = System.currentTimeMillis();
+  
+  Iterator<User> uitr = userMap.values().iterator();
+  
+  while( uitr.hasNext() )
+  {
+   User u = uitr.next();
+   
+   if( ! u.isActive() && u.getActivationKey() != null && u.getKeyTime() + BackendConfig.getActivationTimeout() < now )
+   {
+    expUsers.add(u.getId());
+    uitr.remove();
+    
+    if( u.getGroups() != null )
+    {
+     for( UserGroup g : u.getGroups() )
+      g.getUsers().remove(u);
+    }
+   }
+  }
+  
+  if( expUsers.size() == 0 )
+   return;
+  
+  uitr = userEmailMap.values().iterator();
+  while( uitr.hasNext() )
+  {
+   if( expUsers.contains( uitr.next().getId() ) )
+    uitr.remove();
+  }
+  
+  uitr = userLoginMap.values().iterator();
+  while( uitr.hasNext() )
+  {
+   if( expUsers.contains( uitr.next().getId() ) )
+    uitr.remove();
+  }
 
+  EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+  Query q = em.createNamedQuery(User.DelByIDsQuery);
+  
+  EntityTransaction trn = em.getTransaction();
+  
+  q.setParameter("ids", expUsers);
+  
+  trn.begin();
+  
+  q.executeUpdate();
+  
+  trn.commit();
+  
+ }
  
  private User detachUser( User u ) // to pull user structure from the DB. We need this to overcome lazy loading
  {

@@ -4,15 +4,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.Arrays;
-import java.util.Comparator;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
-import uk.ac.ebi.biostd.webapp.shared.util.KV;
+import org.json.JSONException;
+import org.json.JSONObject;
 
-import com.pri.util.StringUtils;
+import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
 public class JSONHttpResponse implements Response
 {
@@ -30,66 +29,43 @@ public class JSONHttpResponse implements Response
   response.setStatus(code);
   
   PrintWriter out = response.getWriter();
-  
-  out.print("{\n\"status\": \"");
-  StringUtils.appendAsJSONStr(out, sts);
-  out.print("\"");
-  
-  if( msg != null )
+
+  try
   {
-   out.print(",\n\"message\": \"");
-   StringUtils.appendAsJSONStr(out, msg);
-   out.print("\"");
-  }
-  
-  Arrays.sort(kvs, new Comparator<KV>()
-  {
-   @Override
-   public int compare(KV o1, KV o2)
+   JSONObject resp = new JSONObject();
+
+   resp.put("status", sts);
+
+   if(msg != null)
+    resp.put("message", msg);
+
+   for(KV kv : kvs)
    {
-    return o1.getKey().compareTo(o2.getKey());
-   }
-  });
-  
-  for(int i=0; i < kvs.length; i++ )
-  {
-   String ckey = kvs[i].getKey();
-   
-   if( i == kvs.length-1 || ! ckey.equals(kvs[i+1].getKey()) )
-   {
-    out.print(",\n\"");
-    StringUtils.appendAsJSONStr(out, ckey);
-    out.print("\": \"");
-    StringUtils.appendAsJSONStr(out, kvs[i].getValue());
-    out.print("\"");
-   }
-   else
-   {
-    out.print(",\n\"");
-    StringUtils.appendAsJSONStr(out, ckey);
-    out.print("\": [\n\"");
-    StringUtils.appendAsJSONStr(out, kvs[i].getValue());
-      
-    i++;
-    
-    while( kvs[i].getKey().equals(ckey) )
+    if(kv.getPrefix() != null)
     {
-     out.print("\",\n\"");
-     StringUtils.appendAsJSONStr(out, kvs[i].getValue());
-     i++;
+     JSONObject sub = resp.optJSONObject(kv.getPrefix());
+
+     if(sub == null)
+     {
+      sub = new JSONObject();
+      resp.put(kv.getPrefix(), sub);
+     }
+
+     sub.accumulate(kv.getKey(), kv.getValue());
     }
-    
-    i--;
-    
-    out.print("\"\n]");
+    else
+     resp.accumulate(kv.getKey(), kv.getValue());
    }
+   
+   out.println( resp.toString());
   }
- 
-  out.print("\n}\n");
- 
+  catch( JSONException e )
+  {}
+
  }
  
-
+ 
+ 
  @Override
  public void respond(int code, String sts) throws IOException
  {

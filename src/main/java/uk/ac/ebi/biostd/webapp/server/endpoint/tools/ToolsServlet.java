@@ -31,7 +31,8 @@ public class ToolsServlet extends ServiceServlet
  private static enum Operation
  {
   FIX_FILE_TYPE,
-  FIX_FILE_SIZE;
+  FIX_FILE_SIZE,
+  CLEAN_EXP_USERS;
  }
  
  @Override
@@ -90,6 +91,10 @@ public class ToolsServlet extends ServiceServlet
     
     resp.setContentType("text/plain");
     fixFileSize(resp.getWriter());
+    
+   case CLEAN_EXP_USERS:
+    
+    BackendConfig.getServiceManager().getSecurityManager().removeExpiredUsers();
     
     break;
    default:

@@ -315,7 +315,7 @@ public class AuthServlet extends ServiceServlet
   
   
   for( int i=0; i < auxLen; i++ )
-   outInfo[i+n] = new KV(aux.get(i)[0],aux.get(i)[1]);
+   outInfo[i+n] = new KV(AuxParameter,aux.get(i)[0],aux.get(i)[1]);
   
   resp.respond(HttpServletResponse.SC_OK, "OK", null, outInfo ); // safe for null emails
  }
@@ -360,7 +360,7 @@ public class AuthServlet extends ServiceServlet
   outInfo[2] = new KV(UserEmailParameter,String.valueOf(sess.getUser().getEmail()));
   
   for( int i=0; i < auxLen; i++ )
-   outInfo[i+3] = new KV(aux.get(i)[0],aux.get(i)[1]);
+   outInfo[i+3] = new KV(AuxParameter,aux.get(i)[0],aux.get(i)[1]);
   
   resp.respond(HttpServletResponse.SC_OK, "OK", null, outInfo ); // safe for null emails
  }

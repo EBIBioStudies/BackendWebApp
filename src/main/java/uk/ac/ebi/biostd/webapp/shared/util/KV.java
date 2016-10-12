@@ -2,6 +2,7 @@ package uk.ac.ebi.biostd.webapp.shared.util;
 
 public class KV
 {
+ private String prefix;
  private String key;
  private String value;
  
@@ -13,6 +14,14 @@ public class KV
   super();
   this.key = key;
   this.value = value;
+ }
+ 
+ public KV(String pref, String key, String value)
+ {
+  super();
+  this.key = key;
+  this.value = value;
+  prefix = pref;
  }
  
  public String getKey()
@@ -33,6 +42,16 @@ public class KV
  public void setValue(String value)
  {
   this.value = value;
+ }
+
+ public String getPrefix()
+ {
+  return prefix;
+ }
+
+ public void setPrefix(String prefix)
+ {
+  this.prefix = prefix;
  }
 
  

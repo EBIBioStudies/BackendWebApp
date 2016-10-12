@@ -39,6 +39,11 @@ public class TextHttpResponse implements Response
   
   for( KV res : kvs )
   {
+   if( res.getPrefix() !=null )
+   {
+    out.print(res.getPrefix());
+    out.print(".");
+   }
    out.print(res.getKey());
    out.print(": ");
    out.println(res.getValue());

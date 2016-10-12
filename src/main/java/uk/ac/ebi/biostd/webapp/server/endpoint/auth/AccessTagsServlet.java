@@ -85,7 +85,7 @@ public class AccessTagsServlet extends HttpServlet
   {
    em = BackendConfig.getEntityManagerFactory().createEntityManager();
    
-   Query q = em.createNamedQuery("User.getByEMail");
+   Query q = em.createNamedQuery(User.GetByEMailQuery);
    
    q.setParameter("email", login);
    
@@ -101,7 +101,7 @@ public class AccessTagsServlet extends HttpServlet
    
    if( u == null )
    {
-    q= em.createNamedQuery("User.getByLogin");
+    q= em.createNamedQuery(User.GetByLoginQuery);
     
     q.setParameter("login", login);
     

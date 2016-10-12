@@ -677,6 +677,7 @@ public class WebAppInit implements ServletContextListener
    public void run()
    {
     BackendConfig.getServiceManager().getReleaseManager().doHourlyCheck();
+    BackendConfig.getServiceManager().getSecurityManager().removeExpiredUsers();
    }
   }, hourInMills-(now % hourInMills) , hourInMills);
   
