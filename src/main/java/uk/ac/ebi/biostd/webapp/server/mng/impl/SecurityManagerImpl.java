@@ -68,6 +68,12 @@ public class SecurityManagerImpl implements SecurityManager
   loadCache();
  }
  
+ @Override
+ public void refreshUserCache()
+ {
+  loadCache();
+ }
+ 
  private void loadCache()
  {
   EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
@@ -78,6 +84,8 @@ public class SecurityManagerImpl implements SecurityManager
    
    groupMap.clear();
    userMap.clear();
+   userEmailMap.clear();
+   userLoginMap.clear();
 
    Query q = em.createQuery("SELECT usr FROM User usr");
    

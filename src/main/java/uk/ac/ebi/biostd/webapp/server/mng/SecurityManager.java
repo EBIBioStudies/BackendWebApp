@@ -36,4 +36,6 @@ public interface SecurityManager
 
  void removeExpiredUsers();
 
+ void refreshUserCache();
+
 }

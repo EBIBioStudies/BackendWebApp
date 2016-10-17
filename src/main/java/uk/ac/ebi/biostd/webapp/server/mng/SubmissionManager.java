@@ -22,6 +22,7 @@ public interface SubmissionManager
   OVERRIDE,
   CREATEOVERRIDE,
   DELETE,
+  REMOVE,
   TRANKLUCATE,
   SETMETA
  }
@@ -45,7 +46,7 @@ public interface SubmissionManager
 
  LogNode updateSubmissionMeta(String sbmAcc, Collection<TagRef> tags, Set<String> access, long rTime, User user);
  
- LogNode deleteSubmissionByAccession(String acc, User usr);
+ LogNode deleteSubmissionByAccession(String acc, boolean toHistory, User usr);
  
  LogNode tranklucateSubmissionById(int id, User user);
  LogNode tranklucateSubmissionByAccession(String sbmAcc, User user);

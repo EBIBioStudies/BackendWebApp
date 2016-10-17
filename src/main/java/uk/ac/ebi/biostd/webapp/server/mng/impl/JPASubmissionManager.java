@@ -209,10 +209,10 @@ public class JPASubmissionManager implements SubmissionManager
  }
 
  @Override
- public LogNode deleteSubmissionByAccession( String acc, User usr )
+ public LogNode deleteSubmissionByAccession( String acc, boolean toHistory, User usr )
  {
   ErrorCounter ec = new ErrorCounterImpl();
-  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Deleting submission '"+acc+"'", ec);
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, (toHistory?"Deleting":"Removing")+" submission '"+acc+"'", ec);
 
   if( shutdown )
   {
@@ -271,39 +271,59 @@ public class JPASubmissionManager implements SubmissionManager
 
    histDir = BackendConfig.getSubmissionHistoryPath(sbm);
 
-   if(Files.exists(origDir))
+   if(toHistory && Files.exists(origDir))
    {
     histDirTmp = histDir.resolveSibling(histDir.getFileName() + "#tmp");
 
+    
     try
     {
-     fileMngr.moveDirectory(origDir, histDirTmp); // trying to submission directory to the history dir
-     dirOp = SubmissionDirState.LINKED;
+     fileMngr.moveDirectory(origDir, histDirTmp); // trying to move submission directory to the history dir
+
+     try
+     {
+      Files.createSymbolicLink(origDir, histDirTmp); //to provide access to the submission before the commit
+      dirOp = SubmissionDirState.LINKED;
+     }
+     catch(Exception ex2)
+     {
+      fileMngr.moveDirectory(histDirTmp, origDir); //if we can't make a symbolic link (FAT?) let's return the directory back
+      dirOp = SubmissionDirState.HOME;
+     }
     }
     catch(Exception e)
     {
      // If we can't move the directory we have to make a copy of it
-
+     dirOp = SubmissionDirState.HOME;
+    }
+    
+    if( dirOp == SubmissionDirState.HOME )
+    {
      try
      {
+      Files.createDirectories(histDirTmp);
       fileMngr.copyDirectory(origDir, histDirTmp);
-      dirOp=SubmissionDirState.COPIED;
+      dirOp = SubmissionDirState.COPIED;
      }
      catch(Exception ex1)
      {
       log.error("Can't copy directory " + origDir + " to " + histDirTmp + " : " + ex1.getMessage());
       gln.log(Level.ERROR, "File operation error. Contact system administrator");
       
-      dirOp = null;
-      
-      return gln; // Bad. We have to break the operation
+      dirOp=null; // Bad. We have to break the operation
      }
-
+     
     }
    }
    
-   sbm.setMTime(System.currentTimeMillis() / 1000);
-   sbm.setVersion(-sbm.getVersion());
+   if( toHistory )
+   {
+    sbm.setMTime(System.currentTimeMillis() / 1000);
+    sbm.setVersion(-sbm.getVersion());
+   }
+   else
+    em.remove(sbm);
+   
   }
   finally
   {
@@ -330,51 +350,103 @@ public class JPASubmissionManager implements SubmissionManager
      trn.rollback();
    }
    
-   if( trnOk )
+   if( toHistory )
    {
-    if( dirOp != SubmissionDirState.ABSENT )
+
+    if(trnOk)
     {
-     try
+     if(dirOp != SubmissionDirState.ABSENT)
      {
-      fileMngr.moveDirectory( histDirTmp, histDir );
-     }
-     catch(IOException e)
-     {
-      log.error("History directory '"+histDirTmp+"' rename failed: "+e);
-      e.printStackTrace();
-     }
-    }
-    
-    gln.log(Level.INFO, "Transaction successful");
-   }
-   else
-   {
-    if( dirOp == SubmissionDirState.LINKED )
-    {
-     try
-     {
-      fileMngr.moveDirectory( histDirTmp, origDir );
-     }
-     catch(IOException e)
-     {
-      log.error("Delete opration rollback (move dir) failed: "+e);
-      e.printStackTrace();
+      try
+      {
+       fileMngr.moveDirectory(histDirTmp, histDir);
+      }
+      catch(IOException e)
+      {
+       log.error("History directory '" + histDirTmp + "' rename failed: " + e);
+       e.printStackTrace();
+       trnOk = false;
+      }
       
-      gln.log(Level.ERROR, "Severe server problem. Please inform system administrator. The database may be inconsistent");
+      if( dirOp == SubmissionDirState.LINKED )
+      {
+       try
+       {
+        Files.delete(origDir);
+       }
+       catch(IOException e)
+       {
+        log.error("Can't delete symbolic link: "+origDir+" :" + e);
+        e.printStackTrace();
+        trnOk = false;
+       }
+      }
+      else if( dirOp == SubmissionDirState.COPIED )
+      {
+       try
+       {
+        fileMngr.deleteDirectory(origDir);
+       }
+       catch(IOException e)
+       {
+        log.error("Can't delete directory: "+origDir+" :" + e);
+        e.printStackTrace();
+        trnOk = false;
+       }
+      }
      }
 
+     if( trnOk )
+      gln.log(Level.INFO, "Transaction successful");
+     else
+      gln.log(Level.WARN, "Transaction successful but with some problems. Please inform system administrator ");
+
+     trnOk = true;
     }
-    else if( dirOp == SubmissionDirState.COPIED )
+    else
     {
-     try
+     if(dirOp == SubmissionDirState.LINKED)
      {
-      fileMngr.deleteDirectory(histDirTmp);
+      try
+      {
+       Files.delete(origDir);
+       fileMngr.moveDirectory(histDirTmp, origDir);
+      }
+      catch(IOException e)
+      {
+       log.error("Delete opration rollback (move dir) failed: " + e);
+       e.printStackTrace();
+
+       gln.log(Level.ERROR, "Severe server problem. Please inform system administrator. The database may be inconsistent");
+      }
+
      }
-     catch(IOException e)
+     else if(dirOp == SubmissionDirState.COPIED)
      {
-      log.error("Delete opration rollback (del dir) failed: "+e);
-      e.printStackTrace();
+      try
+      {
+       fileMngr.deleteDirectory(histDirTmp);
+      }
+      catch(IOException e)
+      {
+       log.error("Delete opration rollback (del dir) failed: " + e);
+       e.printStackTrace();
+      }
      }
+    }
+   }
+   else if( trnOk )
+   {
+    try
+    {
+     fileMngr.deleteDirectory(origDir);
+     gln.log(Level.INFO, "Transaction successful");
+    }
+    catch(IOException e)
+    {
+     log.error("Delete directory '"+origDir+"' opration failed: " + e);
+     e.printStackTrace();
+     gln.log(Level.WARN, "Transaction successful but with some problems. Please inform system administrator ");
     }
    }
 

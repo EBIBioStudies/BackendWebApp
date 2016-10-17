@@ -10,6 +10,8 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
@@ -275,8 +277,6 @@ public class SubscriptionNotifier implements Runnable
   String rsType = "";
   String rsTitle = "";
   
-  final StringBuilder sb = new StringBuilder();
-  
   Map<Long, Tag> tmap = new HashMap<Long, Tag>();
   
   for( Long tgId : req.tagIds  )
@@ -320,6 +320,10 @@ public class SubscriptionNotifier implements Runnable
   
   class Subst
   {
+   Matcher tagsMtch;
+   final StringBuffer bodySb = new StringBuffer();
+   final StringBuilder tagsSb = new StringBuilder();
+  
    void subst(User u, Collection<Tag> tags)
    {
     String tBody = textBody;
@@ -346,20 +350,43 @@ public class SubscriptionNotifier implements Runnable
     tBody = tBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
     hBody = hBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
 
-    sb.setLength(0);
+    String[] body = new String[]{ tBody, hBody };
     
-    for( Tag t : tags )
-     sb.append(t.getClassifier().getName()).append(':').append(t.getName()).append(", ");
+    for( int i=0; i < body.length; i++ )
+    {
+     bodySb.setLength(0);
 
-    sb.setLength(sb.length()-2);
-    
-    String tagsName = sb.toString();
-    
-    tBody = tBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
-    hBody = hBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
+     if(tagsMtch == null)
+      tagsMtch = Pattern.compile(BackendConfig.TagsPlaceHolderRx).matcher("");
 
+     tagsMtch.reset(body[i]);
 
-    BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getSubscriptionEmailSubject(), tBody, hBody);
+     while(tagsMtch.find())
+     {
+      String sep = tagsMtch.group(1);
+
+      if(sep == null)
+       sep = ", ";
+      else
+       sep=sep.substring(1);
+
+      tagsSb.setLength(0);
+
+      for(Tag t : tags)
+       tagsSb.append(t.getClassifier().getName()).append(':').append(t.getName()).append(sep);
+
+      tagsSb.setLength( tagsSb.length()-sep.length() );
+      
+      tagsMtch.appendReplacement(bodySb, tagsSb.toString());
+     }
+
+     tagsMtch.appendTail(bodySb);
+
+     body[i] = bodySb.toString();
+
+    }
+
+    BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getSubscriptionEmailSubject(), body[0], body[1]);
    }
   }
   

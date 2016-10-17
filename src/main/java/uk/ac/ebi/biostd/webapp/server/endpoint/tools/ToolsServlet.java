@@ -32,7 +32,8 @@ public class ToolsServlet extends ServiceServlet
  {
   FIX_FILE_TYPE,
   FIX_FILE_SIZE,
-  CLEAN_EXP_USERS;
+  CLEAN_EXP_USERS,
+  REFRESH_USERS;
  }
  
  @Override
@@ -92,10 +93,18 @@ public class ToolsServlet extends ServiceServlet
     resp.setContentType("text/plain");
     fixFileSize(resp.getWriter());
     
+    break;
+    
    case CLEAN_EXP_USERS:
     
     BackendConfig.getServiceManager().getSecurityManager().removeExpiredUsers();
     
+    break;
+  
+   case REFRESH_USERS:
+    
+    BackendConfig.getServiceManager().getSecurityManager().refreshUserCache();
+
     break;
    default:
     break;

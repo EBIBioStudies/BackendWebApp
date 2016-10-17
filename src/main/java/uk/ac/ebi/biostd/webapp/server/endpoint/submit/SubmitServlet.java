@@ -112,9 +112,16 @@ public class SubmitServlet extends ServiceServlet
 
   if( act == Operation.DELETE )
   {
-   processDelete( request, response, sess );
+   processDelete( request, response, true, sess );
    return;
   }
+  
+  if( act == Operation.REMOVE )
+  {
+   processDelete( request, response, false, sess );
+   return;
+  }
+
   
   if( act == Operation.TRANKLUCATE )
   {
@@ -294,7 +301,7 @@ public class SubmitServlet extends ServiceServlet
   
  }
 
- public void processDelete(HttpServletRequest request, HttpServletResponse response, Session sess) throws IOException
+ public void processDelete(HttpServletRequest request, HttpServletResponse response, boolean toHistory, Session sess) throws IOException
  {
   String sbmAcc = request.getParameter("accno");
   
@@ -310,7 +317,7 @@ public class SubmitServlet extends ServiceServlet
   
   response.setContentType("application/json");
   
-  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().deleteSubmissionByAccession(sbmAcc, sess.getUser());
+  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().deleteSubmissionByAccession(sbmAcc, toHistory, sess.getUser());
   
   SimpleLogNode.setLevels(topLn);
   JSON4Log.convert(topLn, response.getWriter());

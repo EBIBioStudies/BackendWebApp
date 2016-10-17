@@ -43,7 +43,7 @@ public class BackendConfig
  public static final String TitlePlaceHolderRx= "\\{TITLE\\}";
  public static final String SbmTitlePlaceHolderRx= "\\{SBTITLE\\}";
  public static final String TypePlaceHolderRx= "\\{TYPE\\}";
- public static final String TagsPlaceHolderRx= "\\{TAGS\\}";
+ public static final String TagsPlaceHolderRx= "\\{TAGS(:[^}]*)?\\}";
  
  public static final String googleVerifyURL = "https://www.google.com/recaptcha/api/siteverify";
  public static final String googleSecretParam = "secret";
