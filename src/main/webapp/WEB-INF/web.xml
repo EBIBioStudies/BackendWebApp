@@ -171,7 +171,17 @@
     <servlet-name>TagsServlet</servlet-name>
     <url-pattern>/tags/*</url-pattern>
   </servlet-mapping>
-  
+
+  <servlet>
+    <description></description>
+    <display-name>AttachmentHostServlet</display-name>
+    <servlet-name>AttachmentHostServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.attachhost.AttachHostListServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AttachmentHostServlet</servlet-name>
+    <url-pattern>/atthost</url-pattern>
+  </servlet-mapping>  
   
   <servlet>
     <description></description>

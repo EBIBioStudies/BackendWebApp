@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.export;
 
+import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
 
@@ -55,9 +56,9 @@ public class IDBagQueryManager implements QueryManager
  
  @Override
  @SuppressWarnings("unchecked")
- public List<Submission> getSubmissions()
+ public List<Submission> getSubmissions(PrintWriter out)
  {
-  Range r = sgidsm.getSubmissionRange();
+  Range r = sgidsm.getSubmissionRange(out);
 
   if(r == null)
   {
@@ -69,6 +70,8 @@ public class IDBagQueryManager implements QueryManager
 
   int tries = 0;
 
+  out.printf("Got range: %d-%d\n", r.getMin(),r.getMax());
+  
   while(true)
   {
    try
@@ -90,6 +93,26 @@ public class IDBagQueryManager implements QueryManager
 
     log.debug("({}) Retrieved submissions: {}", Thread.currentThread().getName(), res.size());
 
+    if( r.getIds() != null && res.size() != r.getIds().length )
+    {
+     for( long id : r.getIds() )
+     {
+      boolean found=false;
+
+      for( Submission s: res )
+      {
+       if( s.getId() == id )
+       {
+        found=true;
+        break;
+       }
+      }
+      
+      if( ! found )
+       log.warn("While export: missing a submission with id="+id+" Range: "+r);
+     }
+    }
+    
     return res;
    }
    catch(Exception e)

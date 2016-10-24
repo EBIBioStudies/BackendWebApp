@@ -63,7 +63,7 @@ public class ExporterMTControl
    List<Runnable> exporters = new ArrayList<>(threads);
    List<OutputTask> outputs = new ArrayList<>(requests.size() * 2);
 
-   List<FormattingTask> tasks = new ArrayList<>(requests.size());
+   List<FormattingModule> formatters = new ArrayList<>(requests.size());
 
    controlMsgQueue.clear();
 
@@ -75,7 +75,7 @@ public class ExporterMTControl
 
     outputs.add(new OutputTask(req.getName()+"",req.getOut(), outQueue, controlMsgQueue));
 
-    tasks.add(new FormattingTask(req.getFormatter(), outQueue, limit));
+    formatters.add(new FormattingModule(req.getFormatter(), outQueue, limit));
 
    }
 
@@ -106,7 +106,8 @@ public class ExporterMTControl
    //SGIDSliceManager slmngr = new SGIDSliceManager(emf, sliceSz, since);
    SbmIDBagManager slmngr = new SbmIDBagManager(emf, sliceSz, since);
 
-
+   statistics.setIdCount( slmngr.getSubmissionCount() );
+   
    for(int i = 0; i < threads; i++)
    {
 //    QueryManager qm = new RangeQueryManager(emf, rm, sliceSz, tCnf.getSince());
@@ -116,7 +117,7 @@ public class ExporterMTControl
 //    MTSliceMSIExporterTask et = new MTSliceMSIExporterTask(emf, myEqFact, msism, tasks, statistics, controlMsgQueue, stopFlag, tCnf);
 
     QueryManager idqm = new IDBagQueryManager(emf, slmngr);
-    IDPrefetchExporterTask et = new IDPrefetchExporterTask(idqm, tasks, statistics, controlMsgQueue, stopFlag, tCnf);
+    IDPrefetchExporterTask et = new IDPrefetchExporterTask(idqm, formatters, statistics, controlMsgQueue, stopFlag, tCnf);
 
     et.setLaneNo(i+1);
     
@@ -230,7 +231,7 @@ public class ExporterMTControl
 
      PoisonedObject po = new PoisonedObject();
 
-     for(FormattingTask ft : tasks)
+     for(FormattingModule ft : formatters)
      {
       if( ft.getOutQueue() != null )
       {
@@ -291,9 +292,12 @@ public class ExporterMTControl
     }
    }
    */
+   for( OutputTask ot : outputs )
+    statistics.addOutStat(ot.getName(), ot.getOutCount());
    
    if( cleanFinish )
    {
+    
     for( OutputModule omod : requests )
      omod.finish(statistics);
    }

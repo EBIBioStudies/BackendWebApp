@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.export;
 
+import java.io.PrintWriter;
 import java.sql.Date;
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,6 +56,17 @@ public class SbmIDBagManager
   
   log.debug("Retrieved {} submission IDs",submissionIds.length);
 
+//  try( PrintWriter out = new PrintWriter(BackendConfig.getBaseDirectory().resolve("dump/idDump.txt").toFile()) )
+//  {
+//   
+//   for( i=0; i < submissionIds.length; i++ )
+//    out.printf("%d %d\n", i+1, submissionIds[i]);
+//  }
+//  catch(FileNotFoundException e)
+//  {
+//   e.printStackTrace();
+//  }
+  
   em.close();
  }
  
@@ -65,7 +77,7 @@ public class SbmIDBagManager
  }
  
 
- public Range getSubmissionRange()
+ public Range getSubmissionRange(PrintWriter out)
  {
   synchronized(submissionIds)
   {
@@ -77,12 +89,22 @@ public class SbmIDBagManager
 
    Range r = new Range(submissionIds[offset], 0);
    
+   int oldOffs=offset;
+   
    offset += blockSize;
    
    if( offset > submissionIds.length )
     offset = submissionIds.length;
    
    r.setMax(submissionIds[offset - 1]);
+   
+   r.setIds(submissionIds,oldOffs,offset);
+   
+   out.println("Selected range:");
+   
+   int i=1;
+   for( ; oldOffs < offset; oldOffs++ )
+    out.printf("R %d %d\n", i++,submissionIds[oldOffs]);
    
    return r;
   }

@@ -131,7 +131,7 @@ public class JPAReleaser implements ReleaseManager
      
      try
      {
-      new PageMLFormatter(sb).format(subm, sb);
+      new PageMLFormatter(sb, false).format(subm, sb);
      }
      catch(IOException e)
      {

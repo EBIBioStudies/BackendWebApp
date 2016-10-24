@@ -559,6 +559,7 @@ public class SecurityManagerImpl implements SecurityManager
   return checkSubmissionPermission(sbm, usr, SystemAction.ATTACHSUBM);
  }
  
+
  @Override
  public boolean mayEveryoneReadSubmission(Submission submission)
  {

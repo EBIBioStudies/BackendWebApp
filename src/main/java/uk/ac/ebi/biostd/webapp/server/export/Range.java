@@ -1,10 +1,13 @@
 package uk.ac.ebi.biostd.webapp.server.export;
 
+import java.util.Arrays;
+
 public class Range
 {
- long min;
- long max;
- boolean locked;
+ private long min;
+ private long max;
+ private boolean locked;
+ private long[] ids;
  
  public Range(long min, long max)
  {
@@ -45,7 +48,22 @@ public class Range
  @Override
  public String toString()
  {
-  return "["+min+","+max+"]";
+  String str = "["+min+","+max+"]";
+  
+  if( ids!= null )
+   str+=" Ids: "+ids.length;
+  
+  return str;
+ }
+
+ public void setIds(long[] submissionIds, int offset, int end)
+ {
+  ids = Arrays.copyOfRange(submissionIds, offset, end);
+ }
+
+ public long[] getIds()
+ {
+  return ids;
  }
 }
 

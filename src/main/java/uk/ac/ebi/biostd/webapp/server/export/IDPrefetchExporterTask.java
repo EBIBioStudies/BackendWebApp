@@ -1,6 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.export;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -10,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.export.ControlMessage.Type;
+import uk.ac.ebi.biostd.webapp.server.search.NullPrintWriter;
 
 public class IDPrefetchExporterTask implements MTExportTask
 {
@@ -21,7 +24,7 @@ public class IDPrefetchExporterTask implements MTExportTask
  
 // private final SliceManager sliceMngr;
  
- private final List<FormattingTask> tasks;
+ private final List<FormattingModule> tasks;
  private final ExporterStat stat;
  private final BlockingQueue<ControlMessage> controlQueue;
  private final AtomicBoolean stopFlag;
@@ -38,7 +41,7 @@ public class IDPrefetchExporterTask implements MTExportTask
  
  private int objectCount = 0;
 
- public IDPrefetchExporterTask( QueryManager qMgr, List<FormattingTask> tasks,
+ public IDPrefetchExporterTask( QueryManager qMgr, List<FormattingModule> tasks,
    ExporterStat stat, BlockingQueue<ControlMessage> controlQueue, AtomicBoolean stf, MTTaskConfig tCfg )
  {
   
@@ -77,7 +80,7 @@ public class IDPrefetchExporterTask implements MTExportTask
  {
   boolean needMoreData = false;
   
-  for(FormattingTask ft : tasks)
+  for(FormattingModule ft : tasks)
   {
    if(!ft.confirmOutput())
     continue;
@@ -154,7 +157,7 @@ public class IDPrefetchExporterTask implements MTExportTask
 
   objectCount = 0;
   
-  try
+  try( PrintWriter out = new NullPrintWriter(BackendConfig.getBaseDirectory().resolve("dump").resolve(procThread.getName()).toFile()) )
   {
    StringBuilder sb = new StringBuilder();
 
@@ -165,18 +168,26 @@ public class IDPrefetchExporterTask implements MTExportTask
    mainLoop: while(needGroupLoop)
    {
     if(checkStopFlag()  || checkTTLexpired() )
+    {
+     out.printf("TTL expired loop start. Objects: %d\n", objectCount);     
      return;
+    }
 
     Collection<Submission> sbms = null;
 
-    sbms = sbmQM.getSubmissions();
+    sbms = sbmQM.getSubmissions(out);
 
+    out.printf("Got submissions: %d\n", sbms.size());     
+
+    
     if(sbms.size() == 0)
     {
      log.debug("({}) No more submissions to process", Thread.currentThread().getName());
      needGroupLoop = false;
     }
 
+    int i=1;
+    
     for(Submission sbm : sbms)
     {
      if( checkStopFlag() )
@@ -186,15 +197,23 @@ public class IDPrefetchExporterTask implements MTExportTask
 
      stat.incSubmissionCount();
 
+     out.printf("Formatting: %d %d\n", i++, sbm.getId());     
+
+     
      needMoreData = formatSubmission(sbm, sb);
 
      if(!needMoreData)
+     {
+      out.printf("Formatter doesn't need more data\n");     
       break mainLoop;
-
+     }
     }
 
     if(checkStopFlag() || checkTTLexpired() )
+    {
+     out.printf("TTL expired loop end. Objects: %d\n", objectCount);     
      return;
+    }
 
    }
 

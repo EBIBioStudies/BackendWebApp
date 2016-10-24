@@ -5,14 +5,14 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import uk.ac.ebi.biostd.out.TextStreamFormatter;
 
-public class FormattingTask
+public class FormattingModule
 {
  private final TextStreamFormatter          formatter;
  private final BlockingQueue<Object> outQueue;
  
  private final AtomicLong maxCount;
  
- public FormattingTask(TextStreamFormatter formatter, BlockingQueue<Object> queue, long limit)
+ public FormattingModule(TextStreamFormatter formatter, BlockingQueue<Object> queue, long limit)
  {
   super();
   this.formatter = formatter;

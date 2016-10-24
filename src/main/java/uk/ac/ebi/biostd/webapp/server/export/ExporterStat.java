@@ -2,6 +2,8 @@ package uk.ac.ebi.biostd.webapp.server.export;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import uk.ac.ebi.biostd.util.StringUtils;
 
@@ -9,10 +11,13 @@ public class ExporterStat
 {
  private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
  
+ private int idCount=0;
  private int submissionCount=0;
  private final Date now;
  private int threads;
  private int errorRecoverCount=0;
+ 
+ private Map<String,Integer> outStat = new HashMap<String, Integer>();
  
  public ExporterStat( Date now )
  {
@@ -56,7 +61,15 @@ public class ExporterStat
   submissionCount++;
  }
  
-
+ public Map<String,Integer> getOutStat()
+ {
+  return outStat;
+ }
+ 
+ public void addOutStat(String outName, int count )
+ {
+  outStat.put(outName, count);
+ }
 
  public String createReport(Date startTime, Date endTime, int threads)
  {
@@ -67,7 +80,11 @@ public class ExporterStat
   
   StringBuffer summaryBuf = new StringBuffer();
 
-  summaryBuf.append("\n<!-- Exported: ").append(getSubmissionCount()).append(" submissions in ").append(threads).append(" threads. Rate: ").append(rate).append("ms per msi -->");
+  summaryBuf.append("\n<!-- Exported: ").append(getSubmissionCount()).append(" submissions in ").append(threads).append(" threads. Rate: ").append(rate).append("ms per submission -->");
+  summaryBuf.append("\n<!-- ID selected: ").append(getIdCount()).append(" -->");
+  
+  for( Map.Entry<String, Integer> me : outStat.entrySet() )
+   summaryBuf.append("\n<!-- Output '").append(me.getKey()).append("' : ").append(me.getValue()).append(" -->");
 
   summaryBuf.append("\n<!-- Start time: ").append(simpleDateFormat.format(startTime)).append(" -->");
   summaryBuf.append("\n<!-- End time: ").append(simpleDateFormat.format(endTime)).append(". Time spent: "+StringUtils.millisToString(endTs-startTs)).append(" -->");
@@ -88,6 +105,14 @@ public class ExporterStat
   this.threads = threads;
  }
 
+ public int getIdCount()
+ {
+  return idCount;
+ }
 
+ public void setIdCount(int idCount)
+ {
+  this.idCount = idCount;
+ }
 
 }

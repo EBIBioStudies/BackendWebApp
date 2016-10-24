@@ -48,6 +48,7 @@ public class FormattingOutputModule implements OutputModule
  
  private Date startTime;
  
+ 
  private static Logger log = null;
  
  public FormattingOutputModule(String name, Map<String, String> cfgMap) throws TaskConfigException
@@ -204,7 +205,6 @@ public class FormattingOutputModule implements OutputModule
   tmpStream = new PrintStream(tmpFile, "UTF-8");
 
   log.debug("Starting export module for task '" + name + "'");
-
 
  }
  

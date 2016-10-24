@@ -12,6 +12,8 @@ public class OutputTask implements Runnable
  private final BlockingQueue<ControlMessage> controlQueue;
  private final String name;
  
+ private int outCount=0;
+ 
  public OutputTask( String name, Appendable out, BlockingQueue<Object> inQueue, BlockingQueue<ControlMessage> controlQueue)
  {
   this.out = out;
@@ -20,6 +22,11 @@ public class OutputTask implements Runnable
   this.name=name;
  }
  
+
+ public String getName()
+ {
+  return name;
+ }
  
  @Override
  public void run()
@@ -54,6 +61,7 @@ public class OutputTask implements Runnable
    try
    {
     out.append(str);
+    outCount++;
    }
    catch(Exception e)
    {
@@ -88,4 +96,11 @@ public class OutputTask implements Runnable
   }
 
  }
+
+
+ public int getOutCount()
+ {
+  return outCount;
+ }
+
 }

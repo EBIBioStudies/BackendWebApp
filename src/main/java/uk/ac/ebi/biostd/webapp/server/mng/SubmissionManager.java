@@ -1,6 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -51,6 +52,8 @@ public interface SubmissionManager
  LogNode tranklucateSubmissionById(int id, User user);
  LogNode tranklucateSubmissionByAccession(String sbmAcc, User user);
  LogNode tranklucateSubmissionByAccessionPattern(String accPfx, User usr);
+
+ List<Submission> getHostSubmissionsByType(String type, User user);
 
  void shutdown();
 }

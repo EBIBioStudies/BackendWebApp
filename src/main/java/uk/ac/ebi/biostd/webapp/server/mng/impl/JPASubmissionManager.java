@@ -50,7 +50,9 @@ import org.odftoolkit.simple.SpreadsheetDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import uk.ac.ebi.biostd.authz.ACR.Permit;
 import uk.ac.ebi.biostd.authz.AccessTag;
+import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.db.TagResolver;
@@ -117,6 +119,18 @@ public class JPASubmissionManager implements SubmissionManager
 
   SubmissionDirState state;
  }
+
+ private static final String GetHostSubByTypeQuery = "select sb from Submission sb join sb.rootSection rs where rs.type=:type";
+
+ private static final String GetHostSubByTypeOwnerQuery = "select sb from Submission sb join sb.rootSection rs where rs.type=:type and sb.owner.id=:owner";
+
+ private static final String GetHostSubByTypeOwnerAllowQuery = "select distinct sb from Submission sb join sb.rootSection rs join sb.accessTags at where rs.type=:type "
+   + "and (sb.owner.id=:owner OR at.id in :allow)";
+
+// private static final String GetHostSubByTypeOwnerDenyQuery = null;
+//
+// private static final String GetHostSubByTypeOwnerAllowDenyQuery = "select sb from Submission sb join sb.rootSection rs join sb.accessTags at where rs.type=:type "
+//   + "and ( sb.owner.id=:owner OR ( at.";
  
  private static Logger log;
  
@@ -542,6 +556,89 @@ public class JPASubmissionManager implements SubmissionManager
   
  }
 
+ 
+ @Override
+ public List<Submission> getHostSubmissionsByType(String type, User user)
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+
+  Collection<Long> dnyTags=null;
+  
+  TypedQuery<Submission> q = null;
+  
+  if( user.isSuperuser() )  
+   q = em.createQuery(GetHostSubByTypeQuery,Submission.class);
+  else 
+  {
+   TypedQuery<AccessTag> tagQ = em.createQuery("select t from "+AccessTag.class.getName()+" t",AccessTag.class);
+   
+   List<AccessTag> tags = tagQ.getResultList();
+   
+   Collection<Long> allwTags=null;
+   
+   for( AccessTag atg : tags )
+   {
+    Permit p = atg.checkDelegatePermission(SystemAction.ATTACHSUBM, user);
+    
+    if( p == Permit.DENY )
+    {
+     if( dnyTags == null )
+      dnyTags = new ArrayList<Long>();
+     
+     dnyTags.add(atg.getId());
+    }
+    else if( p == Permit.ALLOW )
+    {
+     if( allwTags == null )
+      allwTags = new ArrayList<Long>();
+     
+     allwTags.add(atg.getId());
+    }
+   }
+   
+   if( allwTags != null  )
+   {
+    q = em.createQuery(GetHostSubByTypeOwnerAllowQuery,Submission.class);
+    q.setParameter("allow", allwTags);
+   }
+   else
+    q = em.createQuery(GetHostSubByTypeOwnerQuery,Submission.class);
+
+   q.setParameter("owner", user.getId());
+  }
+  
+  q.setParameter("type", type);
+ 
+  List<Submission> res = q.getResultList();
+  
+  if( dnyTags == null )
+   return res;
+  
+  List<Submission> fres = new ArrayList<Submission>(res.size());
+  
+  for( Submission sb : res )
+  {
+   boolean found = false;
+   
+   if( sb.getAccessTags() != null )
+   {
+    for( AccessTag atg : sb.getAccessTags() )
+    {
+     if( dnyTags.contains(atg.getId()) )
+     {
+      found = true;
+      break;
+     }
+    }
+   }
+
+   if( ! found )
+    fres.add(sb);
+  }
+  
+  return fres;  
+ }
+ 
  @Override
  public SubmissionReport createSubmission( byte[] data, DataFormat type, String charset, Operation op, User usr, boolean validateOnly, boolean ignoreAbsntFiles )
  {
@@ -1304,7 +1401,7 @@ public class JPASubmissionManager implements SubmissionManager
     
     try
     {
-     new PageMLFormatter(sb).format(si.getSubmission(), sb);
+     new PageMLFormatter(sb,false).format(si.getSubmission(), sb);
     }
     catch(IOException e)
     {
@@ -1856,7 +1953,7 @@ public class JPASubmissionManager implements SubmissionManager
 
    try (PrintStream out = new PrintStream(trnSbmPath.resolve(si.getSubmission().getAccNo() + ".xml").toFile()))
    {
-    new PageMLFormatter(out).format(doc);
+    new PageMLFormatter(out,true).format(doc);
    }
    catch(Exception e)
    {
@@ -3004,7 +3101,7 @@ public class JPASubmissionManager implements SubmissionManager
 
     try
     {
-     new PageMLFormatter(sb).format(sbm, sb);
+     new PageMLFormatter(sb,false).format(sbm, sb);
     }
     catch(IOException e)
     {
@@ -3028,7 +3125,7 @@ public class JPASubmissionManager implements SubmissionManager
    
    try( PrintStream out = new PrintStream( trnSbmPath.resolve(sbm.getAccNo()+".xml").toFile() ) )
    {
-    new PageMLFormatter(out).format(doc);
+    new PageMLFormatter(out,true).format(doc);
    }
    catch (Exception e) 
    {
