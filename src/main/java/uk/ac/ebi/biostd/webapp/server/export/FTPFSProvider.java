@@ -72,6 +72,10 @@ public class FTPFSProvider implements FSProvider
   ftp = new FTPClient();
   FTPClientConfig config = new FTPClientConfig();
   
+  ftp.setConnectTimeout(20000);
+  ftp.setDefaultTimeout(20000);
+  ftp.setDataTimeout(20000);
+  
   ftp.configure( config );
   
 

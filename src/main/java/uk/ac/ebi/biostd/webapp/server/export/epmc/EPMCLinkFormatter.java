@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 import uk.ac.ebi.biostd.model.Section;
-import uk.ac.ebi.biostd.model.SectionAttribute;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.out.TextStreamFormatter;
 
@@ -93,19 +92,11 @@ public class EPMCLinkFormatter implements TextStreamFormatter
 
    out.append(shiftSym3).append('<').append(EPMCLinkElements.TITLE.getElementName()).append(">");
    
-   String title=s.getTitle();
-   
-   if( s.getRootSection().getAttributes() != null )
-   {
-    for( SectionAttribute sat : s.getRootSection().getAttributes() )
-    {
-     if( Submission.titleAttribute.equals( sat.getName() ) )
-     {
-      title = sat.getValue();
-      break;
-     }
-    }
-   }
+   String title = Submission.getNodeTitle(s.getRootSection());
+     
+   if( title == null )
+    title = s.getTitle();
+
    
    xmlEscaped(title, out);
    out.append("</").append(EPMCLinkElements.TITLE.getElementName()).append(">\n");

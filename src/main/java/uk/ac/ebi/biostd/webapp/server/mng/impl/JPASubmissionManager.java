@@ -71,7 +71,6 @@ import uk.ac.ebi.biostd.in.pagetab.SectionOccurrence;
 import uk.ac.ebi.biostd.in.pagetab.SubmissionInfo;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
-import uk.ac.ebi.biostd.model.SubmissionAttribute;
 import uk.ac.ebi.biostd.model.SubmissionAttributeException;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
 import uk.ac.ebi.biostd.out.cell.CellFormatter;
@@ -1088,38 +1087,29 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
 
-    List<SubmissionAttribute> sattrs = si.getSubmission().getAttributes();
-    
-    if( sattrs != null )
-    {
-     for( SubmissionAttribute sa : sattrs )
-     {
-      if( ! sa.getName().equals(Submission.attachToAttribute) )
-       continue;
-      
-      String pAcc = sa.getValue();
-      
-      if( pAcc == null || (pAcc=pAcc.trim()).length() == 0 )
-       continue;
-      
-      Submission s = getSubmissionByAcc(pAcc, em);
-      
-      if( s == null )
-      {
-       si.getLogNode().log(Level.ERROR, "Submission attribute '" + Submission.attachToAttribute + "' points to non existing submission '"+pAcc+"'");
-       submOk = false;
-       
-       continue;
-      }
 
-      if( !BackendConfig.getServiceManager().getSecurityManager().mayUserAttachToSubmission(s,usr) )
-      {
-       si.getLogNode().log(Level.ERROR, "User has no permission to attach to submission: "+pAcc);
-       submOk = false;
-       continue;
-      }
+    String pAcc = Submission.getNodeAttachTo(si.getSubmission());
+
+    if(pAcc != null && (pAcc = pAcc.trim()).length() != 0)
+    {
+     Submission s = getSubmissionByAcc(pAcc, em);
+
+     if(s == null)
+     {
+      si.getLogNode().log(Level.ERROR, "Submission attribute 'AttachTo' points to non existing submission '" + pAcc + "'");
+      submOk = false;
+
+      continue;
+     }
+
+     if(!BackendConfig.getServiceManager().getSecurityManager().mayUserAttachToSubmission(s, usr))
+     {
+      si.getLogNode().log(Level.ERROR, "User has no permission to attach to submission: " + pAcc);
+      submOk = false;
+      continue;
      }
     }
+    
     
     if( si.getGlobalSections() != null )
     {

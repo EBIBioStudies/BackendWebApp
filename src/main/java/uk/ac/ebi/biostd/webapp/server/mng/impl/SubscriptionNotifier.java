@@ -14,7 +14,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
-import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 
 import org.apache.commons.io.Charsets;
@@ -24,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.authz.TagSubscription;
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.model.SectionAttribute;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
 import uk.ac.ebi.biostd.util.FileUtil;
@@ -213,14 +211,7 @@ public class SubscriptionNotifier implements Runnable
   {
    rsType = subm.getRootSection().getType();
    
-   for( SectionAttribute at : subm.getRootSection().getAttributes() )
-   {
-    if( at.getName().equals(Submission.titleAttribute) )
-    {
-     rsTitle = at.getValue();
-     break;
-    }
-   }
+   rsTitle = Submission.getNodeTitle(subm.getRootSection());
   }
   
   SecurityManager smng = BackendConfig.getServiceManager().getSecurityManager();
@@ -290,20 +281,12 @@ public class SubscriptionNotifier implements Runnable
   if( subm.getRootSection() != null )
   {
    rsType = subm.getRootSection().getType();
-   
-   for( SectionAttribute at : subm.getRootSection().getAttributes() )
-   {
-    if( at.getName().equals(Submission.titleAttribute) )
-    {
-     rsTitle = at.getValue();
-     break;
-    }
-   }
+   rsTitle = Submission.getNodeTitle(subm.getRootSection());
   }
   
   SecurityManager smng = BackendConfig.getServiceManager().getSecurityManager();
 
-  Query q = em.createNamedQuery(TagSubscription.GetSubsByTagIdsQuery);
+  TypedQuery<Object[]> q = em.createNamedQuery(TagSubscription.GetSubsByTagIdsQuery, Object[].class);
 
   q.setParameter(TagSubscription.TagIdQueryParameter, req.tagIds);
   

@@ -1,14 +1,10 @@
 package uk.ac.ebi.biostd.webapp.server.endpoint.submit;
 
 import java.io.IOException;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -258,40 +254,15 @@ public class SubmitServlet extends ServiceServlet
   
   if( val != null )
   {
+   rTime = Submission.readReleaseDate(val);
    
-   Matcher mtch =  Pattern.compile(Submission.releaseDateFormat).matcher(val);
-
-   if(!mtch.matches())
+   if( rTime < 0 )
    {
     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
     response.getWriter().print("FAIL Invalid '" + releaseDateParameter + "' parameter value. Expected date in format: YYYY-MM-DD[Thh:mm[:ss[.mmm]]]");
     return;
    }
-   else
-   {
-    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
 
-    cal.set(Calendar.YEAR, Integer.parseInt(mtch.group("year")));
-    cal.set(Calendar.MONTH, Integer.parseInt(mtch.group("month")) - 1);
-    cal.set(Calendar.DAY_OF_MONTH, Integer.parseInt(mtch.group("day")));
-
-    String str = mtch.group("hour");
-
-    if(str != null)
-     cal.set(Calendar.HOUR_OF_DAY, Integer.parseInt(str));
-
-    str = mtch.group("min");
-
-    if(str != null)
-     cal.set(Calendar.MINUTE, Integer.parseInt(str));
-
-    str = mtch.group("sec");
-
-    if(str != null)
-     cal.set(Calendar.SECOND, Integer.parseInt(str));
-
-    rTime = cal.getTimeInMillis();
-   }
   }
 
   LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().updateSubmissionMeta(sbmAcc, tags, access, rTime, sess.getUser());

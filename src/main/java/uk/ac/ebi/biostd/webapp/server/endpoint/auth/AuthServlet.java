@@ -60,6 +60,7 @@ public class AuthServlet extends ServiceServlet
  public static final String SessionIdParameter="sessid";   
  public static final String UserLoginParameter="login";   
  public static final String UserEmailParameter="email";   
+ public static final String SuperuserParameter="superuser";   
  public static final String PasswordParameter="password";   
  public static final String UsernameParameter="username";   
  public static final String FormatParameter="format";   
@@ -353,14 +354,16 @@ public class AuthServlet extends ServiceServlet
    auxLen = aux.size();
   }
   
-  KV[] outInfo = new KV[3+auxLen];
+  KV[] outInfo = new KV[4+auxLen];
   
   outInfo[0] = new KV(SessionIdParameter, skey);
   outInfo[1] = new KV(UsernameParameter,sess.getUser().getFullName());
   outInfo[2] = new KV(UserEmailParameter,String.valueOf(sess.getUser().getEmail()));
+  outInfo[3] = new KV(SuperuserParameter,sess.getUser().isSuperuser()?"true":"false");
+  
   
   for( int i=0; i < auxLen; i++ )
-   outInfo[i+3] = new KV(AuxParameter,aux.get(i)[0],aux.get(i)[1]);
+   outInfo[i+4] = new KV(AuxParameter,aux.get(i)[0],aux.get(i)[1]);
   
   resp.respond(HttpServletResponse.SC_OK, "OK", null, outInfo ); // safe for null emails
  }

@@ -61,8 +61,15 @@ public class AttachHostListServlet extends ServiceServlet
   
   List<Submission> subs = BackendConfig.getServiceManager().getSubmissionManager().getHostSubmissionsByType(acc, sess.getUser());
 
-  for( Submission s : subs )
-   out.printf("ID:%d AccNo:%s Title: %s\n",s.getId(),s.getAccNo(),s.getTitle());
+  if( "json".equalsIgnoreCase(format) )
+  {
+   JSONRenderer.render(subs, out);
+  }
+  else
+  {
+   for( Submission s : subs )
+    out.printf("ID:%d AccNo:%s Title: %s\n",s.getId(),s.getAccNo(),s.getTitle());
+  }
   
  }
 
