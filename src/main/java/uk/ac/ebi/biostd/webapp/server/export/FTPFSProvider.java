@@ -386,7 +386,9 @@ public class FTPFSProvider implements FSProvider
    try
    {
     out.close();
-    ftp.completePendingCommand();
+    
+    if( ftp.isConnected() )
+     ftp.completePendingCommand();
    }
    catch(FTPConnectionClosedException e)
    {

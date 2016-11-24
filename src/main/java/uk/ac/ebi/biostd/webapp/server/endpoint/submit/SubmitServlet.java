@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
 
 import uk.ac.ebi.biostd.authz.Session;
+import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.in.ParserException;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.treelog.JSON4Log;
@@ -41,6 +42,8 @@ public class SubmitServlet extends ServiceServlet
  public static final String tagsParameter = "tags";
  public static final String accessParameter = "access";
  public static final String releaseDateParameter = "releaseDate";
+ public static final String onBehalfParameter = "onBehalf";
+ public static final String ownerParameter = "owner";
 
  
  
@@ -55,7 +58,7 @@ public class SubmitServlet extends ServiceServlet
 
    try
    {
-    Thread.currentThread().setName(reqId);
+    Thread.currentThread().setName(reqId);  //to simplify tracing/debugging
     
     serviceContinue(request, response, sess);
    }
@@ -106,30 +109,67 @@ public class SubmitServlet extends ServiceServlet
    return;
   }
 
+  User usr = sess.getUser();
+
+  String obUser  = request.getParameter(onBehalfParameter);
+  
+  if( obUser != null )
+  {
+   if( ! usr.isSuperuser() )
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.setContentType("text/plain");
+    response.getWriter().print("FAIL only superuser can performe actions on behalf of other user");
+    return;
+   }
+   
+   usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(obUser);
+   
+   if( usr == null )
+    usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(obUser);
+   
+   if( usr == null )
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.setContentType("text/plain");
+    response.getWriter().print("FAIL invalid 'onBehalf' user");
+    return;
+   }
+
+  }
+  
+  
   if( act == Operation.DELETE )
   {
-   processDelete( request, response, true, sess );
+   processDelete( request, response, true, usr );
    return;
   }
   
   if( act == Operation.REMOVE )
   {
-   processDelete( request, response, false, sess );
+   processDelete( request, response, false, usr );
    return;
   }
 
   
   if( act == Operation.TRANKLUCATE )
   {
-   processTranklucate( request, response, sess );
+   processTranklucate( request, response, usr );
    return;
   }
 
   if( act == Operation.SETMETA )
   {
-   processSetMeta( request, response, sess );
+   processSetMeta( request, response, usr );
    return;
   }
+  
+  if( act == Operation.CHOWN )
+  {
+   processChown( request, response, usr );
+   return;
+  }
+
 
   
   String cType = request.getContentType();
@@ -180,7 +220,7 @@ public class SubmitServlet extends ServiceServlet
   boolean validateOnly = vldPrm != null && ("true".equalsIgnoreCase(vldPrm) || "yes".equalsIgnoreCase(vldPrm) || "1".equals(vldPrm) );
   boolean ignAbsFiles = ignPrm != null && ("true".equalsIgnoreCase(ignPrm) || "yes".equalsIgnoreCase(ignPrm) || "1".equals(ignPrm) );
 
-  SubmissionReport res = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act, sess.getUser(), validateOnly,ignAbsFiles);
+  SubmissionReport res = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, request.getCharacterEncoding(), act, usr, validateOnly,ignAbsFiles);
   
   LogNode topLn = res.getLog();
   
@@ -195,7 +235,7 @@ public class SubmitServlet extends ServiceServlet
   
  }
  
- private void processSetMeta(HttpServletRequest request, HttpServletResponse response, Session sess) throws IOException
+ private void processSetMeta(HttpServletRequest request, HttpServletResponse response, User usr) throws IOException
  {
   String sbmAcc = request.getParameter(accnoParameter);
   
@@ -265,14 +305,14 @@ public class SubmitServlet extends ServiceServlet
 
   }
 
-  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().updateSubmissionMeta(sbmAcc, tags, access, rTime, sess.getUser());
+  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().updateSubmissionMeta(sbmAcc, tags, access, rTime, usr);
   
   SimpleLogNode.setLevels(topLn);
   JSON4Log.convert(topLn, response.getWriter());
   
  }
 
- public void processDelete(HttpServletRequest request, HttpServletResponse response, boolean toHistory, Session sess) throws IOException
+ public void processDelete(HttpServletRequest request, HttpServletResponse response, boolean toHistory, User usr) throws IOException
  {
   String sbmAcc = request.getParameter("accno");
   
@@ -288,14 +328,86 @@ public class SubmitServlet extends ServiceServlet
   
   response.setContentType("application/json");
   
-  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().deleteSubmissionByAccession(sbmAcc, toHistory, sess.getUser());
+  LogNode topLn = BackendConfig.getServiceManager().getSubmissionManager().deleteSubmissionByAccession(sbmAcc, toHistory, usr);
   
   SimpleLogNode.setLevels(topLn);
   JSON4Log.convert(topLn, response.getWriter());
 
  }
 
- public void processTranklucate(HttpServletRequest request, HttpServletResponse response, Session sess ) throws IOException
+ public void processChown(HttpServletRequest request, HttpServletResponse response,  User usr ) throws IOException
+ {
+  String sbmAcc = request.getParameter(accnoParameter);
+  String patAcc = request.getParameter(accnoPatternParameter);
+  
+  if( patAcc == null  )
+  {
+   if( sbmAcc == null )
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.getWriter().print("FAIL '"+accnoParameter+"' or '"+accnoPatternParameter+"' parameter is not specified");
+    return;
+   }
+  }
+  else if( sbmAcc != null )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL Parameters '"+accnoParameter+"' and '"+accnoPatternParameter+"' can'n be used at the same time");
+   return;
+  }
+  
+  if( patAcc != null ) //&& patAcc.length() < 5 && patAcc.startsWith("%") || patAcc.startsWith("") )
+  {
+   if( patAcc.length() < 5 )
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.getWriter().print("FAIL Invalid '"+accnoPatternParameter+"' parameter value. Pattern is too short");
+    return;
+   }
+   
+   int pfxLen = 0;
+   
+   for( int i=0; i < patAcc.length(); i++ )
+   {
+    char c = patAcc.charAt(i);
+    
+    if( c == '?' || c== '%' )
+     break;
+    
+    pfxLen++;
+   }
+   
+   if( pfxLen < 5 )
+   {
+    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    response.getWriter().print("FAIL Invalid '"+accnoPatternParameter+"' parameter value. Pattern is too loose. Should have 5 characters prefix");
+    return;
+   }
+  }
+
+  String owner = request.getParameter(ownerParameter);
+  
+  if( owner == null )
+  {
+   response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   response.getWriter().print("FAIL '"+ownerParameter+"' parameter missing");
+   return;
+  }   
+  
+  response.setContentType("application/json");
+  
+  LogNode topLn = null;
+  
+  if( sbmAcc!= null )
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().changeOwnerByAccession(sbmAcc, owner, usr);
+  else
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().changeOwnerByAccessionPattern(patAcc, owner, usr);
+  
+  SimpleLogNode.setLevels(topLn);
+  JSON4Log.convert(topLn, response.getWriter());
+ }
+ 
+ public void processTranklucate(HttpServletRequest request, HttpServletResponse response,  User usr ) throws IOException
  {
   String sbmID = request.getParameter(idParameter);
   String sbmAcc = request.getParameter(accnoParameter);
@@ -382,11 +494,11 @@ public class SubmitServlet extends ServiceServlet
   LogNode topLn = null;
   
   if( sbmID != null )
-   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionById(id, sess.getUser());
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionById(id, usr);
   else if( sbmAcc!= null )
-   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccession(sbmAcc, sess.getUser());
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccession(sbmAcc, usr);
   else
-   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccessionPattern(patAcc, sess.getUser());
+   topLn = BackendConfig.getServiceManager().getSubmissionManager().tranklucateSubmissionByAccessionPattern(patAcc, usr);
   
   SimpleLogNode.setLevels(topLn);
   JSON4Log.convert(topLn, response.getWriter());

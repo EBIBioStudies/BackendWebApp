@@ -2,6 +2,7 @@ package uk.ac.ebi.biostd.webapp.server.endpoint.submission;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Arrays;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -21,6 +22,8 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.Response;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.endpoint.TextHttpResponse;
 import uk.ac.ebi.mg.spreadsheet.cell.XSVCellStream;
+
+import com.pri.util.HttpAccept;
 
 /**
  * Servlet implementation class SingleSubmissionServlet
@@ -52,7 +55,31 @@ public class SingleSubmissionServlet extends ServiceServlet
   String format = req.getParameter(FormatParameter);
   
   if( format == null )
-   format = DefaultResponseFormat;
+  {
+   String accpt = req.getHeader("Accept");
+   
+   if( accpt != null )
+   {
+    if("application/json".equalsIgnoreCase(accpt) )
+     format = "json";
+    else if( "text/xml".equalsIgnoreCase(accpt) || "application/xml".equalsIgnoreCase(accpt) )
+     format = "xml";
+    else
+    {
+     HttpAccept accp = new HttpAccept(accpt);
+     
+     int mtch = accp.bestMatch( Arrays.asList( new String[]{"text/xml","application/xml","application/json"}) );
+     
+     if( mtch == 0 || mtch == 1 )
+      format = "xml";
+     else if( mtch == 2 )
+      format = "json";
+     else
+      format = DefaultResponseFormat;
+    }
+   }
+  }
+   
   
   if( sess == null || sess.isAnonymouns() )
   {

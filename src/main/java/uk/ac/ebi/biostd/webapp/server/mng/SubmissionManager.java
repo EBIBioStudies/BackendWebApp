@@ -25,7 +25,8 @@ public interface SubmissionManager
   DELETE,
   REMOVE,
   TRANKLUCATE,
-  SETMETA
+  SETMETA,
+  CHOWN
  }
  
  Collection< Submission > getSubmissionsByOwner( User u, int offset, int limit );
@@ -52,6 +53,9 @@ public interface SubmissionManager
  LogNode tranklucateSubmissionById(int id, User user);
  LogNode tranklucateSubmissionByAccession(String sbmAcc, User user);
  LogNode tranklucateSubmissionByAccessionPattern(String accPfx, User usr);
+
+ LogNode changeOwnerByAccession(String sbmAcc, String owner, User usr);
+ LogNode changeOwnerByAccessionPattern(String sbmAcc, String owner, User usr);
 
  List<Submission> getHostSubmissionsByType(String type, User user);
 

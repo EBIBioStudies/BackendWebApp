@@ -161,6 +161,7 @@ public class AccessTagsServlet extends HttpServlet
    resp.getWriter().println("Status: OK");
    resp.getWriter().println("Allow: "+allow.toString());
    resp.getWriter().println("Deny: "+deny.toString());
+   resp.getWriter().println("Superuser: "+(u.isSuperuser()?"true":"false"));
    
   }
   catch(Exception e)

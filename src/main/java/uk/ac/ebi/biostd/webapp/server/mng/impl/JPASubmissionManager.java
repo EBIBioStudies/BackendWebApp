@@ -29,6 +29,9 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.NoResultException;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaUpdate;
+import javax.persistence.criteria.Root;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -3075,6 +3078,9 @@ public class JPASubmissionManager implements SubmissionManager
      trn.rollback();
    }
 
+   if( em != null && em.isOpen() )
+    em.close();
+   
   }
   
   if( trnOk )
@@ -3154,4 +3160,98 @@ public class JPASubmissionManager implements SubmissionManager
   
   return gln;
  }
+
+
+ @Override
+ public LogNode changeOwnerByAccession(String sbmAcc, String owner, User usr)
+ {
+  return changeOwnerByAccession( sbmAcc, owner, usr, false);
+ }
+ 
+
+ @Override
+ public LogNode changeOwnerByAccessionPattern(String sbmAcc, String owner, User usr)
+ {
+  return changeOwnerByAccession( sbmAcc, owner, usr, true);
+ }
+ 
+ private LogNode changeOwnerByAccession(String sbmAcc, String owner, User usr, boolean isLike)
+ {
+  ErrorCounter ec = new ErrorCounterImpl();
+  SimpleLogNode gln = new SimpleLogNode(Level.SUCCESS, "Changing submission(s) '" + sbmAcc + "' owner to '" + owner + "'", ec);
+
+  if(shutdown)
+  {
+   gln.log(Level.ERROR, "Service is shut down");
+   return gln;
+  }
+
+  if(!usr.isSuperuser())
+  {
+   gln.log(Level.ERROR, "Permission denied: only superuser can do it");
+   return gln;
+  }
+
+  EntityManager em = emf.createEntityManager();
+
+  User newOwner = BackendConfig.getServiceManager().getSecurityManager().getUserByLogin(owner);
+
+  if(newOwner == null)
+   newOwner = BackendConfig.getServiceManager().getSecurityManager().getUserByEmail(owner);
+
+  if(newOwner == null)
+  {
+   gln.log(Level.ERROR, "Invalid new owner: " + owner);
+   return gln;
+  }
+
+  EntityTransaction trn = em.getTransaction();
+
+  try
+  {
+   trn.begin();
+
+   CriteriaBuilder cb = em.getCriteriaBuilder();
+
+   CriteriaUpdate<Submission> upd = cb.createCriteriaUpdate(Submission.class);
+
+   Root<Submission> r = upd.from(Submission.class);
+
+   upd.set(r.get("owner"), newOwner.getId());
+
+   if(isLike)
+    upd.where(cb.like(r.get("accNo"), sbmAcc));
+   else
+    upd.where(cb.equal(r.get("accNo"), sbmAcc));
+
+   int cnt =  em.createQuery(upd).executeUpdate();
+
+   gln.log(Level.INFO, "Submissions updated: "+cnt);
+  }
+  finally
+  {
+   try
+   {
+    trn.commit();
+    gln.log(Level.INFO, "Transaction successful");
+   }
+   catch(Throwable t)
+   {
+    String err = "Database transaction failed: " + t.getMessage();
+
+    gln.log(Level.ERROR, err);
+
+    if(trn.isActive())
+     trn.rollback();
+   }
+   
+   if( em != null && em.isOpen() )
+    em.close();
+
+  }
+  
+  return gln;
+ }
+
+
 }
