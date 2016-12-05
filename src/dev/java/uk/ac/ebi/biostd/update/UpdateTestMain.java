@@ -57,6 +57,7 @@ public class UpdateTestMain
   
   em.close();
   
+  fact.close();
  }
 
 }

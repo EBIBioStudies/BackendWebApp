@@ -419,7 +419,7 @@ public class WebAppInit implements ServletContextListener
   if( ! checkDirectory(dir) )
    throw new RuntimeException("Directory access error: "+dir);
   
-  dir = BackendConfig.getUserGroupPath();
+  dir = BackendConfig.getUserGroupDropboxPath();
   
   if( dir == null )
   {
@@ -427,20 +427,27 @@ public class WebAppInit implements ServletContextListener
    throw new RuntimeException("Invalid configuration");
   }
   
-
-  
-  
   if( ! checkDirectory(dir) )
    throw new RuntimeException("Directory access error: "+dir);
 
-  if( ! checkDirectory( BackendConfig.getUsersPath() ) )
-   throw new RuntimeException("Directory access error: "+BackendConfig.getUsersPath() );
+  
+  dir = BackendConfig.getUserGroupIndexPath();
+  
+  if( dir == null )
+  {
+   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.UserGroupIndexDirParameter+" parameter is not set");
+   throw new RuntimeException("Invalid configuration");
+  }
 
-  if( ! checkDirectory( BackendConfig.getGroupsPath() ) )
-   throw new RuntimeException("Directory access error: "+BackendConfig.getGroupsPath() );
+  if( ! checkDirectory( BackendConfig.getUsersIndexPath() ) )
+   throw new RuntimeException("Directory access error: "+BackendConfig.getUsersIndexPath() );
 
+  if( ! checkDirectory( BackendConfig.getGroupIndexPath() ) )
+   throw new RuntimeException("Directory access error: "+BackendConfig.getGroupIndexPath() );
+
+  
   if( ! checkDirectory( BackendConfig.getSubmissionUpdatePath() ) )
-   throw new RuntimeException("Directory access error: "+BackendConfig.getGroupsPath() );
+   throw new RuntimeException("Directory access error: "+BackendConfig.getSubmissionUpdatePath() );
  
 
   dir = BackendConfig.getSubmissionsPath();
@@ -707,7 +714,7 @@ public class WebAppInit implements ServletContextListener
   
 
   
-  String dataDir = BackendConfig.getUserGroupPath().toString();
+  String dataDir = BackendConfig.getUserGroupDropboxPath().toString();
   String dataMount = BackendConfig.getDataMountPath();
   
 

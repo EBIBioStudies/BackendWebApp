@@ -2,9 +2,11 @@ package uk.ac.ebi.biostd.webapp.server.endpoint.tools;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
@@ -14,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import uk.ac.ebi.biostd.authz.Session;
+import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.FileRef;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
@@ -33,7 +36,9 @@ public class ToolsServlet extends ServiceServlet
   FIX_FILE_TYPE,
   FIX_FILE_SIZE,
   CLEAN_EXP_USERS,
-  REFRESH_USERS;
+  REFRESH_USERS,
+  UPDATE_USER_DIR_LAYOUT,
+  REVERSE_USER_DIR_LAYOUT;
  }
  
  @Override
@@ -94,6 +99,21 @@ public class ToolsServlet extends ServiceServlet
     fixFileSize(resp.getWriter());
     
     break;
+
+   case UPDATE_USER_DIR_LAYOUT:
+    
+    resp.setContentType("text/plain");
+    updateUserDirLayout(resp.getWriter(), req.getParameter("OldDir"));
+    
+    break;
+
+   case REVERSE_USER_DIR_LAYOUT:
+    
+    resp.setContentType("text/plain");
+    reverseUserDirLayout(resp.getWriter(), req.getParameter("OldDir"));
+    
+    break;
+
     
    case CLEAN_EXP_USERS:
     
@@ -198,6 +218,187 @@ public class ToolsServlet extends ServiceServlet
   }
   
   out.append( "Finished success: "+success+" fail: "+fail);
+ }
+ 
+ 
+ private void updateUserDirLayout(PrintWriter out, String oldDir)
+ {
+  if(oldDir == null)
+  {
+   out.println("OldDir parameter missing");
+   return;
+  }
+
+  Path p = FileSystems.getDefault().getPath(oldDir);
+
+  if(!Files.exists(p) || !Files.isDirectory(p))
+  {
+   out.println("OldDir parameter has invaid value");
+   return;
+  }
+
+  EntityManager mngr = null;
+
+  mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+  EntityTransaction t = mngr.getTransaction();
+
+  t.begin();
+
+  List<User> users = mngr.createQuery("select u from User u where u.active=1", User.class).getResultList();
+
+  for(User u : users)
+  {
+   if(u.getSecret() == null)
+    u.setSecret(UUID.randomUUID().toString());
+
+   Path oup = p.resolve(String.valueOf(u.getId()));
+   Path nud = BackendConfig.getUserDirPath(u);
+
+   if(Files.exists(nud))
+   {
+    out.println("ERROR: Path exists: " + nud);
+    continue;
+   }
+
+   if(Files.exists(oup) && Files.isDirectory(oup))
+   {
+
+    try
+    {
+     BackendConfig.getServiceManager().getFileManager().linkOrCopyDirectory(oup, nud);
+     
+     //Files.move(oup, nud);
+    }
+    catch(IOException e)
+    {
+     out.println("ERROR: Moving " + oup + " -> " + nud + " failed: " + e);
+     continue;
+    }
+   }
+   else
+   {
+    try
+    {
+     Files.createDirectories(nud);
+    }
+    catch(Exception e)
+    {
+     out.println("ERROR: Can't create directory " +  nud + " : " + e);
+     continue;
+    }
+   }
+   
+   if( BackendConfig.isPublicDropboxes() )
+   {
+    try
+    {
+     Files.setPosixFilePermissions(nud.getParent(), BackendConfig.rwx__x__x);
+     Files.setPosixFilePermissions(nud, BackendConfig.rwxrwxrwx);
+    }
+    catch(Exception e)
+    {
+     out.println("ERROR: setPosixFilePermissions failed " +  nud + " : " + e);
+     continue;
+    }
+   }
+
+   
+   
+   if(u.getLogin() != null)
+   {
+    Path ll = BackendConfig.getUserLoginLinkPath(u);
+
+    try
+    {
+     Files.createDirectories(ll.getParent());
+     Files.createSymbolicLink(ll, nud);
+    }
+    catch(Exception e)
+    {
+     out.println("ERROR: Linking " + ll + " -> " + nud + " failed: " + e);
+     continue;
+    }
+   }
+
+   if(u.getEmail() != null)
+   {
+    Path ll = BackendConfig.getUserEmailLinkPath(u);
+
+    try
+    {
+     Files.createDirectories(ll.getParent());
+     Files.createSymbolicLink(ll, nud);
+    }
+    catch(Exception e)
+    {
+     out.println("ERROR: Linking " + ll + " -> " + nud + " failed: " + e);
+     continue;
+    }
+   }
+   
+   out.println("OK: "+u.getFullName()+" <"+u.getEmail()+">");
+  }
+  
+  t.commit();
+  
+  mngr.close();
+
+ }
+ 
+ private void reverseUserDirLayout(PrintWriter out, String oldDir)
+ {
+  if(oldDir == null)
+  {
+   out.println("OldDir parameter missing");
+   return;
+  }
+
+  Path p = FileSystems.getDefault().getPath(oldDir);
+
+  if(!Files.exists(p) || !Files.isDirectory(p))
+  {
+   out.println("OldDir parameter has invaid value");
+   return;
+  }
+
+  EntityManager mngr = null;
+
+  mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+  EntityTransaction t = mngr.getTransaction();
+
+  t.begin();
+
+  List<User> users = mngr.createQuery("select u from User u where u.active=1", User.class).getResultList();
+
+  for(User u : users)
+  {
+
+   Path oup = p.resolve(String.valueOf(u.getId()));
+   Path nud = BackendConfig.getUserDirPath(u);
+
+   if(! Files.exists(nud))
+    continue;
+
+   try
+   {
+    BackendConfig.getServiceManager().getFileManager().linkOrCopyDirectory( nud, oup);
+   }
+   catch(IOException e)
+   {
+    out.println("Moving " + nud + " -> " + oup + " failed: " + e);
+    continue;
+   }
+
+   out.println("OK: "+u.getFullName()+" <"+u.getEmail()+">");
+
+  }
+  
+  t.commit();
+  
+  mngr.close();
+
  }
  
  private void fixFileType(PrintWriter out)

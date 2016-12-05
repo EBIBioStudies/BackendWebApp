@@ -5,7 +5,7 @@ public class AccNoUtil
 
  private static boolean checkCharClass( char ch )
  {
-  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '-';
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '-'|| ch == '@' || ch == '_';
  }
  
  public static String encode( String src )

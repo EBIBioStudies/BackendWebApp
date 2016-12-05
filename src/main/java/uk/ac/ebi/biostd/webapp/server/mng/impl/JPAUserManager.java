@@ -1,5 +1,8 @@
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +29,8 @@ import uk.ac.ebi.biostd.webapp.server.mng.exception.UserAlreadyActiveException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserMngException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotActiveException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotFoundException;
+
+import com.pri.log.Log;
 
 
 public class JPAUserManager implements UserManager, SessionListener
@@ -300,6 +305,56 @@ public class JPAUserManager implements UserManager, SessionListener
       cchUsr.setActivationKey(null);
      }
     }
+    
+    Path udpth = BackendConfig.getUserDirPath(u);
+    Path llpth = BackendConfig.getUserLoginLinkPath(u);
+    Path elpth = BackendConfig.getUserEmailLinkPath(u);
+    
+    
+    try
+    {
+     Files.createDirectories(udpth);
+     
+     if( BackendConfig.isPublicDropboxes() )
+     {
+      try
+      {
+       Files.setPosixFilePermissions(udpth.getParent(), BackendConfig.rwx__x__x);
+       Files.setPosixFilePermissions(udpth, BackendConfig.rwxrwxrwx);
+      }
+      catch(Exception e2)
+      {
+       Log.error("Can't set directory permissions: "+e2.getMessage());
+      }
+     }
+     
+     if( llpth != null )
+      Files.createDirectories(llpth.getParent());
+
+     if( elpth != null )
+      Files.createDirectories(elpth.getParent());
+
+     try
+     {
+      if( llpth != null )
+       Files.createSymbolicLink(llpth, udpth);
+      
+      if( elpth != null )
+       Files.createSymbolicLink(elpth, udpth);
+     }
+     catch(Exception e2)
+     {
+      Log.error("System can't create symbolic links: "+e2.getMessage());
+     }
+     
+
+    }
+    catch(IOException e)
+    {
+     Log.error("User directories/links were not created: "+e.getMessage(), e);
+     e.printStackTrace();
+    }
+    
    }
   }
 

@@ -34,6 +34,8 @@ public class BackendConfig
 
  public static Set<PosixFilePermission> rwxrwx___ = PosixFilePermissions.fromString("rwxrwx---");
  public static Set<PosixFilePermission> rwxrwxr_x = PosixFilePermissions.fromString("rwxrwxr-x");
+ public static Set<PosixFilePermission> rwxrwxrwx = PosixFilePermissions.fromString("rwxrwxrwx");
+ public static Set<PosixFilePermission> rwx__x__x = PosixFilePermissions.fromString("rwx--x--x");
 
  public static final String UserNamePlaceHolderRx = "\\{USERNAME\\}";
  public static final String ActivateKeyPlaceHolderRx= "\\{KEY\\}";
@@ -75,6 +77,8 @@ public class BackendConfig
 
  public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
  public static final String             UserGroupDirParameter               = "userGroupDir";
+ public static final String             UserGroupIndexDirParameter          = "userGroupIndexDir";
+ public static final String             PublicDropboxesParameter            = "publicDropboxes";
  public static final String             SubmissionDirParameter              = "submissionDir";
  public static final String             SubmissionTransactionDirParameter   = "submissionTransactionDir";
  public static final String             SubmissionHistoryDirParameter       = "submissionHistoryDir";
@@ -86,7 +90,6 @@ public class BackendConfig
  public static final String             UpdateWaitPeriodParameter           = "updateWaitPeriod";
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
  public static final String             FTPRootPathParameter                = "FTPRootPath";
- public static final String             DropBoxPathParameter                = "dropboxPath";
  
  public static final String             MandatoryAccountActivationParameter = "mandatoryAccountActivation";
  public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
@@ -133,9 +136,10 @@ public class BackendConfig
 
  private static Path baseDirectory;
  private static Path workDirectory;
- private static Path userGroupPath;
- private static Path usersPath;
- private static Path groupsPath;
+ private static Path userGroupDropboxPath;
+ private static Path userGroupIndexPath;
+ private static Path usersIndexPath;
+ private static Path groupsIndexPath;
  private static Path submissionsPath;
  private static Path submissionsHistoryPath;
  private static Path submissionsTransactionPath;
@@ -167,6 +171,8 @@ public class BackendConfig
  
  private static boolean fileLinkAllowed=true;
 
+ private static boolean publicDropboxes = false;
+ 
  private static boolean enableUnsafeRequests=true;
  private static boolean mandatoryAccountActivation=true;
  
@@ -229,16 +235,10 @@ public class BackendConfig
    return true;
   }
   
+
   if( FTPRootPathParameter.equals(param) )
   {
    ftpRootPath=FileSystems.getDefault().getPath(val);
-   
-   return true;
-  }
-
-  if( DropBoxPathParameter.equals(param) )
-  {
-   dropboxPath=FileSystems.getDefault().getPath(val);
    
    return true;
   }
@@ -331,13 +331,27 @@ public class BackendConfig
    return true;
   }
 
-
   if( UserGroupDirParameter.equals(param) )
   {
-   userGroupPath = createPath(UserGroupDirParameter,val);
+   userGroupDropboxPath = createPath(UserGroupDirParameter, val);
+   
+   return true;
+  }
+  
+  if( PublicDropboxesParameter.equals(param) )
+  {
+   publicDropboxes= "true".equalsIgnoreCase(val) || "yes".equalsIgnoreCase(val) || "1".equals(val) ;
+   
+   return true;
+  }
 
-   usersPath = userGroupPath.resolve(UsersDir);
-   groupsPath = userGroupPath.resolve(GroupsDir);
+  
+  if( UserGroupIndexDirParameter.equals(param) )
+  {
+   userGroupIndexPath = createPath(UserGroupIndexDirParameter,val);
+
+   usersIndexPath = userGroupIndexPath.resolve(UsersDir);
+   groupsIndexPath = userGroupIndexPath.resolve(GroupsDir);
    
    return true;
   }
@@ -533,33 +547,68 @@ public class BackendConfig
   return dataMountPath;
  }
 
- public static Path getUserGroupPath()
+ public static Path getUserGroupIndexPath()
  {
-  return userGroupPath;
+  return userGroupIndexPath;
  }
 
+ public static Path getUserGroupDropboxPath()
+ {
+  return userGroupDropboxPath;
+ }
  
- public static Path getUsersPath()
+ public static Path getUsersIndexPath()
  {
-  return usersPath;
+  return usersIndexPath;
  }
 
+ public static Path getGroupIndexPath()
+ {
+  return groupsIndexPath;
+ }
+
+ public static String getUserDropboxRelPath(User user)
+ {
+  String udir = user.getSecret()+"-a"+user.getId();
+  
+  return udir.substring(0,2)+"/"+udir.substring(2); 
+ }
+ 
  public static Path getUserDirPath(User user)
  {
-  return usersPath.resolve( String.valueOf( user.getId() ));
- }
-
- 
- public static Path getGroupsPath()
- {
-  return groupsPath;
+  return userGroupDropboxPath.resolve( getUserDropboxRelPath(user) );
  }
 
  public static Path getGroupDirPath( UserGroup g )
  {
-  return groupsPath.resolve( String.valueOf( g.getId() ) );
+  String udir = g.getSecret()+"-b"+g.getId();
+  
+  return userGroupDropboxPath.resolve( udir );
  }
 
+ public static Path getUserLoginLinkPath( User u )
+ {
+  String login = u.getLogin();
+  
+  if( login == null || login.length() == 0 )
+   return null;
+  
+  String firstCh = login.substring(0,1);
+  
+  return getUsersIndexPath().resolve(AccNoUtil.encode(firstCh) ).resolve( AccNoUtil.encode(login)+".login");
+ }
+ 
+ public static Path getUserEmailLinkPath( User u )
+ {
+  String email = u.getEmail();
+  
+  if( email == null || email.length() == 0 )
+   return null;
+  
+  String firstCh = email.substring(0,1);
+  
+  return getUsersIndexPath().resolve(AccNoUtil.encode(firstCh) ).resolve( AccNoUtil.encode(email)+".email");
+ }
  
  public static Path getSubmissionsPath()
  {
@@ -722,6 +771,11 @@ public class BackendConfig
   return mandatoryAccountActivation;
  }
 
+ public static boolean isPublicDropboxes()
+ {
+  return publicDropboxes;
+ }
+ 
  public static boolean isSearchEnabled()
  {
   return searchEnabled;
