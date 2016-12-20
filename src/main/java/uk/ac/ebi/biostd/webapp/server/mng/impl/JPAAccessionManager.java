@@ -7,6 +7,7 @@ import java.util.Map;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,7 +157,7 @@ public class JPAAccessionManager implements AccessionManager
     gen.setPrefix(prefix);
     gen.setSuffix(suffix);
     
-    Query gtq = em.createNamedQuery("AuthorizationTemplate.getByClassName");
+    TypedQuery<AuthorizationTemplate> gtq = em.createNamedQuery("AuthorizationTemplate.getByClassName",AuthorizationTemplate.class);
     
     gtq.setParameter("className", IdGen.class.getName());
     
@@ -178,7 +179,7 @@ public class JPAAccessionManager implements AccessionManager
     cnt.setMaxCount(0);
     cnt.setName(""+prefix+"000"+suffix);
 
-    Query ctq = em.createNamedQuery("AuthorizationTemplate.getByClassName");
+    TypedQuery<AuthorizationTemplate> ctq = em.createNamedQuery("AuthorizationTemplate.getByClassName",AuthorizationTemplate.class);
     ctq.setParameter("className", Counter.class.getName());
     
     List<AuthorizationTemplate> tpls = ctq.getResultList();

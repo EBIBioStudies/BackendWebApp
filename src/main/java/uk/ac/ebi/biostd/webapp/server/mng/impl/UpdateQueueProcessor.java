@@ -232,6 +232,7 @@ public class UpdateQueueProcessor implements Runnable
  }
  
 
+ @SuppressWarnings("unused")
  private void sinkQueue( File f ) throws IOException
  {
   int outCap = BackendConfig.getMaxUpdatesPerFile();

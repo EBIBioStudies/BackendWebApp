@@ -107,6 +107,7 @@ public class LogTree extends TreeGrid
   data.openFolder( rCh[0] );
  }
  
+ @SuppressWarnings("unused")
  private void createTreeStructure(LogNode cls, LogTreeNode node)
  {
   

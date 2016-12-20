@@ -32,7 +32,6 @@ public class SubmissionPreparePanelGWT extends VLayout
 {
  private int           n     = 1;
  private final long    key   = System.currentTimeMillis();
- private int           nMods = 1;
  private VerticalPanel panel;
 
  public SubmissionPreparePanelGWT()
@@ -255,14 +254,12 @@ public class SubmissionPreparePanelGWT extends VLayout
  private void renumberPanels()
  {
   n = 0;
-  nMods = 0;
 
   for(Widget w : panel)
   {
    if(w instanceof NewDMPanel)
    {
     n++;
-    nMods++;
 
     NewDMPanel dmp = (NewDMPanel) w;
 

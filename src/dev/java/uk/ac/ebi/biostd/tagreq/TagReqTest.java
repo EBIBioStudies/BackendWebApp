@@ -7,7 +7,7 @@ import java.util.TreeMap;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
-import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import uk.ac.ebi.biostd.model.Submission;
 
@@ -31,7 +31,7 @@ public class TagReqTest
   
   EntityManager em = fact.createEntityManager();
 
-  Query q = em.createQuery("SELECT s FROM Submission s where s.RTime > 0 AND s.RTime < 100 AND version > 0 AND s.id not in (SELECT ss.id FROM Submission ss JOIN ss.accessTags t where t.name='Public') ");
+  TypedQuery<Submission> q = em.createQuery("SELECT s FROM Submission s where s.RTime > 0 AND s.RTime < 100 AND version > 0 AND s.id not in (SELECT ss.id FROM Submission ss JOIN ss.accessTags t where t.name='Public') ",Submission.class);
   
   List<Submission> res = q.getResultList();
   
@@ -42,7 +42,7 @@ public class TagReqTest
   
   System.out.println("--------------------");
   
-  q = em.createQuery("SELECT s FROM Submission s JOIN s.accessTags t where t.name='Public'");
+  q = em.createQuery("SELECT s FROM Submission s JOIN s.accessTags t where t.name='Public'",Submission.class);
   res = q.getResultList();
   
   for( Submission s: res )
@@ -52,7 +52,7 @@ public class TagReqTest
   
   System.out.println("--------------------");
 
-  q = em.createQuery("SELECT count(s) FROM Submission s where s.id not in (SELECT ss.id FROM Submission ss JOIN ss.accessTags t where t.name='Public') ");
+  q = em.createQuery("SELECT count(s) FROM Submission s where s.id not in (SELECT ss.id FROM Submission ss JOIN ss.accessTags t where t.name='Public') ",Submission.class);
   
   System.out.println("Unpublic count: "+q.getSingleResult());
   

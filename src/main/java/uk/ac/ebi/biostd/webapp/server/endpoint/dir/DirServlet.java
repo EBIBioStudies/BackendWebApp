@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -35,6 +36,19 @@ public class DirServlet extends ServiceServlet
 {
  private static final long serialVersionUID = 1L;
 
+ private static final String SHOW_ARCHIVE_PARAMETER="showArchive";
+ private static final String PATH_PARAMETER="path";
+ 
+ private static final String USER_VIRT_DIR = "User";
+ private static final String GROUP_VIRT_DIR = "Groups";
+ 
+ private static enum DirTarget
+ {
+  DIR,
+  GROUPS,
+  ROOT
+ }
+ 
  /**
   * @see HttpServlet#HttpServlet()
   */
@@ -65,15 +79,18 @@ public class DirServlet extends ServiceServlet
   {
    case "dir":
     
-     dirList( resp, sess );
+    String shwAparm = req.getParameter(SHOW_ARCHIVE_PARAMETER);
+    boolean showArch = shwAparm != null && ( "1".equals(shwAparm) || "true".equalsIgnoreCase(shwAparm) || "yes".equalsIgnoreCase(shwAparm) );
+    
+     dirList( req.getParameter(PATH_PARAMETER), showArch, resp, sess );
     
     break;
 
    case "rename":
     
-    rename( req, resp, sess );
+     rename( req, resp, sess );
    
-   break;
+    break;
 
    case "delete":
     
@@ -231,30 +248,120 @@ public class DirServlet extends ServiceServlet
   resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"File rename success\"\n}");
  }
 
- private void dirList( HttpServletResponse resp, Session sess) throws IOException
+ private void dirList( String path, boolean showArch, HttpServletResponse resp, Session sess) throws IOException
  {
-  PrintWriter out = resp.getWriter();
-
-  out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
 
   User user = sess.getUser();
 
+  Collection<UserGroup> grps = user.getGroups();
+
+  DirTarget tgt = DirTarget.ROOT;
+  
   Path udir = BackendConfig.getUserDirPath(user);
+  
+  Path dirpath = udir;
+  Path relPath = null;
+  
+  if( path != null )
+  {
+   path = path.trim();
+   
+   int i = 0;
+   while(i < path.length() && (path.charAt(i) == '/' || path.charAt(i) == '\\'))
+    i++;
+
+   if(i > 0)
+    path = path.substring(i);
+   
+   relPath = Paths.get(path).normalize();
+   
+   String frstComp = relPath.getName(0).toString();
+   
+   if( ! ( "".equals( frstComp ) || USER_VIRT_DIR.equals( frstComp ) || GROUP_VIRT_DIR.equals( frstComp ) ) )
+   {
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+    return;
+   }
+   
+   if( USER_VIRT_DIR.equals( frstComp ) )
+   {
+    dirpath = udir.resolve(relPath.subpath(1,relPath.getNameCount()) );
+    tgt = DirTarget.DIR;
+   }
+   else if( GROUP_VIRT_DIR.equals( frstComp ) )
+   {
+    if( relPath.getNameCount() == 1 )
+     tgt = DirTarget.GROUPS;
+    else
+    {
+     String gName = relPath.getName(1).toString();
+     
+     Path gPath = null;
+     
+     if( grps != null )
+     {
+      for( UserGroup g : grps )
+      {
+       if( g.isProject() && gName.equals( g.getName().toString() ) )
+       {
+        gPath = BackendConfig.getGroupDirPath(g);
+        break;
+       }
+      }
+     }
+     
+     if( gPath == null )
+     {
+      resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+      return;
+     }
+
+     dirpath = gPath.resolveSibling(relPath.subpath(2, relPath.getNameCount()));
+     tgt = DirTarget.DIR;
+
+    }
+    
+    System.out.println( "Count="+relPath.getNameCount()+"  "+relPath.getName(0) );
+   }
+   else
+    tgt = DirTarget.DIR;
+   
+   System.out.println( "Count="+relPath.getNameCount()+"  "+relPath.getName(0) );
+   
+//   if( dirpath.getName(0) )
+   
+   if( Files.exists(udir) && ( ! dirpath.startsWith(udir) || ! Files.exists(dirpath) )  )
+   {
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+    return;
+   }
+
+  }
+  
+  PrintWriter out = resp.getWriter();
+  
+  out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
 
   boolean first = true;
 
-  if( Files.exists( udir ) )
+  if( dirpath == udir  )
   {
-   out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
-
-   listDirectory( new FileNode(udir), "/User", out);
-
-   out.print("\n}");
-
-   first = false;
+   if( Files.exists( dirpath ) )
+   {
+    out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
+    
+    listDirectory( new FileNode(dirpath), "/User", showArch, out);
+    
+    out.print("\n}");
+    
+    first = false;
+   }
+  }
+  else
+  {
+   listDirectory( new FileNode(dirpath), "", showArch, out);
   }
 
-  Collection<UserGroup> grps = user.getGroups();
 
   if(grps != null && grps.size() > 0)
   {
@@ -284,7 +391,7 @@ public class DirServlet extends ServiceServlet
      out.print(gname);
      out.print("\",\n \"files\": ");
 
-     listDirectory( new FileNode(gdir), "/Groups/" + gname, out);
+     listDirectory( new FileNode(gdir), "/Groups/" + gname, showArch,  out);
 
      out.print("\n}");
     }
@@ -358,7 +465,7 @@ public class DirServlet extends ServiceServlet
  }
  
  
- private void listDirectory( Node dir, String path, Appendable out ) throws IOException
+ private void listDirectory( Node dir, String path, boolean showArch, Appendable out ) throws IOException
  {
   out.append("[");
   
@@ -391,13 +498,18 @@ public class DirServlet extends ServiceServlet
    {
     out.append("DIR\",\n\"files\":");
     
-    listDirectory(f, npath, out);
+    listDirectory(f, npath, showArch, out);
    }
    else if( f.getFile() != null && fname.length() > 4 && fname.substring(fname.length()-4).equalsIgnoreCase(".zip") )
    {
-    out.append("ARCHIVE\",\n\"files\":");
+    out.append("ARCHIVE\"");
     
-    listDirectory( listZipArchive(f.getFile().toFile(), npath), npath, out);
+    if( showArch )
+    {
+     out.append(",\n\"files\":");
+   
+     listDirectory( listZipArchive(f.getFile().toFile(), npath), npath, showArch, out);
+    }
    }
    else
     out.append("FILE\"");

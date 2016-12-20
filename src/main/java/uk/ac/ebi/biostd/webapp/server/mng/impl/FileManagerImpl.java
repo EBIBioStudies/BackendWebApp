@@ -305,6 +305,7 @@ public class FileManagerImpl implements FileManager
   }
  }
  
+ @SuppressWarnings("unused")
  private void copyZipEntry( ZipFile zf, ZipEntry ze, File outFile ) throws IOException
  {
   byte[] buf = new byte[16384];
