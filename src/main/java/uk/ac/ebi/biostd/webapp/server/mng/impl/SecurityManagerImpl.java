@@ -797,4 +797,19 @@ public class SecurityManagerImpl implements SecurityManager
   return groupNameMap.get(name);
  }
 
+ @Override
+ public boolean mayUserReadGroupFiles(User user, UserGroup g)
+ {
+  if( user.getGroups() == null )
+   return false;
+  
+  for( UserGroup ug : user.getGroups() )
+  {
+   if( ug.getId() == g.getId() )
+    return true;
+  }
+  
+  return false;
+ }
+
 }

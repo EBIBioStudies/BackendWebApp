@@ -44,6 +44,8 @@ public interface SecurityManager
 
  boolean mayUserCreateGroup(User usr);
 
+ boolean mayUserReadGroupFiles(User user, UserGroup g);
+
 
 
 }

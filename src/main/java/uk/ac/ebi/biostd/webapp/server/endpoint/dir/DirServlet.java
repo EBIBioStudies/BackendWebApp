@@ -368,18 +368,45 @@ public class DirServlet extends ServiceServlet
    
    System.out.println( "Target: "+tgt.name()+" "+dirpath );
    
-//   if( dirpath.getName(0) )
    
-   if( Files.exists(udir) && ( ! dirpath.startsWith(udir) || ! Files.exists(dirpath) )  )
-   {
-    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
-    return;
-   }
-
   }
   
   PrintWriter out = resp.getWriter();
   
+
+  if( tgt == DirTarget.ROOT )
+  {
+   out.print("{\n\"status\": \"OK\",\n \"path\" : \"/\",\n\"files\": [\n");
+   out.print("{\n\"name\": \""+USER_VIRT_DIR+"\",\n \"type\": \"DIR\",\n\"path\": \"/"+USER_VIRT_DIR+"\"");
+   
+   if( depth > 1 )
+   {
+    out.print(",\n \"files\": [ ");
+    listPath(new FileNode(udir), depth-1 );
+    out.print("]\n");
+   }
+   
+   out.print("},\n");
+
+   out.print("{\n\"name\": \""+GROUP_VIRT_DIR+"\",\n \"type\": \"DIR\",\n\"path\": \"/"+GROUP_VIRT_DIR+"\"");
+
+   if( depth > 1 && grps != null && grps.size() > 0 )
+   {
+    out.print(",\n \"files\": [ ");
+    
+    for( UserGroup g : grps )
+    {
+     if( g.isProject() && BackendConfig.getServiceManager().getSecurityManager().mayUserReadGroupFiles(user,g) )
+     {}
+    }
+    
+    listPath(new FileNode(udir), depth-1 );
+    out.print("]\n");
+   }
+   
+  }
+  
+
   out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
 
   boolean first = true;
@@ -446,6 +473,12 @@ public class DirServlet extends ServiceServlet
 
  }
  
+ private void listPath(FileNode fileNode, int i)
+ {
+  // TODO Auto-generated method stub
+  
+ }
+
  interface Node
  {
   String getName();
