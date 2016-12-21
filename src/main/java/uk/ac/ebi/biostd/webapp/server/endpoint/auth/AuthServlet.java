@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
@@ -57,6 +58,9 @@ public class AuthServlet extends ServiceServlet
  private static final long serialVersionUID = 1L;
  
  public static final String ActionParameter="action"; 	
+ public static final String NameParameter="name";   
+ public static final String ProjectParameter="project";   
+ public static final String DescriptionParameter="description";   
  public static final String SessionIdParameter="sessid";   
  public static final String UserLoginParameter="login";   
  public static final String UserEmailParameter="email";   
@@ -118,41 +122,6 @@ public class AuthServlet extends ServiceServlet
  }
  
  
- private void process( Action act, ParameterPool prms, HttpServletRequest request, HttpServletResponse response, Response resp) throws IOException
- {
-  String prm = prms.getParameter(ActionParameter);
-  
-  if( prm != null )
-  {
-   try
-   {
-    act = Action.valueOf(prm);
-   }
-   catch( Throwable e )
-   {
-    resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "Invalid '"+prm+"' parameter value: "+prm);
-    
-    return;
-   }
-  }
-  
-  if( act == Action.check )
-   checkLoggedIn(prms, request, resp);
-  else if( act == Action.signin )
-   signin(prms, resp);
-  else if( act == Action.signout )
-   signout(prms, request, resp);
-  else if( act == Action.signup )
-   signup(prms, request, resp);
-  else if( act == Action.activate )
-   activate(prms, request, response, resp);
-  else if( act == Action.retryact )
-   retryActivation(prms, request, resp);
-  else if( act == Action.passrstreq )
-   passwordResetRequest(prms, request, resp);
-  else if( act == Action.passreset )
-   passwordReset(prms, request, resp);
- }
 
 
  /**
@@ -263,8 +232,88 @@ public class AuthServlet extends ServiceServlet
   else
    params = new HttpReqParameterPool(request);
   
-  process(act, params, request, response, resp);  
+  
+  if( act == Action.check )
+   checkLoggedIn(params, request, resp);
+  else if( act == Action.signin )
+   signin(params, resp);
+  else if( act == Action.signout )
+   signout(params, request, resp);
+  else if( act == Action.signup )
+   signup(params, request, resp);
+  else if( act == Action.activate )
+   activate(params, request, response, resp);
+  else if( act == Action.retryact )
+   retryActivation(params, request, resp);
+  else if( act == Action.passrstreq )
+   passwordResetRequest(params, request, resp);
+  else if( act == Action.passreset )
+   passwordReset(params, request, resp);
+  else if( act == Action.creategroup )
+   createGroup(params, request, resp, sess );
 
+ }
+ 
+
+
+ private void createGroup(ParameterPool prms, HttpServletRequest request, Response resp, Session sess) throws IOException
+ {
+  if(sess == null)
+  {
+   resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
+   return;
+  }
+
+  User usr = sess.getUser();
+
+  if(!usr.isSuperuser() && !BackendConfig.getServiceManager().getSecurityManager().mayUserCreateGroup(usr))
+  {
+   resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "Permission denied");
+   return;
+  }
+
+  String grName = prms.getParameter(ProjectParameter);
+  boolean isProject = "1".equals(grName) || "true".equalsIgnoreCase(grName) || "yes".equalsIgnoreCase(grName);
+  
+  grName = prms.getParameter(NameParameter);
+  String grDesc = prms.getParameter(DescriptionParameter);
+  
+  if( grName == null || (grName=grName.trim()).length() == 0 )
+  {
+   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+NameParameter+"' parameter is not defined");
+   return;
+  }
+  
+  if( BackendConfig.getServiceManager().getUserManager().getGroup(grName) != null )
+  {
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Group exits");
+   return;
+  }
+  
+  UserGroup ug = new UserGroup();
+  
+  ug.setName(grName);
+  ug.setDescription(grDesc);
+  ug.setProject(isProject);
+  ug.setOwner(usr);
+  
+  
+  try
+  {
+   BackendConfig.getServiceManager().getUserManager().addGroup(ug);
+  }
+  catch( Throwable t )
+  {
+   resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Add group error: "+t.getMessage());
+
+   if( t instanceof NullPointerException )
+    t.printStackTrace();
+   
+   return;
+  } 
+  
+  resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(NameParameter,grName));
+  
  }
  
  private void checkLoggedIn(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException

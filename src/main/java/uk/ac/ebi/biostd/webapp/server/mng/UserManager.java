@@ -5,6 +5,7 @@ import java.util.List;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
+import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserMngException;
 
@@ -31,6 +32,10 @@ public interface UserManager
  List<UserData> getAllUserData(User user);
 
  List<UserData> getUserDataByTopic(User user, String topic);
+
+ UserGroup getGroup(String grName);
+
+ void addGroup(UserGroup ug) throws UserMngException;
 
 
 }

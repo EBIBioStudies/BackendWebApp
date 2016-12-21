@@ -574,6 +574,14 @@ public class BackendConfig
   return udir.substring(0,2)+"/"+udir.substring(2); 
  }
  
+ public static String getGroupDropboxRelPath(UserGroup ug)
+ {
+  String udir = ug.getSecret()+"-b"+ug.getId();
+  
+  return udir.substring(0,2)+"/"+udir.substring(2); 
+ }
+
+ 
  public static Path getUserDirPath(User user)
  {
   return userGroupDropboxPath.resolve( getUserDropboxRelPath(user) );
@@ -581,9 +589,7 @@ public class BackendConfig
 
  public static Path getGroupDirPath( UserGroup g )
  {
-  String udir = g.getSecret()+"-b"+g.getId();
-  
-  return userGroupDropboxPath.resolve( udir );
+  return userGroupDropboxPath.resolve( getGroupDropboxRelPath(g) );
  }
 
  public static Path getUserLoginLinkPath( User u )
@@ -608,6 +614,18 @@ public class BackendConfig
   String firstCh = email.substring(0,1);
   
   return getUsersIndexPath().resolve(AccNoUtil.encode(firstCh) ).resolve( AccNoUtil.encode(email)+".email");
+ }
+ 
+ public static Path getGroupLinkPath( UserGroup u )
+ {
+  String name = u.getName();
+  
+  if( name == null || name.length() == 0 )
+   return null;
+  
+  String firstCh = name.substring(0,1);
+  
+  return getGroupIndexPath().resolve(AccNoUtil.encode(firstCh) ).resolve( AccNoUtil.encode(name));
  }
  
  public static Path getSubmissionsPath()

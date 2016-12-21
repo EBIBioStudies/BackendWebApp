@@ -38,6 +38,7 @@ public class DirServlet extends ServiceServlet
 
  private static final String SHOW_ARCHIVE_PARAMETER="showArchive";
  private static final String PATH_PARAMETER="path";
+ private static final String DEPTH_PARAMETER="depth";
  
  private static final String USER_VIRT_DIR = "User";
  private static final String GROUP_VIRT_DIR = "Groups";
@@ -81,8 +82,24 @@ public class DirServlet extends ServiceServlet
     
     String shwAparm = req.getParameter(SHOW_ARCHIVE_PARAMETER);
     boolean showArch = shwAparm != null && ( "1".equals(shwAparm) || "true".equalsIgnoreCase(shwAparm) || "yes".equalsIgnoreCase(shwAparm) );
+    String dpthPrm = req.getParameter(DEPTH_PARAMETER);
     
-     dirList( req.getParameter(PATH_PARAMETER), showArch, resp, sess );
+    int depth = 1;
+    
+    if( dpthPrm  != null )
+    {
+     try
+     {
+      depth = -1;
+      depth = Integer.parseInt(dpthPrm);
+     }
+     catch(Exception e)
+     {
+     }
+     
+    }
+    
+    dirList( req.getParameter(PATH_PARAMETER), depth, showArch, resp, sess );
     
     break;
 
@@ -248,9 +265,15 @@ public class DirServlet extends ServiceServlet
   resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"File rename success\"\n}");
  }
 
- private void dirList( String path, boolean showArch, HttpServletResponse resp, Session sess) throws IOException
+ private void dirList( String path, int depth, boolean showArch, HttpServletResponse resp, Session sess) throws IOException
  {
 
+  if( depth <= 0 )
+  {
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid depth\"\n}");
+   return;
+  }
+  
   User user = sess.getUser();
 
   Collection<UserGroup> grps = user.getGroups();
@@ -286,6 +309,13 @@ public class DirServlet extends ServiceServlet
    if( USER_VIRT_DIR.equals( frstComp ) )
    {
     dirpath = udir.resolve(relPath.subpath(1,relPath.getNameCount()) );
+    
+    if( ! dirpath.startsWith(udir) )
+    {
+     resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+     return;
+    }
+
     tgt = DirTarget.DIR;
    }
    else if( GROUP_VIRT_DIR.equals( frstComp ) )
@@ -316,17 +346,27 @@ public class DirServlet extends ServiceServlet
       return;
      }
 
-     dirpath = gPath.resolveSibling(relPath.subpath(2, relPath.getNameCount()));
+     if( relPath.getNameCount() > 2 )
+     {
+      dirpath = gPath.resolve(relPath.subpath(2, relPath.getNameCount()));
+
+      if( ! dirpath.startsWith(gPath) )
+      {
+       resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+       return;
+      }
+      
+     }
+     else
+      dirpath = gPath;
+     
      tgt = DirTarget.DIR;
 
     }
-    
-    System.out.println( "Count="+relPath.getNameCount()+"  "+relPath.getName(0) );
+
    }
-   else
-    tgt = DirTarget.DIR;
    
-   System.out.println( "Count="+relPath.getNameCount()+"  "+relPath.getName(0) );
+   System.out.println( "Target: "+tgt.name()+" "+dirpath );
    
 //   if( dirpath.getName(0) )
    

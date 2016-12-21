@@ -9,5 +9,6 @@ public enum Action
  activate,
  retryact,
  passrstreq,
- passreset
+ passreset,
+ creategroup
 }

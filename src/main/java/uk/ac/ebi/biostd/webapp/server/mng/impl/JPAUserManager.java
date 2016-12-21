@@ -13,6 +13,7 @@ import javax.persistence.Query;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
+import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
@@ -85,6 +86,12 @@ public class JPAUserManager implements UserManager, SessionListener
   return BackendConfig.getServiceManager().getSecurityManager().getUserByLogin(login);
  }
 
+ @Override
+ public UserGroup getGroup(String name)
+ {
+  return BackendConfig.getServiceManager().getSecurityManager().getGroup(name);
+ }
+
  
  private User getUserByEmailDB(String prm)
  {
@@ -138,6 +145,69 @@ public class JPAUserManager implements UserManager, SessionListener
   
  }
 
+ 
+ @Override
+ public synchronized void addGroup(UserGroup ug) throws UserMngException
+ {
+  
+  ug.setSecret( UUID.randomUUID().toString() );
+
+  try
+  {
+   BackendConfig.getServiceManager().getSecurityManager().addGroup(ug);
+  }
+  catch(ServiceException e)
+  {
+   throw new SystemUserMngException("System error",e);
+  }
+  
+  if( ! ug.isProject() )
+   return;
+  
+  Path udpth = BackendConfig.getGroupDirPath(ug);
+  Path llpth = BackendConfig.getGroupLinkPath(ug);
+  
+  
+  try
+  {
+   Files.createDirectories(udpth);
+   
+   if( BackendConfig.isPublicDropboxes() )
+   {
+    try
+    {
+     Files.setPosixFilePermissions(udpth.getParent(), BackendConfig.rwx__x__x);
+     Files.setPosixFilePermissions(udpth, BackendConfig.rwxrwxrwx);
+    }
+    catch(Exception e2)
+    {
+     Log.error("Can't set directory permissions: "+e2.getMessage());
+    }
+   }
+   
+   if( llpth != null )
+    Files.createDirectories(llpth.getParent());
+
+   try
+   {
+    if( llpth != null )
+     Files.createSymbolicLink(llpth, udpth);
+   }
+   catch(Exception e2)
+   {
+    Log.error("System can't create symbolic links: "+e2.getMessage());
+   }
+   
+  }
+  catch(IOException e)
+  {
+   Log.error("Group directories were not created: "+e.getMessage(), e);
+   e.printStackTrace();
+  }
+  
+ }
+
+ 
  
  @Override
  public void sessionOpened(User u)

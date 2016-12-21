@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.mng;
 import uk.ac.ebi.biostd.authz.AuthorizationTemplate;
 import uk.ac.ebi.biostd.authz.AuthzObject;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
 
@@ -25,6 +26,7 @@ public interface SecurityManager
  boolean mayUserCreateIdGenerator(User usr);
 
  User addUser(User u) throws ServiceException;
+ UserGroup addGroup(UserGroup ug) throws ServiceException;
 
  User getUserById( long id );
  User getUserByLogin( String login );
@@ -32,10 +34,16 @@ public interface SecurityManager
  
  User getAnonymousUser();
 
+ UserGroup getGroup(String name);
+
  boolean mayUserManageTags(User user);
 
  void removeExpiredUsers();
 
  void refreshUserCache();
+
+ boolean mayUserCreateGroup(User usr);
+
+
 
 }

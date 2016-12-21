@@ -20,6 +20,7 @@ import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.authz.AuthorizationTemplate;
 import uk.ac.ebi.biostd.authz.AuthzObject;
 import uk.ac.ebi.biostd.authz.BuiltInUsers;
+import uk.ac.ebi.biostd.authz.GroupACR;
 import uk.ac.ebi.biostd.authz.Permission;
 import uk.ac.ebi.biostd.authz.PermissionProfile;
 import uk.ac.ebi.biostd.authz.SystemAction;
@@ -53,6 +54,7 @@ public class SecurityManagerImpl implements SecurityManager
  private Map<Long, User> userMap = new HashMap<Long, User>();
  private Map<String, User> userEmailMap = new HashMap<String, User>();
  private Map<String, User> userLoginMap = new HashMap<String, User>();
+ private Map<String, UserGroup> groupNameMap = new HashMap<String, UserGroup>();
  
 
 
@@ -86,6 +88,7 @@ public class SecurityManagerImpl implements SecurityManager
    userMap.clear();
    userEmailMap.clear();
    userLoginMap.clear();
+   groupNameMap.clear();
 
    Query q = em.createQuery("SELECT usr FROM User usr");
    
@@ -94,6 +97,15 @@ public class SecurityManagerImpl implements SecurityManager
    
    for( User u : usrs )
     detachUser(u);
+   
+   q = em.createQuery("SELECT grp FROM UserGroup grp");
+   
+   @SuppressWarnings("unchecked")
+   List<UserGroup> grps = q.getResultList();
+   
+   for( UserGroup ug : grps )
+    detachGroup( ug, false );
+   
    
    q = em.createQuery("SELECT acr FROM SystemPermGrpACR acr");
    
@@ -323,6 +335,112 @@ public class SecurityManagerImpl implements SecurityManager
   return du;
  }
  
+ 
+ @Override
+ public synchronized UserGroup addGroup(UserGroup ug) throws ServiceException
+ {
+  EntityManager em = null;
+  Collection<GroupACR> newSysACR = null;
+
+  em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+
+  try
+  {
+   
+   Query ctq = em.createNamedQuery("AuthorizationTemplate.getByClassName");
+   ctq.setParameter("className", UserGroup.class.getName());
+   
+   
+   trn.begin();
+   
+   @SuppressWarnings("unchecked")
+   List<AuthorizationTemplate> tpls = ctq.getResultList();
+   
+   if( tpls.size() == 1 )
+   {
+    newSysACR = new ArrayList<GroupACR>();
+    
+    AuthorizationTemplate tpl = tpls.get(0);
+    
+    Collection<TemplatePermGrpACR> p4u =  tpl.getPermissionForGroupACRs();
+    
+    if( p4u != null )
+    {
+     for( TemplatePermGrpACR acr : p4u )
+     {
+      SystemPermGrpACR sp = new SystemPermGrpACR();
+      sp.setAction(acr.getAction());
+      sp.setAllow(acr.isAllow());
+      sp.setSubject(ug);
+      
+      em.persist(sp);
+      
+      newSysACR.add( sp );
+     }
+    }
+    
+    Collection<TemplateProfGrpACR> r4u = tpl.getProfileForGroupACRs();
+    
+    if( r4u != null )
+    {
+     for( TemplateProfGrpACR acr : r4u )
+     {
+      SystemProfGrpACR sp = new SystemProfGrpACR();
+      sp.setSubject(ug);
+      sp.setProfile(acr.getProfile());
+      
+      em.persist(sp);
+      
+      newSysACR.add( sp );
+     }
+    }
+   }
+   
+   em.persist( ug );
+   
+   trn.commit();
+  }
+  catch( Exception e )
+  {
+   try
+   {
+    if( em != null )
+    {
+     if( trn.isActive() )
+      trn.rollback();
+     
+    }
+   }
+   catch(Exception e2)
+   {
+    log.error("Error during transaction roolback: "+e2.getClass().getName()+": "+e2.getMessage());
+    e2.printStackTrace();
+   }
+
+   e.printStackTrace();
+   throw new ServiceException("JPA exception: "+e.getClass().getName()+": "+e.getMessage(),e);
+  }
+  
+  
+  UserGroup du = detachGroup(ug, false);
+
+  if( newSysACR != null )
+  {
+   
+   for( GroupACR acr : newSysACR )
+   {
+    em.detach(acr);
+    acr.setSubject( du );
+    systemACR.add(acr);
+   }
+   
+  }
+  
+  return du;
+ }
+ 
  @Override
  public synchronized void removeExpiredUsers()
  {
@@ -470,9 +588,11 @@ public class SecurityManagerImpl implements SecurityManager
   ug.setId( g.getId() );
   ug.setName( g.getName() );
   ug.setOwner( detachUser(g.getOwner()) );
-  ug.setProject( ug.isProject() );
+  ug.setProject( g.isProject() );
+  ug.setSecret(g.getSecret());
   
   groupMap.put( ug.getId(), ug);
+  groupNameMap.put( ug.getName(), ug);
 
   
   if( g.getUsers() != null && g.getUsers().size() > 0 && ldUsr )
@@ -524,6 +644,13 @@ public class SecurityManagerImpl implements SecurityManager
  {
   return checkSystemPermission(SystemAction.CREATESUBM, usr);
  }
+ 
+ @Override
+ public boolean mayUserCreateGroup(User usr)
+ {
+  return checkSystemPermission(SystemAction.CREATEGROUP, usr);
+ }
+
 
  public boolean checkSubmissionPermission(Submission sbm, User usr, SystemAction act)
  {
@@ -663,5 +790,11 @@ public class SecurityManagerImpl implements SecurityManager
  }
 
 
+
+ @Override
+ public UserGroup getGroup(String name)
+ {
+  return groupNameMap.get(name);
+ }
 
 }
