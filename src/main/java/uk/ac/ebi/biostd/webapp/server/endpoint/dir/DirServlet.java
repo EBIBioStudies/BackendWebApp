@@ -21,6 +21,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
@@ -276,14 +280,22 @@ public class DirServlet extends ServiceServlet
   
   User user = sess.getUser();
 
-  Collection<UserGroup> grps = user.getGroups();
+  Collection<UserGroup> grps = new ArrayList<UserGroup>();
 
+  for(UserGroup g : user.getGroups())
+  {
+   if(g.isProject() && BackendConfig.getServiceManager().getSecurityManager().mayUserReadGroupFiles(user, g))
+    grps.add(g);
+  }
+  
   DirTarget tgt = DirTarget.ROOT;
   
   Path udir = BackendConfig.getUserDirPath(user);
   
-  Path dirpath = udir;
-  Path relPath = null;
+  Path basepath = udir;
+  Path targetPath = udir;
+  Path virtRelPath = null;
+  Path realRelPath = null;
   
   if( path != null )
   {
@@ -296,9 +308,9 @@ public class DirServlet extends ServiceServlet
    if(i > 0)
     path = path.substring(i);
    
-   relPath = Paths.get(path).normalize();
+   virtRelPath = Paths.get(path).normalize();
    
-   String frstComp = relPath.getName(0).toString();
+   String frstComp = virtRelPath.getName(0).toString();
    
    if( ! ( "".equals( frstComp ) || USER_VIRT_DIR.equals( frstComp ) || GROUP_VIRT_DIR.equals( frstComp ) ) )
    {
@@ -308,9 +320,15 @@ public class DirServlet extends ServiceServlet
    
    if( USER_VIRT_DIR.equals( frstComp ) )
    {
-    dirpath = udir.resolve(relPath.subpath(1,relPath.getNameCount()) );
+    if( virtRelPath.getNameCount() > 1 )
+    {
+     realRelPath = virtRelPath.subpath(1,virtRelPath.getNameCount());
+     targetPath = udir.resolve( realRelPath );
+    }
+    else
+     realRelPath = Paths.get("");
     
-    if( ! dirpath.startsWith(udir) )
+    if( ! targetPath.startsWith(udir) )
     {
      resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
      return;
@@ -320,11 +338,11 @@ public class DirServlet extends ServiceServlet
    }
    else if( GROUP_VIRT_DIR.equals( frstComp ) )
    {
-    if( relPath.getNameCount() == 1 )
+    if( virtRelPath.getNameCount() == 1 )
      tgt = DirTarget.GROUPS;
     else
     {
-     String gName = relPath.getName(1).toString();
+     String gName = virtRelPath.getName(1).toString();
      
      Path gPath = null;
      
@@ -332,7 +350,7 @@ public class DirServlet extends ServiceServlet
      {
       for( UserGroup g : grps )
       {
-       if( g.isProject() && gName.equals( g.getName().toString() ) )
+       if( gName.equals( g.getName() ) )
        {
         gPath = BackendConfig.getGroupDirPath(g);
         break;
@@ -346,11 +364,14 @@ public class DirServlet extends ServiceServlet
       return;
      }
 
-     if( relPath.getNameCount() > 2 )
+     basepath = gPath;
+     
+     if( virtRelPath.getNameCount() > 2 )
      {
-      dirpath = gPath.resolve(relPath.subpath(2, relPath.getNameCount()));
+      realRelPath = virtRelPath.subpath(2,virtRelPath.getNameCount());
+      targetPath = gPath.resolve(realRelPath);
 
-      if( ! dirpath.startsWith(gPath) )
+      if( ! targetPath.startsWith(gPath) )
       {
        resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
        return;
@@ -358,7 +379,10 @@ public class DirServlet extends ServiceServlet
       
      }
      else
-      dirpath = gPath;
+     {
+      targetPath = gPath;
+      realRelPath = Paths.get("");
+     }
      
      tgt = DirTarget.DIR;
 
@@ -366,58 +390,143 @@ public class DirServlet extends ServiceServlet
 
    }
    
-   System.out.println( "Target: "+tgt.name()+" "+dirpath );
+   System.out.println( "Target: "+tgt.name()+" "+targetPath );
    
    
   }
   
   PrintWriter out = resp.getWriter();
   
+  JSONObject jsDir = new JSONObject();
+  
 
-  if( tgt == DirTarget.ROOT )
+  try
   {
-   out.print("{\n\"status\": \"OK\",\n \"path\" : \"/\",\n\"files\": [\n");
-   out.print("{\n\"name\": \""+USER_VIRT_DIR+"\",\n \"type\": \"DIR\",\n\"path\": \"/"+USER_VIRT_DIR+"\"");
-   
-   if( depth > 1 )
-   {
-    out.print(",\n \"files\": [ ");
-    listPath(new FileNode(udir), depth-1 );
-    out.print("]\n");
-   }
-   
-   out.print("},\n");
+   JSONArray files = new JSONArray();
+   jsDir.put("files", files);
+   jsDir.put("status", "OK");
 
-   out.print("{\n\"name\": \""+GROUP_VIRT_DIR+"\",\n \"type\": \"DIR\",\n\"path\": \"/"+GROUP_VIRT_DIR+"\"");
-
-   if( depth > 1 && grps != null && grps.size() > 0 )
+   if( tgt == DirTarget.ROOT )
    {
-    out.print(",\n \"files\": [ ");
-    
-    for( UserGroup g : grps )
+    jsDir.put("path", "/");
+
+    if(depth > 1 && Files.exists(udir) )
+     listPath(new FileNode(udir), "/" + USER_VIRT_DIR, USER_VIRT_DIR, files, showArch,  depth - 1);
+    else 
     {
-     if( g.isProject() && BackendConfig.getServiceManager().getSecurityManager().mayUserReadGroupFiles(user,g) )
-     {}
+     JSONObject jsUsr = new JSONObject();
+     jsUsr.put("name",USER_VIRT_DIR);
+     jsUsr.put("type","DIR");
+     jsUsr.put("path","/" + USER_VIRT_DIR); 
+     
+     if( depth > 1 )
+      jsUsr.put("files", new JSONArray());
+     
+     files.put(jsUsr);
+    }
+
+    JSONObject jsGrp = new JSONObject();
+    jsGrp.put("name",GROUP_VIRT_DIR);
+    jsGrp.put("type","DIR");
+    jsGrp.put("path","/" + GROUP_VIRT_DIR);
+
+    
+    if( depth > 1 )
+    {
+     JSONArray jsGrps = new JSONArray();
+     
+     jsGrp.put("files", jsGrps);
+     
+     listGroups(grps, jsGrps, showArch, depth - 1);
     }
     
-    listPath(new FileNode(udir), depth-1 );
-    out.print("]\n");
+    files.put(jsGrp);
    }
+   else if( tgt == DirTarget.GROUPS )
+   {
+    listGroups(grps, files, showArch, depth);
+   }
+   else
+   {
+    StringBuilder sb = new StringBuilder();
+    
+    for(int i=0; i < virtRelPath.getNameCount() ; i++ )
+     sb.append('/').append(virtRelPath.getName(i).toString() );
+    
+    if( Files.exists(targetPath) )
+     listPath(new FileNode(targetPath), sb.toString(), virtRelPath.getName(virtRelPath.getNameCount()-1).toString(), files, showArch,  depth);
+    else
+    {
+     Node nd = null;
+     
+     for(int i=0; i < realRelPath.getNameCount() ; i++ )
+     {
+      String fname = realRelPath.getName(i).toString();
+      basepath = basepath.resolve(fname);
+      
+      if( nd != null )
+      {
+       boolean found=false;
+       for( Node snd : nd.getSubnodes() )
+       {
+        if( snd.getName().equals(fname) )
+        {
+         nd=snd;
+         found=true;
+         break;
+        }
+       }
+       
+       if( ! found )
+       {
+        nd=null;
+        break;
+       }
+
+      }
+      else if( Files.exists(basepath) && ! Files.isDirectory(basepath) && fname.length() > 4 && fname.substring(fname.length()-4).equalsIgnoreCase(".zip") )
+       nd=listZipArchive(basepath.toFile(),null);
+       
+     }
+     
+     if( nd == null )
+     {
+      resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+      return;
+     }
+     
+     listPath( nd, sb.toString(), virtRelPath.getName(virtRelPath.getNameCount()-1).toString(), files, showArch,  depth);
+
+    }
+    
+    jsDir = jsDir.getJSONArray("files").getJSONObject(0);
+    jsDir.put("status", "OK");
+
+   }
+    
    
+   out.println( jsDir.toString() );
+   
+   return;
   }
-  
+  catch(JSONException e)
+  {
+   // TODO Auto-generated catch block
+   e.printStackTrace();
+  }
+
 
   out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
 
   boolean first = true;
 
-  if( dirpath == udir  )
+  if( targetPath == udir  )
   {
-   if( Files.exists( dirpath ) )
+   if( Files.exists( targetPath ) )
    {
     out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
     
-    listDirectory( new FileNode(dirpath), "/User", showArch, out);
+    listDirectory( new FileNode(targetPath), "/User", showArch, out);
     
     out.print("\n}");
     
@@ -426,7 +535,7 @@ public class DirServlet extends ServiceServlet
   }
   else
   {
-   listDirectory( new FileNode(dirpath), "", showArch, out);
+   listDirectory( new FileNode(targetPath), "", showArch, out);
   }
 
 
@@ -473,10 +582,102 @@ public class DirServlet extends ServiceServlet
 
  }
  
- private void listPath(FileNode fileNode, int i)
+ private void listGroups(Collection<UserGroup> grps, JSONArray jsGrps, boolean showArch, int dp) throws JSONException, IOException
  {
-  // TODO Auto-generated method stub
+  if( dp <= 0 )
+   return;
   
+  for(UserGroup g : grps)
+  {
+   String path = "/" + GROUP_VIRT_DIR+"/"+g.getName();
+   
+   Path gPath = BackendConfig.getGroupDirPath(g);
+   
+   if( Files.exists(gPath) )
+   {
+    if( dp >= 1 )
+     listPath(new FileNode( BackendConfig.getGroupDirPath(g) ), path, g.getName(), jsGrps, showArch,  dp - 1);
+   }
+   else
+   {
+    JSONObject jsf = new JSONObject();
+
+    jsGrps.put(jsf);
+    
+    jsf.put("name", g.getName());
+    jsf.put("path", path);
+    jsf.put("type","DIR");
+
+    if( dp > 1 )
+     jsf.put("files",new JSONArray());
+   }
+   
+   
+  }
+
+ }
+
+ private void listPath(Node node, String relPath, String fname, JSONArray filesAcc, boolean showArch, int dp) throws JSONException, IOException
+ {
+  if( dp < 0 )
+   return;
+  
+  boolean arch = false;
+  
+  if( ! node.inArchive() && !node.isDirectory() && fname.length() > 4 && fname.substring(fname.length()-4).equalsIgnoreCase(".zip") )
+   arch = true;
+   
+  
+  JSONObject jsf = new JSONObject();
+
+  filesAcc.put(jsf);
+  
+  jsf.put("name", fname);
+  jsf.put("path", relPath);
+
+  if( node.isDirectory() )
+  {
+   jsf.put("type","DIR");
+   
+   if( dp >= 1 )
+   {
+    JSONArray acc = new JSONArray();
+    
+    jsf.put("files", acc);
+
+    Collection<Node> list = node.getSubnodes();
+    
+    for( Node f : list )
+    {
+     listPath(f, relPath+"/"+f.getName(), f.getName(), acc, showArch, dp-1);
+    }
+   }
+  }
+  else if( arch )
+  {
+   jsf.put("type","ARCHIVE");
+   jsf.put("size", String.valueOf(node.getSize()));
+
+   if( showArch && dp >= 1 )
+   {
+    JSONArray acc = new JSONArray();
+    
+    jsf.put("files", acc);
+
+    Collection<Node> list = listZipArchive(node.getFile().toFile(), null).getSubnodes();
+    
+    for( Node f : list )
+    {
+     listPath(f, relPath+"/"+f.getName(), f.getName(), acc, showArch, dp-1);
+    }
+   }
+  }
+  else
+  {
+   jsf.put("size", String.valueOf(node.getSize()));
+   jsf.put("type","FILE");
+  }
+
  }
 
  interface Node
@@ -486,6 +687,7 @@ public class DirServlet extends ServiceServlet
   long getSize() throws IOException;
   Collection<Node> getSubnodes() throws IOException;
   Path getFile();
+  boolean inArchive();
  }
  
  private static class FileNode implements Node
@@ -530,6 +732,12 @@ public class DirServlet extends ServiceServlet
    
   }
 
+  @Override
+  public boolean inArchive()
+  {
+   return false;
+  }
+  
   @Override
   public Path getFile()
   {
@@ -624,6 +832,11 @@ public class DirServlet extends ServiceServlet
   {
    return null;
   }
+  @Override
+  public boolean inArchive()
+  {
+   return true;
+  }
  }
  
  private static class ZDir implements Node
@@ -639,6 +852,11 @@ public class DirServlet extends ServiceServlet
   }
   @Override
   public boolean isDirectory()
+  {
+   return true;
+  }
+  @Override
+  public boolean inArchive()
   {
    return true;
   }

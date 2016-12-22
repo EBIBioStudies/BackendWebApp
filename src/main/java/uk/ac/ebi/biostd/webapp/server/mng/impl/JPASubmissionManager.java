@@ -72,6 +72,10 @@ import uk.ac.ebi.biostd.in.pagetab.FileOccurrence;
 import uk.ac.ebi.biostd.in.pagetab.PageTabSyntaxParser;
 import uk.ac.ebi.biostd.in.pagetab.SectionOccurrence;
 import uk.ac.ebi.biostd.in.pagetab.SubmissionInfo;
+import uk.ac.ebi.biostd.model.AbstractAttribute;
+import uk.ac.ebi.biostd.model.Annotated;
+import uk.ac.ebi.biostd.model.FileRef;
+import uk.ac.ebi.biostd.model.Link;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionAttributeException;
@@ -172,6 +176,7 @@ public class JPASubmissionManager implements SubmissionManager
   parserCfg = new ParserConfig();
   
   parserCfg.setMultipleSubmissions(true);
+  parserCfg.setPreserveId(false);
   
   if( BackendConfig.getSubmissionUpdatePath() != null )
   {
@@ -754,8 +759,60 @@ public class JPASubmissionManager implements SubmissionManager
    }
   }
   
+  for( SubmissionInfo si : doc.getSubmissions() )
+  {
+   Submission s = si.getSubmission();
+   
+   s.setId(0);
+   
+   cleanId( s.getRootSection() );
+  }
+  
   return doc;
 
+ }
+ 
+ private void cleanId( Section sc )
+ {
+  sc.setId(0);
+  
+  
+  cleanAnnotationId(sc);
+  
+  if( sc.getSections() != null )
+  {
+   for( Section ssc : sc.getSections() )
+    cleanId(ssc);
+  }
+  
+  if( sc.getFileRefs() != null )
+  {
+   for( FileRef fr : sc.getFileRefs() )
+   {
+    fr.setId(0);
+    cleanAnnotationId(fr);
+   }
+  }
+  
+  if( sc.getLinks() != null )
+  {
+   for( Link ln : sc.getLinks() )
+   {
+    ln.setId(0);
+    cleanAnnotationId(ln);
+   }
+  }
+ }
+ 
+ private void cleanAnnotationId( Annotated ent )
+ {
+  if( ent.getAttributes() != null )
+  {
+   for( AbstractAttribute aa: ent.getAttributes() )
+   {
+    aa.setId(0);
+   }
+  }
  }
  
  private boolean checkAccNoPfxSfx( SubmissionInfo si )
@@ -860,7 +917,6 @@ public class JPASubmissionManager implements SubmissionManager
     return res;
    }
    
-
    
    if( doc.getSubmissions() == null || doc.getSubmissions().size() == 0 )
    {
