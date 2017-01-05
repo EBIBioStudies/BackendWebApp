@@ -29,10 +29,11 @@ public interface FileManager
  void copyDirectory(Path src, Path dstp) throws IOException;
 
  void linkOrCopy(Path origDir, FilePointer filePointer) throws IOException;
-
  void linkOrCopyDirectory(Path srcDir, Path dstDir) throws IOException;
+ void linkOrCopyFile(Path origFile, Path destFile) throws IOException;
 
  void deleteDirectory(Path origDir) throws IOException;
  void deleteDirectoryContents(Path origDir) throws IOException;
+
 
 }

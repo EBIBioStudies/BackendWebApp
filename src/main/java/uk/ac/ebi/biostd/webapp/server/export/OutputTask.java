@@ -34,6 +34,8 @@ public class OutputTask implements Runnable
   
   Thread.currentThread().setName(name);
   
+  boolean terminate=false;
+  
   while( true )
   {
    Object o = null;
@@ -53,6 +55,9 @@ public class OutputTask implements Runnable
    String str = o.toString();
    
    if( str == null )
+    terminate = true;
+   
+   if( terminate && inQueue.size() == 0  )
    {
     putIntoQueue(new ControlMessage(Type.OUTPUT_FINISH, this));
     return;

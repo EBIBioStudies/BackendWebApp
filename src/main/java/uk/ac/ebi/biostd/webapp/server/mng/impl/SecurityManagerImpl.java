@@ -811,5 +811,11 @@ public class SecurityManagerImpl implements SecurityManager
   
   return false;
  }
+ 
+ @Override
+ public boolean mayUserWriteGroupFiles(User user, UserGroup g)
+ {
+  return mayUserReadGroupFiles( user,  g ); //To be changed for something smart
+ }
 
 }

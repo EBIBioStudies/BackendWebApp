@@ -9,8 +9,14 @@ import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
 
 public interface SecurityManager
 {
+ void init();
  void applyTemplate(AuthzObject gen, AuthorizationTemplate authorizationTemplate);
 
+ void removeExpiredUsers();
+ 
+ void refreshUserCache();
+
+ 
  boolean mayUserReadSubmission(Submission sub, User user);
 
  boolean mayUserCreateSubmission(User usr);
@@ -21,7 +27,6 @@ public interface SecurityManager
 
  boolean mayEveryoneReadSubmission(Submission submission);
 
- void init();
 
  boolean mayUserCreateIdGenerator(User usr);
 
@@ -38,13 +43,11 @@ public interface SecurityManager
 
  boolean mayUserManageTags(User user);
 
- void removeExpiredUsers();
-
- void refreshUserCache();
 
  boolean mayUserCreateGroup(User usr);
 
  boolean mayUserReadGroupFiles(User user, UserGroup g);
+ boolean mayUserWriteGroupFiles(User user, UserGroup group);
 
 
 

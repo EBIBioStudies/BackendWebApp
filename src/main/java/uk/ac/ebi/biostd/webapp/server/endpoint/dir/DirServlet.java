@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -44,15 +43,8 @@ public class DirServlet extends ServiceServlet
  private static final String PATH_PARAMETER="path";
  private static final String DEPTH_PARAMETER="depth";
  
- private static final String USER_VIRT_DIR = "User";
- private static final String GROUP_VIRT_DIR = "Groups";
- 
- private static enum DirTarget
- {
-  DIR,
-  GROUPS,
-  ROOT
- }
+ public static final String USER_VIRT_DIR = "User";
+ public static final String GROUP_VIRT_DIR = "Groups";
  
  /**
   * @see HttpServlet#HttpServlet()
@@ -75,64 +67,132 @@ public class DirServlet extends ServiceServlet
    return;
   }
   
+  
   String cmd = req.getParameter("command");
   
-  if( cmd == null )
-   cmd = "dir";
   
-  switch(cmd)
+  if( cmd ==null || Operation.DIR.name().equalsIgnoreCase(cmd) )
   {
-   case "dir":
-    
-    String shwAparm = req.getParameter(SHOW_ARCHIVE_PARAMETER);
-    boolean showArch = shwAparm != null && ( "1".equals(shwAparm) || "true".equalsIgnoreCase(shwAparm) || "yes".equalsIgnoreCase(shwAparm) );
-    String dpthPrm = req.getParameter(DEPTH_PARAMETER);
-    
-    int depth = 1;
-    
-    if( dpthPrm  != null )
+   String shwAparm = req.getParameter(SHOW_ARCHIVE_PARAMETER);
+   boolean showArch = shwAparm != null && ( "1".equals(shwAparm) || "true".equalsIgnoreCase(shwAparm) || "yes".equalsIgnoreCase(shwAparm) );
+   String dpthPrm = req.getParameter(DEPTH_PARAMETER);
+   
+   int depth = 1;
+   
+   if( dpthPrm  != null )
+   {
+    try
     {
-     try
-     {
-      depth = -1;
-      depth = Integer.parseInt(dpthPrm);
-     }
-     catch(Exception e)
-     {
-     }
-     
+     depth = -1;
+     depth = Integer.parseInt(dpthPrm);
+    }
+    catch(Exception e)
+    {
     }
     
-    dirList( req.getParameter(PATH_PARAMETER), depth, showArch, resp, sess );
-    
-    break;
-
-   case "rename":
-    
-     rename( req, resp, sess );
+   }
    
-    break;
-
-   case "delete":
-    
-    delete( req, resp, sess );
-   
-   break;
-
-    
-   default:
-    
-    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    
-    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid command\"\n}");
-    return;
-
+   dirList( req.getParameter(PATH_PARAMETER), depth, showArch, resp, sess );
   }
-  
+  else if( Operation.MOVE.name().equalsIgnoreCase(cmd) )
+  {
+   move( req, resp, sess, false );
+  }
+  else if( Operation.COPY.name().equalsIgnoreCase(cmd) )
+  {
+   move( req, resp, sess, true );
+  }
+  else if( Operation.RM.name().equalsIgnoreCase(cmd) )
+  {
+   delete( req, resp, sess, false );
+  }
+  else if( Operation.RMDIR.name().equalsIgnoreCase(cmd) )
+  {
+   delete( req, resp, sess, true );
+  }
+  else if( Operation.MKDIR.name().equalsIgnoreCase(cmd) )
+  {
+   mkdir( req, resp, sess );
+  }
+  else
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid command\"\n}");
+  }
  
  }
+ 
+ 
+ private void mkdir(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
+ {
+  String from = req.getParameter("dir");
 
- private void delete(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
+  if(from == null)
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"'dir' parameter is not defined\"\n}");
+   return;
+  }
+
+  
+  PathInfo dirPi = null;
+  
+  boolean pathOk=false;
+  
+  try
+  {
+   dirPi = PathInfo.getPathInfo(from, sess.getUser());
+   
+   if( dirPi.getTarget() == PathTarget.USERREL || dirPi.getTarget() == PathTarget.GROUPREL  )
+   {
+    if( Files.exists(dirPi.getRealPath() ) )
+    {
+     resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+     resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Path exists\"\n}");
+     return;
+    }
+    
+    pathOk = true;
+   }
+  }
+  catch(Exception e)
+  {
+  }
+  
+  if( ! pathOk )
+  {
+   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+   return;
+  }
+  
+  
+  if( dirPi.getTarget() == PathTarget.GROUPREL && ! BackendConfig.getServiceManager().getSecurityManager().mayUserWriteGroupFiles(sess.getUser(), dirPi.getGroup() ) )
+  {
+   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"User has no permission to create directories in group's directory\"\n}");
+   return;
+  }
+  
+  try
+  {
+   Files.createDirectories(dirPi.getRealPath());
+  }
+  catch(Exception e)
+  {
+   resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Directory create failed\"\n}");
+   return;
+  }
+   
+   resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"Directory create success\"\n}");
+ }
+
+
+ private void delete(HttpServletRequest req, HttpServletResponse resp, Session sess, boolean rmdir ) throws IOException
  {
   String from = req.getParameter("file");
 
@@ -144,48 +204,85 @@ public class DirServlet extends ServiceServlet
    return;
   }
 
-  Path udir = BackendConfig.getUserDirPath(sess.getUser());
-
-
-  int i = 0;
-  while(i < from.length() && (from.charAt(i) == '/' || from.charAt(i) == '\\'))
-   i++;
-
-  if(i > 0)
-   from = from.substring(i);
   
-  Path fp = udir.resolve(from).normalize();
+  PathInfo delPi = null;
   
-  if( ! fp.startsWith(udir) )
+  boolean pathOk=false;
+  
+  try
+  {
+   delPi = PathInfo.getPathInfo(from, sess.getUser());
+   
+   if( delPi.getTarget() == PathTarget.USERREL || delPi.getTarget() == PathTarget.GROUPREL  )
+   {
+    if( ! Files.exists(delPi.getRealPath() ) )
+    {
+     resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+     resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File doesn't exist\"\n}");
+     return;
+    }
+    
+    pathOk = true;
+   }
+  }
+  catch(Exception e)
+  {
+  }
+  
+  if( ! pathOk )
   {
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-
-   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'file' parameter value\"\n}");
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
    return;
   }
   
-  File f = fp.toFile();
   
-  if( ! f.exists() )
+  if( delPi.getTarget() == PathTarget.GROUPREL && ! BackendConfig.getServiceManager().getSecurityManager().mayUserWriteGroupFiles(sess.getUser(), delPi.getGroup() ) )
   {
    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-
-   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File not found\"\n}");
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"User has no permission to delete files in group's directory\"\n}");
    return;
   }
   
-  if( ! f.delete() )
+  try
+  {
+  if( rmdir )
+  {
+   if( ! Files.isDirectory(delPi.getRealPath()) )
+   {
+    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Path must point to directory\"\n}");
+    return;
+   }
+   
+    
+   BackendConfig.getServiceManager().getFileManager().deleteDirectory(delPi.getRealPath());
+  }
+  else
+  {
+   if( Files.isDirectory(delPi.getRealPath()) )
+   {
+    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Path must point to regular file\"\n}");
+    return;
+   }
+
+   Files.delete(delPi.getRealPath());
+  }
+  }
+  catch(Exception e)
   {
    resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 
    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File delete failed\"\n}");
    return;
   }
-  
-  resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"File delete success\"\n}");
+   
+   resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"File delete success\"\n}");
  }
  
- private void rename(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
+ 
+ private void move(HttpServletRequest req, HttpServletResponse resp, Session sess, boolean copy) throws IOException
  {
   String from = req.getParameter("from");
 
@@ -194,36 +291,6 @@ public class DirServlet extends ServiceServlet
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 
    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"'from' parameter is not defined\"\n}");
-   return;
-  }
-
-  Path udir = BackendConfig.getUserDirPath(sess.getUser());
-
-
-  int i = 0;
-  while(i < from.length() && (from.charAt(i) == '/' || from.charAt(i) == '\\'))
-   i++;
-
-  if(i > 0)
-   from = from.substring(i);
-  
-  Path fp = udir.resolve(from).normalize();
-  
-  if( ! fp.startsWith(udir) )
-  {
-   resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-
-   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'from' parameter value\"\n}");
-   return;
-  }
-  
-  File f = fp.toFile();
-  
-  if( ! f.exists() )
-  {
-   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-
-   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File not found\"\n}");
    return;
   }
   
@@ -236,38 +303,105 @@ public class DirServlet extends ServiceServlet
    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"'to' parameter is not defined \"\n}");
    return;
   }
-
-  i = 0;
-  while(i < to.length() && (to.charAt(i) == '/' || to.charAt(i) == '\\'))
-   i++;
-
-  if(i > 0)
-   to = to.substring(i);
   
-  Path toFp = udir.resolve(to).normalize();
+  PathInfo fromPi = null;
+  PathInfo toPi = null;
   
-  if( ! toFp.startsWith(udir) )
+  boolean pathOk=false;
+  
+  try
+  {
+   fromPi = PathInfo.getPathInfo(from, sess.getUser());
+   
+   if( fromPi.getTarget() == PathTarget.USERREL || fromPi.getTarget() == PathTarget.GROUPREL  )
+   {
+    if( ! Files.exists(fromPi.getRealPath() ) )
+    {
+     resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+     resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Source file doesn't exist\"\n}");
+     return;
+    }
+    
+    pathOk = true;
+   }
+  }
+  catch(Exception e)
+  {
+  }
+
+  if( ! pathOk )
   {
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-
-   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'to' parameter value\"\n}");
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid source path\"\n}");
    return;
   }
   
-  File toFile = toFp.toFile();
+  pathOk=false;
   
-  toFile.getParentFile().mkdirs();
-  
-  if( ! f.renameTo(toFile) )
+  try
   {
-   resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+   toPi = PathInfo.getPathInfo(to, sess.getUser());
+   
+   if( toPi.getTarget() == PathTarget.USERREL || toPi.getTarget() == PathTarget.GROUPREL  )
+   {
+    if( Files.exists(toPi.getRealPath() ) )
+    {
+     resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+     resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Destination file already exists\"\n}");
+     return;
+    }
+    
+    pathOk = true;
+   }
+  }
+  catch(Exception e)
+  {
+  }
 
-   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"File rename failed\"\n}");
+  if( ! pathOk )
+  {
+   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid destination path\"\n}");
+   return;
+  }
+
+  if( toPi.getTarget() == PathTarget.GROUPREL && ! BackendConfig.getServiceManager().getSecurityManager().mayUserWriteGroupFiles(sess.getUser(), toPi.getGroup() ) )
+  {
+   resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"User has no permission to write files to group's directory\"\n}");
    return;
   }
   
-  resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"File rename success\"\n}");
+  try
+  {
+   if( copy )
+   {
+    if( Files.isDirectory(fromPi.getRealPath()))
+     BackendConfig.getServiceManager().getFileManager().linkOrCopyDirectory(fromPi.getRealPath(), toPi.getRealPath());
+    else
+     BackendConfig.getServiceManager().getFileManager().linkOrCopyFile(fromPi.getRealPath(), toPi.getRealPath());
+   }
+   else
+   {
+    Files.createDirectories(toPi.getRealPath().getParent());
+    Files.move(fromPi.getRealPath(), toPi.getRealPath());
+   }
+   
+  }
+  catch(Exception e)
+  {
+   e.printStackTrace();
+   
+   resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Operation failed\"\n}");
+   return;
+  }
+
+  
+  resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"Operation success\"\n}");
  }
+
+ 
 
  private void dirList( String path, int depth, boolean showArch, HttpServletResponse resp, Session sess) throws IOException
  {
@@ -280,120 +414,20 @@ public class DirServlet extends ServiceServlet
   
   User user = sess.getUser();
 
-  Collection<UserGroup> grps = new ArrayList<UserGroup>();
-
-  for(UserGroup g : user.getGroups())
+  PathInfo pi = null;
+  
+  try
   {
-   if(g.isProject() && BackendConfig.getServiceManager().getSecurityManager().mayUserReadGroupFiles(user, g))
-    grps.add(g);
+   pi = PathInfo.getPathInfo(path, user);
+  }
+  catch(InvalidPathException e1)
+  {
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+   return;
   }
   
-  DirTarget tgt = DirTarget.ROOT;
   
-  Path udir = BackendConfig.getUserDirPath(user);
-  
-  Path basepath = udir;
-  Path targetPath = udir;
-  Path virtRelPath = null;
-  Path realRelPath = null;
-  
-  if( path != null )
-  {
-   path = path.trim();
-   
-   int i = 0;
-   while(i < path.length() && (path.charAt(i) == '/' || path.charAt(i) == '\\'))
-    i++;
-
-   if(i > 0)
-    path = path.substring(i);
-   
-   virtRelPath = Paths.get(path).normalize();
-   
-   String frstComp = virtRelPath.getName(0).toString();
-   
-   if( ! ( "".equals( frstComp ) || USER_VIRT_DIR.equals( frstComp ) || GROUP_VIRT_DIR.equals( frstComp ) ) )
-   {
-    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
-    return;
-   }
-   
-   if( USER_VIRT_DIR.equals( frstComp ) )
-   {
-    if( virtRelPath.getNameCount() > 1 )
-    {
-     realRelPath = virtRelPath.subpath(1,virtRelPath.getNameCount());
-     targetPath = udir.resolve( realRelPath );
-    }
-    else
-     realRelPath = Paths.get("");
-    
-    if( ! targetPath.startsWith(udir) )
-    {
-     resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
-     return;
-    }
-
-    tgt = DirTarget.DIR;
-   }
-   else if( GROUP_VIRT_DIR.equals( frstComp ) )
-   {
-    if( virtRelPath.getNameCount() == 1 )
-     tgt = DirTarget.GROUPS;
-    else
-    {
-     String gName = virtRelPath.getName(1).toString();
-     
-     Path gPath = null;
-     
-     if( grps != null )
-     {
-      for( UserGroup g : grps )
-      {
-       if( gName.equals( g.getName() ) )
-       {
-        gPath = BackendConfig.getGroupDirPath(g);
-        break;
-       }
-      }
-     }
-     
-     if( gPath == null )
-     {
-      resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
-      return;
-     }
-
-     basepath = gPath;
-     
-     if( virtRelPath.getNameCount() > 2 )
-     {
-      realRelPath = virtRelPath.subpath(2,virtRelPath.getNameCount());
-      targetPath = gPath.resolve(realRelPath);
-
-      if( ! targetPath.startsWith(gPath) )
-      {
-       resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
-       return;
-      }
-      
-     }
-     else
-     {
-      targetPath = gPath;
-      realRelPath = Paths.get("");
-     }
-     
-     tgt = DirTarget.DIR;
-
-    }
-
-   }
-   
-   System.out.println( "Target: "+tgt.name()+" "+targetPath );
-   
-   
-  }
+  System.out.println(pi);
   
   PrintWriter out = resp.getWriter();
   
@@ -406,10 +440,12 @@ public class DirServlet extends ServiceServlet
    jsDir.put("files", files);
    jsDir.put("status", "OK");
 
-   if( tgt == DirTarget.ROOT )
+   if( pi.getTarget() == PathTarget.ROOT )
    {
     jsDir.put("path", "/");
 
+    Path udir = BackendConfig.getUserDirPath(user);
+    
     if(depth > 1 && Files.exists(udir) )
      listPath(new FileNode(udir), "/" + USER_VIRT_DIR, USER_VIRT_DIR, files, showArch,  depth - 1);
     else 
@@ -437,27 +473,40 @@ public class DirServlet extends ServiceServlet
      
      jsGrp.put("files", jsGrps);
      
+     Collection<UserGroup> grps = new ArrayList<UserGroup>();
+
+     for(UserGroup g : user.getGroups())
+     {
+      if(g.isProject() && BackendConfig.getServiceManager().getSecurityManager().mayUserReadGroupFiles(user, g))
+       grps.add(g);
+     }
+     
      listGroups(grps, jsGrps, showArch, depth - 1);
     }
     
     files.put(jsGrp);
    }
-   else if( tgt == DirTarget.GROUPS )
+   else if( pi.getTarget() == PathTarget.GROUPS )
    {
-    listGroups(grps, files, showArch, depth);
+    listGroups(pi.getGroups(), files, showArch, depth);
    }
-   else
+   else if( (pi.getTarget() != PathTarget.GROUP && pi.getTarget() != PathTarget.USER) || Files.exists(pi.getRealPath()) ) //if( pi.getTarget() == DirTarget.GROUPREL || pi.getTarget() == DirTarget.USERREL )
    {
     StringBuilder sb = new StringBuilder();
     
-    for(int i=0; i < virtRelPath.getNameCount() ; i++ )
-     sb.append('/').append(virtRelPath.getName(i).toString() );
+    Path virtPath = pi.getVirtPath();
     
-    if( Files.exists(targetPath) )
-     listPath(new FileNode(targetPath), sb.toString(), virtRelPath.getName(virtRelPath.getNameCount()-1).toString(), files, showArch,  depth);
+    for(int i=0; i < virtPath.getNameCount() ; i++ )
+     sb.append('/').append(virtPath.getName(i).toString() );
+    
+    if( Files.exists(pi.getRealPath()) )
+     listPath(new FileNode(pi.getRealPath()), sb.toString(), virtPath.getName(virtPath.getNameCount()-1).toString(), files, showArch,  depth);
     else
     {
      Node nd = null;
+     
+     Path basepath = pi.getRealBasePath();
+     Path realRelPath = pi.getRelPath();
      
      for(int i=0; i < realRelPath.getNameCount() ; i++ )
      {
@@ -495,7 +544,7 @@ public class DirServlet extends ServiceServlet
       return;
      }
      
-     listPath( nd, sb.toString(), virtRelPath.getName(virtRelPath.getNameCount()-1).toString(), files, showArch,  depth);
+     listPath( nd, sb.toString(), virtPath.getName(virtPath.getNameCount()-1).toString(), files, showArch,  depth);
 
     }
     
@@ -514,71 +563,8 @@ public class DirServlet extends ServiceServlet
    // TODO Auto-generated catch block
    e.printStackTrace();
   }
-
-
-  out.print("{\n\"status\": \"OK\",\n\"files\": [\n");
-
-  boolean first = true;
-
-  if( targetPath == udir  )
-  {
-   if( Files.exists( targetPath ) )
-   {
-    out.print("{\n\"name\": \"User\",\n \"type\": \"DIR\",\n\"path\": \"/User\",\n \"files\": ");
-    
-    listDirectory( new FileNode(targetPath), "/User", showArch, out);
-    
-    out.print("\n}");
-    
-    first = false;
-   }
-  }
-  else
-  {
-   listDirectory( new FileNode(targetPath), "", showArch, out);
-  }
-
-
-  if(grps != null && grps.size() > 0)
-  {
-   if(!first)
-    out.print(",\n");
-
-   out.print("{\n\"name\": \"Groups\",\n \"type\": \"DIR\",\n\"path\": \"/Groups\",\n \"files\": [\n");
-
-   first = true;
-
-   for(UserGroup g : grps)
-   {
-    Path gdir = BackendConfig.getGroupDirPath(g);
-
-    if( Files.exists( gdir ))
-    {
-     if(!first)
-      out.print(",\n");
-     else
-      first = false;
-
-     String gname = StringUtils.escapeCStr(g.getName());
-
-     out.print("{\n\"name\": \""); // User\",\n type: \"DIR\",\npath: \"/User\",\n files: ");
-     out.print(gname);
-     out.print("\",\n \"type\": \"DIR\",\n\"path\": \"/Groups/"); ///User\",\n files: ");
-     out.print(gname);
-     out.print("\",\n \"files\": ");
-
-     listDirectory( new FileNode(gdir), "/Groups/" + gname, showArch,  out);
-
-     out.print("\n}");
-    }
-
-   }
-
-   out.print("\n}");
-
-  }
-
-  out.print("\n]\n}\n");
+  
+  
 
  }
  
@@ -745,7 +731,7 @@ public class DirServlet extends ServiceServlet
   }
  }
  
- 
+ /*
  private void listDirectory( Node dir, String path, boolean showArch, Appendable out ) throws IOException
  {
   out.append("[");
@@ -801,7 +787,8 @@ public class DirServlet extends ServiceServlet
   out.append("\n]\n");
 
  }
-
+*/
+ 
  private static class ZFile implements Node
  {
   long size;

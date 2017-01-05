@@ -443,7 +443,26 @@ public class FileManagerImpl implements FileManager
   return null;
  }
 
-
+ @Override
+ public void linkOrCopyFile(Path origFile, Path destFile) throws IOException
+ {
+  Files.createDirectories( destFile.getParent() );
+  
+  if( BackendConfig.isLinkingAllowed() )
+  {
+   try
+   {
+    Files.createLink(destFile, origFile);
+   }
+   catch(IOException e)
+   {
+    Files.copy(origFile, destFile);
+   }
+  }
+  else
+   Files.copy(origFile, destFile);
+ }
+ 
  @Override
  public void linkOrCopy(Path origDir, FilePointer fp) throws IOException
  {
