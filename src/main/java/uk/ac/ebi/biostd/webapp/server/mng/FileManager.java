@@ -6,20 +6,23 @@ import java.nio.file.Path;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.util.FilePointer;
+import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 
 public interface FileManager
 {
 
- FilePointer checkFileExist(String name, Path basePath);
+ FilePointer checkFileExist(String name, PathInfo rootPi, User user) throws InvalidPathException;
+ FilePointer checkFileExist(String name, PathInfo rootPI, User usr, Submission oldSbm);
 
- FilePointer checkFileExist(String name, User usr);
+// FilePointer checkFileExist(String name, Path basePath);
+// FilePointer checkFileExist(String name, User usr);
 
- FilePointer checkFileExist(String name, Submission oldSbm);
 
 // File createSubmissionDir(Submission submission);
 // File createSubmissionDirFile(Submission submission, String srcFileName);
 
- void copyToSubmissionFilesDir(Submission submission, FilePointer filePointer) throws IOException;
+// void copyToSubmissionFilesDir(Submission submission, FilePointer filePointer) throws IOException;
 
 
  void moveToHistory(Submission submission) throws IOException;
@@ -29,6 +32,7 @@ public interface FileManager
  void copyDirectory(Path src, Path dstp) throws IOException;
 
  void linkOrCopy(Path origDir, FilePointer filePointer) throws IOException;
+
  void linkOrCopyDirectory(Path srcDir, Path dstDir) throws IOException;
  void linkOrCopyFile(Path origFile, Path destFile) throws IOException;
 

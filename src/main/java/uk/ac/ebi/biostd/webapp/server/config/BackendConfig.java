@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.config;
 import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.HashMap;
@@ -648,6 +649,11 @@ public class BackendConfig
  {
   return getSubmissionPath(sbm).resolve( SubmissionFilesDir );
  }
+ 
+ public static Path getSubmissionFilesUGPath(long groupID)
+ {
+  return Paths.get( groupID>0?Long.toHexString(groupID):"u");
+ }
 
  public static Path getSubmissionPublicFTPPath(Submission sbm)
  {
@@ -854,4 +860,6 @@ public class BackendConfig
  {
   return subscriptionEmailSubject;
  }
+
+
 }

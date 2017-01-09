@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +23,9 @@ import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.util.FilePointer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
+import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
+import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 
 public class FileManagerImpl implements FileManager
 {
@@ -34,34 +36,19 @@ public class FileManagerImpl implements FileManager
   if( log == null )
    log = LoggerFactory.getLogger(getClass());
  }
- 
+
+/* 
  @Override
  public FilePointer checkFileExist(String name, User usr)
  {
   return checkFileExist(name, BackendConfig.getUserDirPath(usr));
  }
-
+*/
+ 
  @Override
- public FilePointer checkFileExist(String name, Submission sbm)
+ public FilePointer checkFileExist(String name, PathInfo rootPI, User usr, Submission sbm)
  {
-  Path  p = BackendConfig.getSubmissionFilesPath(sbm).resolve(name);
-  
-  if( ! Files.exists(p) || ! Files.isRegularFile(p) )
-   return null;
-  
-  FilePointer fp = new FilePointer();
-  
-  Path relPath = FileSystems.getDefault().getPath(name);
-  
-  Path rt = relPath.getRoot();
-  
-  if( rt != null )
-   relPath = rt.relativize(relPath);
-  
-  fp.setFullPath(p);
-  fp.setRelativePath(relPath);
-  
-  return fp;
+  return checkFileExist(BackendConfig.getSubmissionFilesPath(sbm), rootPI.getRelPath(), rootPI.getGroup()!=null?rootPI.getGroup().getId():0);
  }
 
  @Override
@@ -238,17 +225,8 @@ public class FileManagerImpl implements FileManager
   
  }
 
-// @Override
-// public File createSubmissionDir(Submission submission)
-// {
-//  File sbmFileDir = BackendConfig.getSubmissionFilesDir(submission);
-//  
-//  sbmFileDir.mkdirs();
-//  
-//  return BackendConfig.getSubmissionDir(submission);
-// }
 
- 
+/*
  @Override
  public void copyToSubmissionFilesDir(Submission submission, FilePointer fp) throws IOException
  {
@@ -304,6 +282,7 @@ public class FileManagerImpl implements FileManager
    }
   }
  }
+ */
  
  @SuppressWarnings("unused")
  private void copyZipEntry( ZipFile zf, ZipEntry ze, File outFile ) throws IOException
@@ -345,11 +324,25 @@ public class FileManagerImpl implements FileManager
 
  }
  
+ 
+ @Override
+ public FilePointer checkFileExist(String name, PathInfo rootPI, User user ) throws InvalidPathException
+ {
+  PathInfo filePi = PathInfo.getPathInfo(name, user);
+  
+  if( filePi.isAbsolute() )
+   return checkFileExist(filePi.getRealBasePath(), filePi.getRelPath(), filePi.getGroup()==null?0:filePi.getGroup().getId());
+
+  return checkFileExist(rootPI.getRealBasePath(), rootPI.getRelPath().resolve(filePi.getRelPath()), filePi.getGroup()==null?0:filePi.getGroup().getId());
+
+ }
+
+/* 
  @Override
  public FilePointer checkFileExist(String name, Path basePath)
  {
   Path relPath = FileSystems.getDefault().getPath(name);
-  
+
   Path rt = relPath.getRoot();
   
   if( rt != null )
@@ -360,53 +353,94 @@ public class FileManagerImpl implements FileManager
   if( ! fullPath.startsWith(basePath) )
    return null;
   
-  File f = fullPath.toFile();
+  return checkFileExist(fullPath,relPath, 0);
+ }
+*/
+ 
+ private FilePointer checkFileExist(Path basePath, Path relPath, long grpId)
+ {
   
-  if( f.exists() )
-  {
-   FilePointer fp = new FilePointer();
-   
-   fp.setFullPath(fullPath);
-   fp.setRelativePath(relPath);
-   fp.setDirectory( f.isDirectory() );
-   fp.setSize( f.length() );
-   
-   return fp;
-  }
+  StringBuilder sb = new StringBuilder();
   
-  for( int i=0; i < relPath.getNameCount()-1; i++ )
+  sb.append(BackendConfig.getSubmissionFilesUGPath(grpId));
+  
+  FilePointer fp = null;
+  
+  
+  int i=0;
+  for( ; i < relPath.getNameCount()-1; i++ )
   {
-   String part = relPath.getName(i).toString();
+   String part = FileNameUtil.encode( relPath.getName(i).toString() );
    
-   if( part.length() > 4 && part.substring(part.length()-4).equalsIgnoreCase(".zip") )
+   sb.append('/').append(part);
+   
+   
+   if( part.length() > 4 && part.substring(part.length()-4).equalsIgnoreCase(".zip")  )
    {
-    FilePointer fp = checkZipPath(fullPath, fullPath.getNameCount()-relPath.getNameCount()+i+1);
+    Path cPath = basePath.resolve(sb.toString());
+
+    if(  ! Files.isDirectory( cPath ) )
+    {
+     fp = checkZipPath(cPath, relPath.subpath(i+1, relPath.getNameCount()));
+     break;
+    }
     
-    fp.setRelativePath(relPath);
-    
-    return fp;
+
    }
   }
   
-  return null;
+  while( i < relPath.getNameCount() )
+  {
+   sb.append('/').append( FileNameUtil.encode( relPath.getName(i).toString() ) );
+   i++;
+  }
+
+  String realRelPath = sb.toString();
+  
+  if( fp == null )
+  {
+   Path finalPath = basePath.resolve(realRelPath);
+   
+   if( ! Files.exists( finalPath ) )
+    return null;
+   
+   fp = new FilePointer();
+
+   fp.setDirectory( Files.isDirectory(finalPath) );
+
+   try
+   {
+    fp.setSize( Files.size(finalPath) );
+   }
+   catch(IOException e)
+   {
+    e.printStackTrace();
+    
+    return null;
+   }
+   
+  }
+  
+  fp.setRealRelativePath(realRelPath);
+  fp.setRelativePath(relPath);
+  fp.setGroupID(grpId);
+
+  return fp;
  }
 
- private FilePointer checkZipPath(Path fullPath, int intStart)
+ private FilePointer checkZipPath(Path archPath, Path archRelPath)
  {
   
   String intFileName = null;
   
   StringBuilder sb = new StringBuilder();
 
-  for( int i=intStart; i < fullPath.getNameCount(); i++ )
-   sb.append(fullPath.getName(i).toString()).append('/');
-  
+  for( int i=0; i < archRelPath.getNameCount(); i++ )
+   sb.append(archRelPath.getName(i).toString()).append('/');
+
   sb.setLength( sb.length()-1);
   
   intFileName = sb.toString();
-  
-  Path archPath = fullPath.getRoot().resolve( fullPath.subpath(0, intStart) );
-  
   
   try ( ZipFile zf = new ZipFile(archPath.toFile()) )
   {
@@ -425,7 +459,6 @@ public class FileManagerImpl implements FileManager
      
      fp.setArchivePath(archPath);
      fp.setArchiveInternalPath(zeName);
-     fp.setFullPath(fullPath);
      fp.setDirectory(ze.isDirectory());
 
      fp.setSize( ze.getSize() );
@@ -464,13 +497,13 @@ public class FileManagerImpl implements FileManager
  }
  
  @Override
- public void linkOrCopy(Path origDir, FilePointer fp) throws IOException
+ public void linkOrCopy(Path dstBase, FilePointer fp) throws IOException
  {
-  Path outPath = origDir.resolve(fp.getRelativePath());
+  Path outPath = dstBase.resolve( BackendConfig.getSubmissionFilesUGPath(fp.getGroupID()) );
+  outPath = outPath.resolve(fp.getRelativePath());
 
   if( fp.getArchivePath() == null )
   {
-//   File outFile = new File( sbmFile, fp.getRelativePath().toString() );
 
    if( fp.isDirectory() )
    {

@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.endpoint.dir;
+package uk.ac.ebi.biostd.webapp.server.vfs;
 
 public class InvalidPathException extends Exception
 {

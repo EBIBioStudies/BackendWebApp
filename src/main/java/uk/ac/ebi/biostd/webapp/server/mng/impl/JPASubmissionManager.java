@@ -9,7 +9,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
@@ -91,7 +90,6 @@ import uk.ac.ebi.biostd.treelog.SimpleLogNode;
 import uk.ac.ebi.biostd.treelog.SubmissionReport;
 import uk.ac.ebi.biostd.util.DataFormat;
 import uk.ac.ebi.biostd.util.FilePointer;
-import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
@@ -99,6 +97,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.SubmissionSearchRequest;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 import uk.ac.ebi.biostd.webapp.shared.tags.TagRef;
 import uk.ac.ebi.mg.spreadsheet.SpreadsheetReader;
 import uk.ac.ebi.mg.spreadsheet.cell.XSVCellStream;
@@ -1067,32 +1066,15 @@ public class JPASubmissionManager implements SubmissionManager
      submission.setRTime( System.currentTimeMillis() / 1000 );
     }
     
-    Path relPath = null;
+//    Path relPath = null;
     String rootPathAttr = submission.getRootPath();
 
+    PathInfo rootPI = null;
     
-    if( rootPathAttr != null )
-    {
-     String path = StringUtils.stripLeadingSlashes(rootPathAttr);
-
-     if( path.length() > 0 )
-      relPath  = FileSystems.getDefault().getPath(path).normalize();
-    }
-    
-    Path basePath = usrPath;
-    
-    if( relPath != null )
-    {
-     basePath = usrPath.resolve(relPath).normalize();
+    if( rootPathAttr == null )
+     rootPathAttr = "";
      
-     if( ! basePath.startsWith(usrPath) )
-     {
-      si.getLogNode().log(Level.ERROR, "Invalid submission root path '" + rootPathAttr + "'");
-      submOk = false;
-      break;
-     }
-
-    }
+    rootPI = PathInfo.getPathInfo(rootPathAttr, usr);
     
     
     if( submission.getAccessTags() != null )
@@ -1112,11 +1094,13 @@ public class JPASubmissionManager implements SubmissionManager
     {
      for(FileOccurrence foc : si.getFileOccurrences())
      {
-      FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), basePath);
+      FilePointer fp = fileMngr.checkFileExist(foc.getFileRef().getName(), rootPI, usr);
 
       if(fp != null )
+      {
        foc.setFilePointer(fp);
-      else if(oldSbm != null && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), oldSbm)) != null)
+      }
+      else if(oldSbm != null && (fp = fileMngr.checkFileExist(foc.getFileRef().getName(), rootPI, usr, oldSbm)) != null)
       {
        foc.setFilePointer(fp);
        foc.getLogNode().log(Level.WARN, "File reference '" + foc.getFileRef().getName() + "' can't be resolved in user directory. Using file from previous submission");
@@ -1977,6 +1961,7 @@ public class JPASubmissionManager implements SubmissionManager
      
      fo.getFileRef().setSize(fo.getFilePointer().getSize());
      fo.getFileRef().setDirectory(fo.getFilePointer().isDirectory());
+     fo.getFileRef().setPath( fo.getFilePointer().getRealRelativePath() );
 
      if(foSet.contains(fo))
       continue;

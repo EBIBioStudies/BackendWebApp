@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostd.webapp.server.endpoint.dir;
+package uk.ac.ebi.biostd.webapp.server.vfs;
 
 import static uk.ac.ebi.biostd.webapp.server.endpoint.dir.DirServlet.GROUP_VIRT_DIR;
 import static uk.ac.ebi.biostd.webapp.server.endpoint.dir.DirServlet.USER_VIRT_DIR;
@@ -14,8 +14,9 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public class PathInfo
 {
-
+ 
  private PathTarget target;
+ private boolean absolute;
  private Path realPath;
  private Path virtPath;
  private Path realBasePath;
@@ -32,6 +33,16 @@ public class PathInfo
  public void setTarget(PathTarget target)
  {
   this.target = target;
+ }
+
+ public boolean isAbsolute()
+ {
+  return absolute;
+ }
+
+ public void setAbsolute(boolean absolute)
+ {
+  this.absolute = absolute;
  }
 
  public Path getRelPath()
@@ -135,6 +146,8 @@ public class PathInfo
   virtRelPath = Paths.get(path).normalize();
   String frstComp = virtRelPath.getName(0).toString();
  
+  pi.setAbsolute(absolute);
+  
   if(!absolute)
   {
    Path udir = BackendConfig.getUserDirPath(user);

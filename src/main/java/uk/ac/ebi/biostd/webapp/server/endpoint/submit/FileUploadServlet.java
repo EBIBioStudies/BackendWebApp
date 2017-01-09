@@ -19,6 +19,10 @@ import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
+import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathTarget;
 
 /**
  * Servlet implementation class FileUploadServlet
@@ -79,41 +83,60 @@ public class FileUploadServlet extends ServiceServlet
    return;
   }
   
-  User user  = sess.getUser();
   
-  Path udir = BackendConfig.getUserDirPath( user );
-  
-  int pos = fileName.lastIndexOf('/');
-  
-  if( pos > 0 )
-   fileName = fileName.substring(pos+1);
-  
-  pos = fileName.lastIndexOf('\\');
-  
-  if( pos > 0 )
-   fileName = fileName.substring(pos+1);
-
-  if( relPath != null )
+  if( fileName.indexOf('/') >= 0 )
   {
-   int i=0;
-   while( i < relPath.length() && ( relPath.charAt(i) == '/' || relPath.charAt(i) == '\\' )  )
-    i++;
-   
-   if( i > 0 )
-    relPath = relPath.substring(i);
+   respond(HttpServletResponse.SC_BAD_REQUEST, "Can't retrive file name", resp);
+   return;
   }
 
+  PathInfo pi = null;
   
-  Path fPath = udir;
+  if( relPath == null )
+   relPath = "";
   
-  if( relPath != null )
-   fPath = fPath.resolve(relPath);
-  
-  fPath = fPath.resolve(fileName).normalize();
-  
-  if( ! fPath.startsWith(udir) )
+  User user  = sess.getUser();
+
+  try
   {
-   respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid relative path", resp);
+   pi = PathInfo.getPathInfo(relPath, user);
+  }
+  catch(InvalidPathException e)
+  {
+   respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid path", resp);
+   return;
+  }
+
+  if( pi.getTarget() == PathTarget.GROUPS || pi.getTarget() == PathTarget.ROOT )
+  {
+   respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid path", resp);
+   return;
+  }
+  
+  if( pi.getTarget() == PathTarget.GROUP || pi.getTarget() == PathTarget.GROUPREL )
+  {
+   if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserWriteGroupFiles( user, pi.getGroup() )  )
+   {
+    respond(HttpServletResponse.SC_FORBIDDEN, "User has no permission to write to group's directory", resp);
+    return;
+   }
+  }
+  
+  Path fPath = pi.getRealBasePath();
+  
+  Path rlPath = pi.getRelPath();
+  
+  for(int i=0; i< rlPath.getNameCount(); i++ )
+   fPath = fPath.resolve(FileNameUtil.encode( rlPath.getName(i).toString() ));
+  
+  rlPath = fPath;
+  
+  fPath = fPath.resolve(FileNameUtil.encode(fileName)).normalize();
+
+  
+  if( ! rlPath.startsWith(pi.getRealBasePath()) || ! fPath.startsWith(fPath) )
+  {
+   respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid file name", resp);
    return;
   }
   
@@ -127,7 +150,7 @@ public class FileUploadServlet extends ServiceServlet
   
   outFile.getParentFile().mkdirs();
   
-  byte[] buf = new byte[1024*4];
+  byte[] buf = new byte[1024*1024];
   
   try(FileOutputStream fos = new FileOutputStream(outFile) )
   {

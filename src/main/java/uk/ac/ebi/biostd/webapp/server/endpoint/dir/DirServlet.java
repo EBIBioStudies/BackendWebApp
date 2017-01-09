@@ -30,6 +30,9 @@ import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathTarget;
 
 /**
  * Servlet implementation class DirServlet
