@@ -1115,7 +1115,7 @@ public class JPASubmissionManager implements SubmissionManager
        submOk = false;
       }
       
-      if( fp != null && fp.getSize() == 0 )
+      if( fp != null && fp.getSize() == 0 && ! fp.isDirectory() )
        foc.getLogNode().log(Level.WARN, "File reference: '" + foc.getFileRef().getName() + "' File size is zero");
 
      }
@@ -1961,7 +1961,6 @@ public class JPASubmissionManager implements SubmissionManager
      
      fo.getFileRef().setSize(fo.getFilePointer().getSize());
      fo.getFileRef().setDirectory(fo.getFilePointer().isDirectory());
-     fo.getFileRef().setPath( fo.getFilePointer().getRealRelativePath() );
 
      if(foSet.contains(fo))
       continue;
@@ -1970,7 +1969,9 @@ public class JPASubmissionManager implements SubmissionManager
 
      try
      {
-      fileMngr.linkOrCopy(sbmFilesPath, fo.getFilePointer());
+      String dstRelPath = fileMngr.linkOrCopy(sbmFilesPath, fo.getFilePointer());
+      
+      fo.getFileRef().setPath( dstRelPath  );
       si.getLogNode().log(Level.INFO, "File '" + fo.getFileRef().getName() + "' transfer success");
      }
      catch(IOException e)

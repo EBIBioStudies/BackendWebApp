@@ -116,34 +116,45 @@ public class PathInfo
   this.group = group;
  }
 
+// public PathInfo resolve( PathInfo relPI, User user )
+// {
+//  PathInfo npi = new PathInfo();
+//  
+//  if( getTarget() == PathTarget.ROOT )
+//  {
+//   
+//  }
+// }
  public static PathInfo getPathInfo(String path, User user) throws InvalidPathException
+ {
+  if(path == null)
+  {
+   PathInfo pi = new PathInfo();
+
+   pi.setTarget(PathTarget.ROOT);
+   pi.setVirtPath(Paths.get("/"));
+   
+   return pi;
+  }
+  
+  
+  path = path.trim();
+
+  return getPathInfo( Paths.get(path), user );
+ }
+ 
+ public static PathInfo getPathInfo(Path pth, User user) throws InvalidPathException
  {
   PathInfo pi = new PathInfo();
 
   Path virtRelPath = null;
 
-  if(path == null)
-  {
-   pi.setTarget(PathTarget.ROOT);
-   
-   return pi;
-  }
 
-  path = path.trim();
+  boolean absolute = pth.getRoot()!=null;
 
-  int i = 0;
-  while(i < path.length() && (path.charAt(i) == '/' || path.charAt(i) == '\\'))
-   i++;
 
-  boolean absolute = false;
+  virtRelPath = pth.normalize();
 
-  if(i > 0)
-  {
-   path = path.substring(i);
-   absolute = true;
-  }
-
-  virtRelPath = Paths.get(path).normalize();
   String frstComp = virtRelPath.getName(0).toString();
  
   pi.setAbsolute(absolute);

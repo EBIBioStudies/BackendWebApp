@@ -9,6 +9,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Enumeration;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.util.FilePointer;
+import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
@@ -45,11 +47,6 @@ public class FileManagerImpl implements FileManager
  }
 */
  
- @Override
- public FilePointer checkFileExist(String name, PathInfo rootPI, User usr, Submission sbm)
- {
-  return checkFileExist(BackendConfig.getSubmissionFilesPath(sbm), rootPI.getRelPath(), rootPI.getGroup()!=null?rootPI.getGroup().getId():0);
- }
 
  @Override
  public void moveDirectory( Path src, Path dst ) throws IOException
@@ -326,62 +323,80 @@ public class FileManagerImpl implements FileManager
  
  
  @Override
+ public FilePointer checkFileExist(String name, PathInfo rootPI, User user, Submission sbm) throws InvalidPathException
+ {
+  FilePointer fp=null;
+
+  PathInfo filePi = PathInfo.getPathInfo(name, user);
+
+  if( !filePi.isAbsolute() )
+   filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getRelPath()), user);
+  
+  long grpId = filePi.getGroup()==null?0:filePi.getGroup().getId();
+
+  Path srcPath = BackendConfig.getSubmissionFilesPath(sbm).resolve( BackendConfig.getSubmissionFilesUGPath(grpId) );
+  fp =  checkFileExist(srcPath, filePi.getRelPath());
+  
+  if( fp != null )
+   fp.setGroupID(grpId);
+
+  return fp;
+ }
+
+ @Override
  public FilePointer checkFileExist(String name, PathInfo rootPI, User user ) throws InvalidPathException
  {
   PathInfo filePi = PathInfo.getPathInfo(name, user);
   
-  if( filePi.isAbsolute() )
-   return checkFileExist(filePi.getRealBasePath(), filePi.getRelPath(), filePi.getGroup()==null?0:filePi.getGroup().getId());
+  FilePointer fp=null;
+  
+  if( !filePi.isAbsolute() )
+   filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getRelPath()), user);
 
-  return checkFileExist(rootPI.getRealBasePath(), rootPI.getRelPath().resolve(filePi.getRelPath()), filePi.getGroup()==null?0:filePi.getGroup().getId());
-
+  fp =  checkFileExist(filePi.getRealBasePath(), filePi.getRelPath());
+  
+//  if( filePi.isAbsolute() )
+//  else
+//  {
+//   filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getVirtPath()), user);
+//   fp = checkFileExist(rootPI.getRealBasePath(), rootPI.getRelPath().resolve(filePi.getRelPath()));
+//  }
+  
+  if( fp != null )
+   fp.setGroupID(filePi.getGroup()==null?0:filePi.getGroup().getId());
+  
+  return fp;
  }
 
-/* 
- @Override
- public FilePointer checkFileExist(String name, Path basePath)
- {
-  Path relPath = FileSystems.getDefault().getPath(name);
-
-  Path rt = relPath.getRoot();
-  
-  if( rt != null )
-   relPath = rt.relativize(relPath);
-  
-  Path fullPath = basePath.resolve(relPath).normalize();
-  
-  if( ! fullPath.startsWith(basePath) )
-   return null;
-  
-  return checkFileExist(fullPath,relPath, 0);
- }
-*/
  
- private FilePointer checkFileExist(Path basePath, Path relPath, long grpId)
+ private FilePointer checkFileExist(Path basePath, Path relPath)
  {
-  
-  StringBuilder sb = new StringBuilder();
-  
-  sb.append(BackendConfig.getSubmissionFilesUGPath(grpId));
-  
   FilePointer fp = null;
   
+  Path cPath = null;
   
   int i=0;
   for( ; i < relPath.getNameCount()-1; i++ )
   {
    String part = FileNameUtil.encode( relPath.getName(i).toString() );
    
-   sb.append('/').append(part);
-   
+   if( cPath == null )
+    cPath = Paths.get(part);
+   else
+    cPath = cPath.resolve(part);
+  
    
    if( part.length() > 4 && part.substring(part.length()-4).equalsIgnoreCase(".zip")  )
    {
-    Path cPath = basePath.resolve(sb.toString());
+    Path zipPath = basePath.resolve(cPath);
 
-    if(  ! Files.isDirectory( cPath ) )
+    if( ! Files.exists(zipPath) )
+     return null;
+    
+    if( ! Files.isDirectory( zipPath ) )
     {
-     fp = checkZipPath(cPath, relPath.subpath(i+1, relPath.getNameCount()));
+     fp = checkZipPath(zipPath, relPath.subpath(i+1, relPath.getNameCount()));
+     i++;
      break;
     }
     
@@ -391,15 +406,13 @@ public class FileManagerImpl implements FileManager
   
   while( i < relPath.getNameCount() )
   {
-   sb.append('/').append( FileNameUtil.encode( relPath.getName(i).toString() ) );
+   cPath = cPath.resolve(FileNameUtil.encode( relPath.getName(i).toString() ));
    i++;
   }
-
-  String realRelPath = sb.toString();
   
   if( fp == null )
   {
-   Path finalPath = basePath.resolve(realRelPath);
+   Path finalPath = basePath.resolve(cPath);
    
    if( ! Files.exists( finalPath ) )
     return null;
@@ -419,11 +432,10 @@ public class FileManagerImpl implements FileManager
     return null;
    }
    
+   fp.setFullPath(finalPath);
   }
   
-  fp.setRealRelativePath(realRelPath);
-  fp.setRelativePath(relPath);
-  fp.setGroupID(grpId);
+  fp.setRelativePath(cPath);
 
   return fp;
  }
@@ -496,15 +508,34 @@ public class FileManagerImpl implements FileManager
    Files.copy(origFile, destFile);
  }
  
- @Override
- public void linkOrCopy(Path dstBase, FilePointer fp) throws IOException
+ private String pathToString(Path p)
  {
-  Path outPath = dstBase.resolve( BackendConfig.getSubmissionFilesUGPath(fp.getGroupID()) );
-  outPath = outPath.resolve(fp.getRelativePath());
+  StringBuilder sb = new StringBuilder();
+
+  if( p.isAbsolute() )
+   sb.append('/');
+  
+  for( int i=0; i < p.getNameCount(); i++ )
+  {
+   if( i != 0  )
+    sb.append('/');
+   
+   sb.append(p.getName(i));
+  }
+  
+  return sb.toString();
+ }
+ 
+ @Override
+ public String linkOrCopy(Path dstBase, FilePointer fp) throws IOException
+ {
+  Path outRelPath = BackendConfig.getSubmissionFilesUGPath(fp.getGroupID()).resolve(fp.getRelativePath());
+  Path outPath = dstBase.resolve(outRelPath);
+
 
   if( fp.getArchivePath() == null )
   {
-
+   
    if( fp.isDirectory() )
    {
     Files.createDirectories( outPath.getParent() );
@@ -537,11 +568,15 @@ public class FileManagerImpl implements FileManager
   }
   else
   {
+
+   
    try ( ZipFile zf = new ZipFile(fp.getArchivePath().toFile()) )
    {
     if( fp.isDirectory() )
     {
      Enumeration<? extends ZipEntry> eset = zf.entries();
+     
+     boolean copied=false;
      
      while( eset.hasMoreElements() )
      {
@@ -549,8 +584,13 @@ public class FileManagerImpl implements FileManager
       
       if( ze.getName().startsWith(fp.getArchiveInternalPath()) && ! ze.isDirectory() )
       {
-       Path outFile = outPath.resolve(ze.getName().substring(fp.getArchiveInternalPath().length()));
-       copyZipEntry( zf, ze, outFile );
+       Path entPath = outPath;
+       
+       for( String part : StringUtils.splitString(ze.getName().substring(fp.getArchiveInternalPath().length()),'/') )
+        entPath = entPath.resolve(FileNameUtil.encode(part) );
+       
+       copyZipEntry( zf, ze, entPath );
+       copied = true;
       }
      }
     }
@@ -558,6 +598,8 @@ public class FileManagerImpl implements FileManager
      copyZipEntry(zf, zf.getEntry( fp.getArchiveInternalPath() ), outPath);
    }
   }
+  
+  return pathToString(outRelPath);
  }
 
 

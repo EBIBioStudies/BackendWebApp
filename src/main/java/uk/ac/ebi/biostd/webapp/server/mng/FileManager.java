@@ -13,7 +13,7 @@ public interface FileManager
 {
 
  FilePointer checkFileExist(String name, PathInfo rootPi, User user) throws InvalidPathException;
- FilePointer checkFileExist(String name, PathInfo rootPI, User usr, Submission oldSbm);
+ FilePointer checkFileExist(String name, PathInfo rootPI, User usr, Submission oldSbm) throws InvalidPathException;
 
 // FilePointer checkFileExist(String name, Path basePath);
 // FilePointer checkFileExist(String name, User usr);
@@ -31,7 +31,7 @@ public interface FileManager
 
  void copyDirectory(Path src, Path dstp) throws IOException;
 
- void linkOrCopy(Path origDir, FilePointer filePointer) throws IOException;
+ String linkOrCopy(Path origDir, FilePointer filePointer) throws IOException;
 
  void linkOrCopyDirectory(Path srcDir, Path dstDir) throws IOException;
  void linkOrCopyFile(Path origFile, Path destFile) throws IOException;
