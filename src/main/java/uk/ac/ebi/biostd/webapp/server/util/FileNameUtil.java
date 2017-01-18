@@ -1,13 +1,92 @@
 package uk.ac.ebi.biostd.webapp.server.util;
 
+import java.nio.file.Path;
+
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
+
+
 public class FileNameUtil
 {
+ public static String encode( String src )
+ {
+  if( BackendConfig.isEncodeFileNames() )
+   return encodeString(src);
+  
+  return src;
+ }
+ 
+ public static String decode( String src )
+ {
+  if( BackendConfig.isEncodeFileNames() )
+   return decodeString(src);
+  
+  return src;
+ }
+
+
+ public static boolean checkUnicodeFN( String fn )
+ {
+  
+  for( int i=0; i < fn.length(); i++ )
+  {
+   char ch = fn.charAt(i);
+   
+   if( ! ( Character.isLetterOrDigit(ch) || ( ch < 127 && ! Character.isISOControl(ch) && ch != '\t' && ch != '\\' ) ) )
+    return false;
+  }
+  
+  return true;
+ }
+ 
  private static boolean checkCharClass( char ch )
  {
   return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '-' || ch == '_'|| ch == ' ';
  }
  
- public static String encode( String src )
+ public static boolean encodeOrCheck(PathInfo pi)
+ {
+  Path rl = pi.getRelPath();
+  int len = rl.getNameCount();
+
+  if( BackendConfig.isEncodeFileNames() )
+  {
+   Path erl = null;
+   
+   for(int i=0; i < len; i++ )
+   {
+    String nm = rl.getName(i).toString();
+    String enm = encodeString(nm);
+    
+    if( nm != enm &&  erl == null  )
+      erl = rl.subpath(0, i);
+    
+    if( erl != null )
+     erl = erl.resolve(enm);
+   }
+   
+   if( erl != null )
+   {
+    pi.setRelPath(erl);
+    pi.setRealPath( pi.getRealBasePath().resolve(pi.getRelPath()));
+   }
+  }
+  else 
+  {
+   for(int i=0; i < len; i++ )
+   {
+    String nm = rl.getName(i).toString();
+   
+    if( ! checkUnicodeFN(nm) )
+     return false;
+   }
+  }
+   
+  return true;
+ }
+
+ 
+ public static String encodeString( String src )
  {
   StringBuilder sb = null;
   
@@ -45,6 +124,93 @@ public class FileNameUtil
   return src;
  }
  
+ public static String decodeString( String s )
+ {
+  StringBuilder sb = null;
+  
+  int pos=0;
+  int len = s.length();
+  
+  while( pos < len )
+  {
+   int epos = s.indexOf('!', pos);
+   
+   if( epos < 0 )
+   {
+    if( sb == null )
+     return s;
+    else
+    {
+     sb.append(s.substring(pos));
+     return sb.toString();
+    }
+   }
+   else
+   {
+    if( epos+4 > len )
+     return s;
+    
+    int acc = 0;
+    
+    int pt = convChar(s.charAt(epos+1));
+    
+    if( pt < 0 )
+     return s;
+    
+    acc += pt<<12;
+    
+    pt = convChar(s.charAt(epos+2));
+    
+    if( pt < 0 )
+     return s;
+    
+    acc += pt<<6;
+
+    
+    pt = convChar(s.charAt(epos+3));
+    
+    if( pt < 0 )
+     return s;
+    
+    acc += pt;
+    
+    if( sb == null )
+     sb = new StringBuilder();
+    
+    sb.append(s.substring(pos,epos));
+    sb.append((char)acc);
+    
+    pos = epos+4;
+   }
+   
+  }
+  
+  if( sb != null )
+   return sb.toString();
+  
+  return s;
+ }
+ 
+ private static int convChar( int ch )
+ {
+  if( ch >= '0' && ch <= '9' )
+   return ch-'0';
+  
+  if( ch >= 'a' && ch <= 'z' )
+   return ch-'a'+10;
+
+  if( ch >= 'A' && ch <= 'Z' )
+   return ch-'A'+36;
+  
+  if( ch == '~' )
+   return 62;
+  
+  if( ch == '!' )
+   return 63;
+
+  return -1;
+ }
+ 
  private static char convBits( int bits )
  {
   if( bits < 10 )
@@ -67,4 +233,6 @@ public class FileNameUtil
 
   return '!';
  }
+
+
 }

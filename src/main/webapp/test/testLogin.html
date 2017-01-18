@@ -27,6 +27,7 @@ String.prototype.escapeSpecialChars = function() {
  function doLogin() {
   var uname = document.getElementById("login").value;
   var pass = document.getElementById("password").value;
+  var hash = document.getElementById("passhash").value;
 
   var xmlhttp = new XMLHttpRequest();
 
@@ -89,7 +90,11 @@ String.prototype.escapeSpecialChars = function() {
   xmlhttp.open("POST", "../auth/signin", true);
   xmlhttp.setRequestHeader("Content-type", "application/json");
 
-  xmlhttp.send("{ login: \"" + uname.escapeSpecialChars() + "\", password: \""
+  if( hash.length > 0 )
+   xmlhttp.send("{ login: \"" + uname.escapeSpecialChars() + "\", passhash: \""
+     + hash.escapeSpecialChars() + "\"}");
+  else
+   xmlhttp.send("{ login: \"" + uname.escapeSpecialChars() + "\", password: \""
     + pass.escapeSpecialChars() + "\"}");
  }
 
@@ -135,6 +140,10 @@ showMessage();
 <tr>
 <td>Password : </td><td><input type="password" id="password" style="width: 200px"/></td>
 </tr>
+<tr>
+<td>PassHash : </td><td><input type="text" id="passhash" style="width: 200px"/></td>
+</tr>
+
 <tr>
 <td><button onClick="doLogin()">Login</button></td><td><button onClick="doCheck()">Check</button></td>
 </tr>

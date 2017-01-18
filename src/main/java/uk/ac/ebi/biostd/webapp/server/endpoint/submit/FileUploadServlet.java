@@ -61,41 +61,12 @@ public class FileUploadServlet extends ServiceServlet
   String relPath = req.getParameter("relPath");
   String fileName = req.getParameter("fileName");
 
-  Part filePart = req.getPart("file"); // Retrieves <input type="file" name="file">
-  
-  if( filePart == null )
-  {
-   respond(HttpServletResponse.SC_BAD_REQUEST, "Can't retrive file body", resp);
-   return;
-  }
-  
-  InputStream fileContent = filePart.getInputStream();
-  
-  if( fileName == null || fileName.trim().length() == 0 )
-   fileName = filePart.getSubmittedFileName();
-  
-  if( fileName != null )
-   fileName = fileName.trim();
-  
-  if( fileName == null || fileName.length() == 0 )
-  {
-   respond(HttpServletResponse.SC_BAD_REQUEST, "Can't retrive file name", resp);
-   return;
-  }
-  
-  
-  if( fileName.indexOf('/') >= 0 )
-  {
-   respond(HttpServletResponse.SC_BAD_REQUEST, "Can't retrive file name", resp);
-   return;
-  }
-
-  PathInfo pi = null;
-  
   if( relPath == null )
    relPath = "";
   
   User user  = sess.getUser();
+  
+  PathInfo pi = null;
 
   try
   {
@@ -106,74 +77,130 @@ public class FileUploadServlet extends ServiceServlet
    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid path", resp);
    return;
   }
-
-  if( pi.getTarget() == PathTarget.GROUPS || pi.getTarget() == PathTarget.ROOT )
+  
+  Path basePath = pi.getRealBasePath();
+  
+  Path rlPath = pi.getRelPath();
+  
+  for(int i=0; i< rlPath.getNameCount(); i++ )
+  {
+   String ptName = rlPath.getName(i).toString();
+   
+   if( BackendConfig.isEncodeFileNames() )
+    ptName = FileNameUtil.encode( ptName );
+   else if( ! FileNameUtil.checkUnicodeFN(ptName) )
+   {
+    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid path cheracters: "+relPath, resp);
+    return;
+   }
+   
+   basePath = basePath.resolve(ptName);
+  }
+  
+  if( ! basePath.startsWith(pi.getRealBasePath()) )
   {
    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid path", resp);
    return;
   }
   
-  if( pi.getTarget() == PathTarget.GROUP || pi.getTarget() == PathTarget.GROUPREL )
+  int count=0;
+  
+  for( Part filePart : req.getParts() )
   {
-   if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserWriteGroupFiles( user, pi.getGroup() )  )
+   if( ! "file".equals(filePart.getName() ) )
+    continue;
+   
+   count++;
+   
+   InputStream fileContent = filePart.getInputStream();
+   
+   if( count > 1 || fileName == null || fileName.trim().length() == 0 )
+    fileName = filePart.getSubmittedFileName();
+   
+   if( fileName != null )
+    fileName = fileName.trim();
+   
+   if( fileName == null || fileName.length() == 0 )
    {
-    respond(HttpServletResponse.SC_FORBIDDEN, "User has no permission to write to group's directory", resp);
+    respond(HttpServletResponse.SC_BAD_REQUEST, "Can't retrive file name", resp);
     return;
    }
-  }
-  
-  Path fPath = pi.getRealBasePath();
-  
-  Path rlPath = pi.getRelPath();
-  
-  for(int i=0; i< rlPath.getNameCount(); i++ )
-   fPath = fPath.resolve(FileNameUtil.encode( rlPath.getName(i).toString() ));
-  
-  rlPath = fPath;
-  
-  fPath = fPath.resolve(FileNameUtil.encode(fileName)).normalize();
-
-  
-  if( ! rlPath.startsWith(pi.getRealBasePath()) || ! fPath.startsWith(fPath) )
-  {
-   respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid file name", resp);
-   return;
-  }
-  
-  File outFile = fPath.toFile();
-  
-  if( outFile.isDirectory() )
-  {
-   respond(HttpServletResponse.SC_FORBIDDEN, "Output file is directory", resp);
-   return;
-  }
-  
-  outFile.getParentFile().mkdirs();
-  
-  byte[] buf = new byte[1024*1024];
-  
-  try(FileOutputStream fos = new FileOutputStream(outFile) )
-  {
-   int read;
-   while( ( read = fileContent.read(buf) ) > 0 )
+   
+   if( fileName.indexOf('/') >= 0 )
    {
-    fos.write(buf, 0, read);
+    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid file name: "+fileName, resp);
+    return;
+   }
+
+
+   if( pi.getTarget() == PathTarget.GROUPS || pi.getTarget() == PathTarget.ROOT )
+   {
+    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid path", resp);
+    return;
+   }
+   
+   if( pi.getTarget() == PathTarget.GROUP || pi.getTarget() == PathTarget.GROUPREL )
+   {
+    if( ! BackendConfig.getServiceManager().getSecurityManager().mayUserWriteGroupFiles( user, pi.getGroup() )  )
+    {
+     respond(HttpServletResponse.SC_FORBIDDEN, "User has no permission to write to group's directory", resp);
+     return;
+    }
+   }
+   
+   if( BackendConfig.isEncodeFileNames() )
+    fileName = FileNameUtil.encode(fileName);
+   else if( ! FileNameUtil.checkUnicodeFN(fileName) )
+   {
+    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid file name characters: "+fileName, resp);
+    return;
+   }
+   
+   Path fPath = basePath.resolve(fileName).normalize();
+
+   
+   if( ! fPath.startsWith(basePath) )
+   {
+    respond(HttpServletResponse.SC_BAD_REQUEST, "Invalid file name", resp);
+    return;
+   }
+   
+   File outFile = fPath.toFile();
+   
+   if( outFile.isDirectory() )
+   {
+    respond(HttpServletResponse.SC_FORBIDDEN, "Output file is directory", resp);
+    return;
+   }
+   
+   outFile.getParentFile().mkdirs();
+   
+   byte[] buf = new byte[1024*1024];
+   
+   try(FileOutputStream fos = new FileOutputStream(outFile) )
+   {
+    int read;
+    while( ( read = fileContent.read(buf) ) > 0 )
+    {
+     fos.write(buf, 0, read);
+    }
+    
+   }
+   catch(Exception e)
+   {
+    respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "File write error: "+e.getMessage(), resp);
+    
+    outFile.delete();
+    
+    return;
    }
    
   }
-  catch(Exception e)
-  {
-   respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "File write error: "+e.getMessage(), resp);
-   
-   outFile.delete();
-   
-   return;
-  }
-  
+ 
   respond(HttpServletResponse.SC_OK, "Upload successful", resp);
-  
  }
 
+ 
  private void respond( int code, String msg, HttpServletResponse resp ) throws IOException
  {
   PrintWriter out = resp.getWriter();

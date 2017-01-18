@@ -30,6 +30,7 @@ import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
 import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
 import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 import uk.ac.ebi.biostd.webapp.server.vfs.PathTarget;
@@ -44,6 +45,8 @@ public class DirServlet extends ServiceServlet
 
  private static final String SHOW_ARCHIVE_PARAMETER="showArchive";
  private static final String PATH_PARAMETER="path";
+ private static final String FROM_PARAMETER="from";
+ private static final String TO_PARAMETER="to";
  private static final String DEPTH_PARAMETER="depth";
  
  public static final String USER_VIRT_DIR = "User";
@@ -129,7 +132,7 @@ public class DirServlet extends ServiceServlet
  
  private void mkdir(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
  {
-  String from = req.getParameter("dir");
+  String from = req.getParameter(PATH_PARAMETER);
 
   if(from == null)
   {
@@ -147,6 +150,13 @@ public class DirServlet extends ServiceServlet
   try
   {
    dirPi = PathInfo.getPathInfo(from, sess.getUser());
+   
+   if ( !FileNameUtil.encodeOrCheck(dirPi) )
+   {
+    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+    return;
+   }
    
    if( dirPi.getTarget() == PathTarget.USERREL || dirPi.getTarget() == PathTarget.GROUPREL  )
    {
@@ -197,7 +207,7 @@ public class DirServlet extends ServiceServlet
 
  private void delete(HttpServletRequest req, HttpServletResponse resp, Session sess, boolean rmdir ) throws IOException
  {
-  String from = req.getParameter("file");
+  String from = req.getParameter(PATH_PARAMETER);
 
   if(from == null)
   {
@@ -215,6 +225,13 @@ public class DirServlet extends ServiceServlet
   try
   {
    delPi = PathInfo.getPathInfo(from, sess.getUser());
+   
+   if ( !FileNameUtil.encodeOrCheck(delPi) )
+   {
+    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+    return;
+   }   
    
    if( delPi.getTarget() == PathTarget.USERREL || delPi.getTarget() == PathTarget.GROUPREL  )
    {
@@ -287,7 +304,7 @@ public class DirServlet extends ServiceServlet
  
  private void move(HttpServletRequest req, HttpServletResponse resp, Session sess, boolean copy) throws IOException
  {
-  String from = req.getParameter("from");
+  String from = req.getParameter(FROM_PARAMETER);
 
   if(from == null)
   {
@@ -297,7 +314,7 @@ public class DirServlet extends ServiceServlet
    return;
   }
   
-  String to = req.getParameter("to");
+  String to = req.getParameter(TO_PARAMETER);
   
   if(to == null)
   {
@@ -315,6 +332,13 @@ public class DirServlet extends ServiceServlet
   try
   {
    fromPi = PathInfo.getPathInfo(from, sess.getUser());
+   
+   if ( !FileNameUtil.encodeOrCheck(fromPi) )
+   {
+    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'from' path characters\"\n}");
+    return;
+   }
    
    if( fromPi.getTarget() == PathTarget.USERREL || fromPi.getTarget() == PathTarget.GROUPREL  )
    {
@@ -344,6 +368,13 @@ public class DirServlet extends ServiceServlet
   try
   {
    toPi = PathInfo.getPathInfo(to, sess.getUser());
+
+   if ( !FileNameUtil.encodeOrCheck(toPi) )
+   {
+    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid 'to' path characters\"\n}");
+    return;
+   }   
    
    if( toPi.getTarget() == PathTarget.USERREL || toPi.getTarget() == PathTarget.GROUPREL  )
    {
@@ -621,7 +652,12 @@ public class DirServlet extends ServiceServlet
 
   filesAcc.put(jsf);
   
-  jsf.put("name", fname);
+  String decFN = fname;
+  
+//  if( BackendConfig.isEncodeFileNames() && ! node.inArchive() )
+//   decFN = FileNameUtil.decodeString(fname);
+  
+  jsf.put("name", decFN);
   jsf.put("path", relPath);
 
   if( node.isDirectory() )
@@ -638,7 +674,12 @@ public class DirServlet extends ServiceServlet
     
     for( Node f : list )
     {
-     listPath(f, relPath+"/"+f.getName(), f.getName(), acc, showArch, dp-1);
+     String fn = f.getName(); 
+     
+     if( ! node.inArchive() )
+      fn=FileNameUtil.decode(fn);
+     
+     listPath(f, relPath+"/"+fn, fn, acc, showArch, dp-1);
     }
    }
   }

@@ -12,7 +12,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.exception.UserMngException;
 public interface UserManager
 {
 
- Session login(String login, String password) throws SecurityException;
+ Session login(String login, String password, boolean passHash) throws SecurityException;
  
  User getUserByLogin(String uName);
  User getUserByEmail(String email);

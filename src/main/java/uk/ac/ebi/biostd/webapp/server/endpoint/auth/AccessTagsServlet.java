@@ -18,6 +18,8 @@ import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
+import com.pri.util.StringUtils;
+
 public class AccessTagsServlet extends HttpServlet
 {
  public static final String loginParameter = "login"; 
@@ -127,7 +129,7 @@ public class AccessTagsServlet extends HttpServlet
      return;
     }
    }
-   else if( ! BuiltInUsers.Guest.getUserName().equals(login) && ( u.getPasswordDigest() == null || ! hash.equalsIgnoreCase( toHexStr(u.getPasswordDigest() ) ) ) )
+   else if( ! BuiltInUsers.Guest.getUserName().equals(login) && ( u.getPasswordDigest() == null || ! hash.equalsIgnoreCase( StringUtils.toHexStr(u.getPasswordDigest() ) ) ) )
    {
     resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
     resp.getWriter().println("Status: FAILED");
@@ -177,25 +179,6 @@ public class AccessTagsServlet extends HttpServlet
   
  }
  
- private String toHexStr( byte[] dgst )
- {
-  if( dgst == null )
-   return "";
-  
-  StringBuilder sb = new StringBuilder();
-  
-  for( byte b : dgst )
-  {
-   int hxd = ( b >> 4 ) & 0x0F;
-   
-   sb.append( (char)(hxd >=10 ? ('A'+(hxd-10) ):('0'+hxd)) );
-   
-   hxd =  b & 0x0F;
-   
-   sb.append( (char)(hxd >=10 ? ('A'+(hxd-10) ):('0'+hxd)) );
-  }
-  
-  return sb.toString();
- }
+
  
 }

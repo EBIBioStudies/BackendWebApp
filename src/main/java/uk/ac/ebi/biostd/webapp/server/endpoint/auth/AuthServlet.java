@@ -66,6 +66,7 @@ public class AuthServlet extends ServiceServlet
  public static final String UserEmailParameter="email";   
  public static final String SuperuserParameter="superuser";   
  public static final String PasswordParameter="password";   
+ public static final String PasswordHashParameter="passhash";   
  public static final String UsernameParameter="username";   
  public static final String DropboxParameter="dropbox";   
  public static final String FormatParameter="format";   
@@ -373,11 +374,34 @@ public class AuthServlet extends ServiceServlet
  
  private void signin( ParameterPool prms, Response resp) throws IOException
  {
+  String uname = prms.getParameter(UserLoginParameter);
   
-  Session sess;
+  if( uname == null )
+  {
+   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL user name is not specified");
+   return;
+  }
+    
+  Session sess=null;
   try
   {
-   sess = BackendConfig.getServiceManager().getUserManager().login( prms.getParameter(UserLoginParameter), prms.getParameter(PasswordParameter));
+   boolean passHash = false;
+   
+   String pass = prms.getParameter(PasswordParameter);
+   
+   if( pass == null || pass.length() == 0 )
+   {
+    passHash = true;
+    pass = prms.getParameter(PasswordHashParameter);
+   }
+   
+   if( pass == null || pass.length() == 0 )
+   {
+    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL password has not been provided");
+    return;
+   }
+   
+   sess = BackendConfig.getServiceManager().getUserManager().login( uname, pass, passHash);
   }
   catch(SecurityException e)
   {

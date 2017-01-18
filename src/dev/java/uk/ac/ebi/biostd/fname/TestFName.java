@@ -17,5 +17,12 @@ public class TestFName
   
   System.out.println( FileNameUtil.encode(sb.toString()) );
   
+  System.out.println(FileNameUtil.decode("abc!00x"));
+
+  System.out.println(FileNameUtil.decode(FileNameUtil.encode("!aa!!a!")));
+  System.out.println(FileNameUtil.decode(FileNameUtil.encode("abc!cba")));
+  System.out.println(FileNameUtil.decode(FileNameUtil.encode("Привет")));
+
+  
  }
 }

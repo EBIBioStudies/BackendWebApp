@@ -155,7 +155,7 @@ public class PathInfo
 
   virtRelPath = pth.normalize();
 
-  String frstComp = virtRelPath.getName(0).toString();
+  String frstComp = virtRelPath.getNameCount()>0?virtRelPath.getName(0).toString():"";
  
   pi.setAbsolute(absolute);
   
@@ -183,7 +183,8 @@ public class PathInfo
   else if( frstComp.length() == 0 )
   {
    pi.setTarget(PathTarget.ROOT);
-   pi.setVirtBasePath(Paths.get(USER_VIRT_DIR));
+   pi.setVirtPath(virtRelPath);
+   pi.setVirtBasePath(virtRelPath);
 
    return pi;
   }

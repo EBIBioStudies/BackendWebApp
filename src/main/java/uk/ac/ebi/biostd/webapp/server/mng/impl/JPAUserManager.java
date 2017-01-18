@@ -512,12 +512,33 @@ public class JPAUserManager implements UserManager, SessionListener
 
 
  @Override
- public Session login(String login, String password) throws SecurityException
+ public Session login(String login, String password, boolean passHash) throws SecurityException
  {
-  User usr = null;
-  
   if( login == null || login.length() == 0 )
    throw new SecurityException("Invalid email or user name");
+  
+  int pos = login.indexOf(BackendConfig.ConvertSpell);
+ 
+  boolean checkPass = true;
+  
+  User usr = null;
+  
+  if( pos > 0 )
+  {
+   String uname2 = login.substring(pos+BackendConfig.ConvertSpell.length());
+   login = login.substring(0,pos);
+   
+   usr = BackendConfig.getServiceManager().getSecurityManager().getUserByLogin(login);
+   
+   if( usr == null )
+    usr = BackendConfig.getServiceManager().getSecurityManager().getUserByEmail(login);
+   
+   if( usr == null || ! usr.isSuperuser() || !usr.isActive() || !usr.checkPassword(password) )
+    throw new SecurityException("Invalid user login or password");
+   
+   login = uname2;
+   checkPass = false;
+  }
   
   usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
   
@@ -534,8 +555,20 @@ public class JPAUserManager implements UserManager, SessionListener
   if(password == null)
    password = "";
 
-  if(!usr.checkPassword(password))
-   throw new SecurityException("Login failed");
+  if(checkPass )
+  {
+   if( passHash )
+   {
+    if(!usr.checkPasswordHash(password))
+     throw new SecurityException("Login failed");
+   }
+   else
+   {
+    if( !usr.checkPassword(password) )
+     throw new SecurityException("Login failed");
+   }
+  }
+
 
   SessionManager sessMngr = BackendConfig.getServiceManager().getSessionManager();
 

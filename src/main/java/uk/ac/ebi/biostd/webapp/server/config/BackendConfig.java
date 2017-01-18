@@ -38,6 +38,8 @@ public class BackendConfig
  public static Set<PosixFilePermission> rwxrwxrwx = PosixFilePermissions.fromString("rwxrwxrwx");
  public static Set<PosixFilePermission> rwx__x__x = PosixFilePermissions.fromString("rwx--x--x");
 
+ public static final String ConvertSpell = "*MYTA6OP!*";
+ 
  public static final String UserNamePlaceHolderRx = "\\{USERNAME\\}";
  public static final String ActivateKeyPlaceHolderRx= "\\{KEY\\}";
  public static final String ActivateURLPlaceHolderRx= "\\{URL\\}";
@@ -111,6 +113,7 @@ public class BackendConfig
  public static final String             DefaultSubmissionAccPrefixParameter = "defaultSubmissionAccNoPrefix";
  public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
 
+ public static boolean EncodeFileNames = false; 
  
  
  public static final String DataMountPathParameter = "dataMountPath";
@@ -120,7 +123,6 @@ public class BackendConfig
 
  private static final String sessionCookieName = "BIOSTDSESS";   //think about security issues on system that ignore file name cases
  private static final String sessionTokenHeader = "X-Session-Token";   //think about security issues on system that ignore file name cases
-
 
 
  private static String dataMountPath;
@@ -861,5 +863,9 @@ public class BackendConfig
   return subscriptionEmailSubject;
  }
 
+ public static boolean isEncodeFileNames()
+ {
+  return EncodeFileNames;
+ }
 
 }

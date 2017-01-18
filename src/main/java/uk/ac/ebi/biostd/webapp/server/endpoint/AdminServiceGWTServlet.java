@@ -80,7 +80,7 @@ public class AdminServiceGWTServlet extends RemoteServiceServlet implements BioS
   Session sess=null;
   try
   {
-   sess = BackendConfig.getServiceManager().getUserManager().login(login, pass);
+   sess = BackendConfig.getServiceManager().getUserManager().login(login, pass, false);
   }
   catch(SecurityException e)
   {
