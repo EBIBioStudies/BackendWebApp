@@ -28,10 +28,7 @@ import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.ServletRegistration;
 
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.WebResourceRoot;
-import org.apache.catalina.WebResourceRoot.ResourceSetType;
-import org.apache.catalina.webresources.StandardRoot;
+
 import org.hibernate.search.cfg.Environment;
 import org.hibernate.search.jpa.FullTextEntityManager;
 import org.hibernate.search.jpa.Search;
@@ -55,8 +52,7 @@ import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ResourceBundleParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ServletContextParamPool;
-import uk.ac.ebi.biostd.webapp.server.webdav.ContextWrapper;
-import uk.ac.ebi.biostd.webapp.server.webdav.WebdavServlet;
+
 
 /**
  * Application Lifecycle Listener implementation class WebAppInit
@@ -379,6 +375,7 @@ public class WebAppInit implements ServletContextListener
   
   readConfig(config);
   
+  /*
   WebResourceRoot resRoot = null;
   
   try
@@ -389,7 +386,7 @@ public class WebAppInit implements ServletContextListener
   {
    throw new RuntimeException("Can't find WebResourceRoot. Not Tomcat 8?");
   }
-  
+  */
   
   if( BackendConfig.isCreateFileStructure() && BackendConfig.getBaseDirectory() != null )
   {
@@ -712,7 +709,7 @@ public class WebAppInit implements ServletContextListener
    log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically ("+tinf.getPeriod()+"m)");
   }
   
-
+/*
   
   String dataDir = BackendConfig.getUserGroupDropboxPath().toString();
   String dataMount = BackendConfig.getDataMountPath();
@@ -746,6 +743,7 @@ public class WebAppInit implements ServletContextListener
   dn.setInitParameter("readonly", "false");
   dn.addMapping(dataMount.endsWith("/")?dataMount+'*':dataMount+"/*");
   
+  */
  }
 
  private boolean checkDirectory(Path file)

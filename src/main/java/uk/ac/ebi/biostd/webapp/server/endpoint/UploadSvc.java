@@ -9,10 +9,11 @@ import java.util.Enumeration;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.fileupload.FileItemIterator;
-import org.apache.commons.fileupload.FileItemStream;
+
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.fileupload.util.Streams;
+import org.apache.commons.fileupload.FileItemIterator;
+import org.apache.commons.fileupload.FileItemStream;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.util.StreamPump;
@@ -25,7 +26,7 @@ public class UploadSvc extends ServiceServlet
 
  private static final long serialVersionUID = 1L;
 
- @Override
+// @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
  {
 
@@ -79,7 +80,7 @@ public class UploadSvc extends ServiceServlet
    {
     // Parse the request
     FileItemIterator iter = upload.getItemIterator(req);
-
+    
     while(iter.hasNext())
     {
      FileItemStream item = iter.next();
