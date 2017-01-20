@@ -14,6 +14,8 @@ import javax.persistence.Query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.pri.util.StringUtils;
+
 import uk.ac.ebi.biostd.authz.ACR;
 import uk.ac.ebi.biostd.authz.ACR.Permit;
 import uk.ac.ebi.biostd.authz.AccessTag;
@@ -243,7 +245,7 @@ public class SecurityManagerImpl implements SecurityManager
    if( usr == null )
     usr = getUserByEmail(login);
    
-   if( usr == null || ! usr.isSuperuser() || !usr.isActive() || (passHash && !usr.checkPasswordHash(pass) ) || (!passHash && !usr.checkPassword(pass) ) )
+   if( usr == null || ! usr.isSuperuser() || !usr.isActive() || (passHash && !checkPasswordHash(usr,pass) ) || (!passHash && !usr.checkPassword(pass) ) )
     throw new SecurityException("Invalid user login or password");
    
    login = uname2;
@@ -264,10 +266,18 @@ public class SecurityManagerImpl implements SecurityManager
   if( convert )
    return usr;
   
-  if(  (passHash && !usr.checkPasswordHash(pass) ) || (!passHash && !usr.checkPassword(pass) ) )
+  if(  (passHash && !checkPasswordHash(usr,pass) ) || (!passHash && !usr.checkPassword(pass) ) )
    throw new SecurityException("Invalid user login or password");
 
   return usr;
+ }
+ 
+ private boolean checkPasswordHash(User u, String uHash)
+ {
+  if( u.getPasswordDigest() == null )
+   return false;
+
+  return uHash.equalsIgnoreCase( StringUtils.toHexStr(u.getPasswordDigest()) );
  }
  
  @Override
