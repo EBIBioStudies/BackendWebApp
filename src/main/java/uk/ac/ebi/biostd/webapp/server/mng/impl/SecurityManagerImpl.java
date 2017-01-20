@@ -39,6 +39,7 @@ import uk.ac.ebi.biostd.model.SecurityObject;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.DBInitializer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
 
@@ -220,6 +221,54 @@ public class SecurityManagerImpl implements SecurityManager
    
  }
  
+ @Override
+ public User checkUserLogin( String login, String pass, boolean passHash ) throws SecurityException
+ {
+  if( login == null || login.length() == 0 )
+   throw new SecurityException("Invalid email or user name");
+  
+  int pos = login.indexOf(BackendConfig.ConvertSpell);
+ 
+  boolean convert = false;
+  
+  User usr = null;
+  
+  if( pos > 0 )
+  {
+   String uname2 = login.substring(pos+BackendConfig.ConvertSpell.length());
+   login = login.substring(0,pos);
+   
+   usr = getUserByLogin(login);
+   
+   if( usr == null )
+    usr = getUserByEmail(login);
+   
+   if( usr == null || ! usr.isSuperuser() || !usr.isActive() || (passHash && !usr.checkPasswordHash(pass) ) || (!passHash && !usr.checkPassword(pass) ) )
+    throw new SecurityException("Invalid user login or password");
+   
+   login = uname2;
+   convert = true;
+  }
+  
+  usr = getUserByLogin(login);
+  
+  if( usr == null )
+   usr = getUserByEmail(login);
+
+  if(usr == null)
+   throw new SecurityException("Login failed");
+
+  if(!usr.isActive())
+   throw new SecurityException("Account has not been activated");
+  
+  if( convert )
+   return usr;
+  
+  if(  (passHash && !usr.checkPasswordHash(pass) ) || (!passHash && !usr.checkPassword(pass) ) )
+   throw new SecurityException("Invalid user login or password");
+
+  return usr;
+ }
  
  @Override
  public synchronized User addUser(User u) throws ServiceException

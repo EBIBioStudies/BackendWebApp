@@ -38,4 +38,5 @@ public interface UserManager
  void addGroup(UserGroup ug) throws UserMngException;
 
 
+
 }

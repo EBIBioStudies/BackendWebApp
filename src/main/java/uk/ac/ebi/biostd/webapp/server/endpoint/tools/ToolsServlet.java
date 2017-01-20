@@ -11,6 +11,7 @@ import java.util.UUID;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -35,6 +36,7 @@ public class ToolsServlet extends ServiceServlet
  {
   FIX_FILE_TYPE,
   FIX_FILE_SIZE,
+  FIX_DIRECTORY_SIZE,
   CLEAN_EXP_USERS,
   REFRESH_USERS,
   UPDATE_USER_DIR_LAYOUT,
@@ -99,6 +101,14 @@ public class ToolsServlet extends ServiceServlet
     fixFileSize(resp.getWriter());
     
     break;
+    
+   case FIX_DIRECTORY_SIZE:
+    
+    resp.setContentType("text/plain");
+    fixDirectorySize(resp.getWriter());
+    
+    break;
+
 
    case UPDATE_USER_DIR_LAYOUT:
     
@@ -177,7 +187,12 @@ public class ToolsServlet extends ServiceServlet
      else
       filesPath = BackendConfig.getSubmissionHistoryPath(s).resolve("Files");
      
-     Path file =  filesPath.resolve(fr.getName());
+     String relpath = fr.getPath();
+     
+     if( relpath == null )
+      relpath = fr.getName();
+     
+     Path file =  filesPath.resolve(relpath);
      
      if( Files.exists(file))
      {
@@ -219,6 +234,110 @@ public class ToolsServlet extends ServiceServlet
   
   out.append( "Finished success: "+success+" fail: "+fail);
  }
+ 
+ 
+ private void fixDirectorySize(PrintWriter out)
+ {
+  EntityManager mngr=null;
+  
+  int blockSz = 5000;
+  
+  int success=0;
+  int fail=0;
+  int skip=0;
+  
+  try
+  {
+   while( true )
+   {
+    if( mngr != null )
+     mngr.close();
+    
+    mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
+    
+    EntityTransaction t = mngr.getTransaction();
+    
+    t.begin();
+    
+    TypedQuery<FileRef> q = mngr.createQuery("select fr from FileRef fr WHERE size=0 AND directory=1 ",FileRef.class);
+    
+    q.setMaxResults(blockSz);
+    
+    if( skip > 0 )
+     q.setFirstResult(skip);
+    
+    List<FileRef> res = q.getResultList();
+    
+    if( res.size() == 0 )
+     break;
+    
+    for( FileRef fr : res )
+    {
+     Submission s = fr.getHostSection().getSubmission();
+     Path filesPath = null;
+     
+     if( s.getVersion() > 0 )
+      filesPath = BackendConfig.getSubmissionFilesPath(s);
+     else
+      filesPath = BackendConfig.getSubmissionHistoryPath(s).resolve("Files");
+     
+     String relpath = fr.getPath();
+     
+     if( relpath == null )
+      relpath = fr.getName();
+     
+     Path file =  filesPath.resolve(relpath);
+     
+     if( Files.exists(file))
+     {
+      if( ! Files.isDirectory(file) )
+      {
+       out.println("Not directory: "+file);
+       fr.setDirectory(false);
+       fr.setSize(Files.size(file));
+      }
+      else
+      {
+       fr.setSize( BackendConfig.getServiceManager().getFileManager().countDirectorySize(file) );
+      }
+      
+      if( fr.getSize() == 0 )
+      {
+       skip++;
+      }
+      
+      success++;
+     }
+     else
+     {
+      out.println("Missing: "+file);
+      fail++;
+     }
+    }
+    
+    t.commit();
+    
+    out.append( "Processed "+(success+fail)+"\n" );
+    out.flush();
+    
+   }
+   
+  }
+  catch(Exception e)
+  {
+   e.printStackTrace();
+   e.printStackTrace(out);
+  }
+  finally
+  {
+   if( mngr != null && mngr.isOpen() )
+    mngr.close();
+  }
+  
+  out.append( "Finished success: "+success+" fail: "+fail);
+ }
+
+ 
  
  
  private void updateUserDirLayout(PrintWriter out, String oldDir)

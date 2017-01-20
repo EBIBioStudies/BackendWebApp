@@ -16,6 +16,7 @@ public interface SecurityManager
  
  void refreshUserCache();
 
+ User checkUserLogin(String login, String pass, boolean passHash) throws SecurityException;
  
  boolean mayUserReadSubmission(Submission sub, User user);
 

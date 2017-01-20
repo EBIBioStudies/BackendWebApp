@@ -17,6 +17,7 @@ import uk.ac.ebi.biostd.authz.BuiltInUsers;
 import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 
 import com.pri.util.StringUtils;
 
@@ -80,74 +81,66 @@ public class AccessTagsServlet extends HttpServlet
    return;
   }
   
+  User usr = null;
+
+  if( BuiltInUsers.Guest.getUserName().equals(login) )
+  {
+   if( pass != null || hash != null )
+   {
+    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    resp.getWriter().println("Status: FAILED");
+    return;
+   }
+   
+   usr = BackendConfig.getServiceManager().getSecurityManager().getUserByLogin(BuiltInUsers.Guest.getUserName());
+  }
+  else
+  {
+   boolean useHash = false;
+   if( pass == null )
+   {
+    pass = hash;
+    useHash = true;
+   }
+   
+   try
+   {
+    usr = BackendConfig.getServiceManager().getSecurityManager().checkUserLogin(login, pass, useHash);
+   }
+   catch(SecurityException e1)
+   {
+    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    resp.getWriter().println("Status: FAILED");
+    return;
+   }  
+  }
+  
+  
+  
   
   EntityManager em = null;
   
   try
   {
    em = BackendConfig.getEntityManagerFactory().createEntityManager();
-   
-   Query q = em.createNamedQuery(User.GetByEMailQuery);
-   
-   q.setParameter("email", login);
-   
-   User u = null;
-   
-   try
-   {
-    u = (User)q.getSingleResult();
-   }
-   catch(Exception e)
-   {
-   }
-   
-   if( u == null )
-   {
-    q= em.createNamedQuery(User.GetByLoginQuery);
-    
-    q.setParameter("login", login);
-    
-    try
-    {
-     u = (User)q.getSingleResult();
-    }
-    catch(Exception e)
-    {
-     resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-     resp.getWriter().println("Status: FAILED");
-     return;
-    }
 
-   }
-   
-   if( pass != null )
-   {
-    if( ! u.checkPassword(pass) )
-    {
-     resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-     resp.getWriter().println("Status: FAILED");
-     return;
-    }
-   }
-   else if( ! BuiltInUsers.Guest.getUserName().equals(login) && ( u.getPasswordDigest() == null || ! hash.equalsIgnoreCase( StringUtils.toHexStr(u.getPasswordDigest() ) ) ) )
-   {
-    resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-    resp.getWriter().println("Status: FAILED");
-    return;
-   }
-  
+ 
    StringBuilder allow = new StringBuilder();
    StringBuilder deny = new StringBuilder();
    
-   allow.append('~').append(u.getEmail()).append(';');
+   String txtId = usr.getEmail();
    
-   allow.append('#').append(u.getId()).append(';');
+   if( txtId == null )
+    txtId = usr.getLogin();
    
-   q = em.createQuery("SELECT t FROM AccessTag t");
+   allow.append('~').append(txtId).append(';');
+   allow.append('#').append(usr.getId()).append(';');
+   
+   Query q = em.createQuery("SELECT t FROM AccessTag t");
    
    for( AccessTag t : (List<AccessTag>)q.getResultList() )
    {
-    Permit p = t.checkDelegatePermission(SystemAction.READ, u);
+    Permit p = t.checkDelegatePermission(SystemAction.READ, usr);
     
     if( p == Permit.ALLOW )
      allow.append(t.getName()).append(';');
@@ -163,7 +156,10 @@ public class AccessTagsServlet extends HttpServlet
    resp.getWriter().println("Status: OK");
    resp.getWriter().println("Allow: "+allow.toString());
    resp.getWriter().println("Deny: "+deny.toString());
-   resp.getWriter().println("Superuser: "+(u.isSuperuser()?"true":"false"));
+   resp.getWriter().println("Superuser: "+(usr.isSuperuser()?"true":"false"));
+   resp.getWriter().println("Name: "+(usr.getFullName()!=null?usr.getFullName():""));
+   resp.getWriter().println("Login: "+(usr.getLogin()!=null?usr.getLogin():""));
+   resp.getWriter().println("EMail: "+(usr.getEmail()!=null?usr.getEmail():""));
    
   }
   catch(Exception e)

@@ -16,6 +16,7 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.lang3.mutable.MutableLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +27,7 @@ import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
+import uk.ac.ebi.biostd.webapp.server.util.LongNumber;
 import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
 import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 
@@ -355,12 +357,6 @@ public class FileManagerImpl implements FileManager
 
   fp =  checkFileExist(filePi.getRealBasePath(), filePi.getRelPath());
   
-//  if( filePi.isAbsolute() )
-//  else
-//  {
-//   filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getVirtPath()), user);
-//   fp = checkFileExist(rootPI.getRealBasePath(), rootPI.getRelPath().resolve(filePi.getRelPath()));
-//  }
   
   if( fp != null )
    fp.setGroupID(filePi.getGroup()==null?0:filePi.getGroup().getId());
@@ -423,7 +419,10 @@ public class FileManagerImpl implements FileManager
 
    try
    {
-    fp.setSize( Files.size(finalPath) );
+    if( fp.isDirectory() )
+     fp.setSize( countDirectorySize(finalPath) );
+    else
+     fp.setSize( Files.size(finalPath) );
    }
    catch(IOException e)
    {
@@ -438,6 +437,24 @@ public class FileManagerImpl implements FileManager
   fp.setRelativePath(cPath);
 
   return fp;
+ }
+
+ @Override
+ public long countDirectorySize(Path finalPath) throws IOException
+ {
+  final LongNumber len = new LongNumber();
+  
+  Files.walkFileTree(finalPath, new SimpleFileVisitor<Path>()
+  {
+   @Override
+   public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
+   {
+    len.add(attrs.size());
+    return FileVisitResult.CONTINUE;
+   }
+  });
+  
+  return len.longValue();
  }
 
  private FilePointer checkZipPath(Path archPath, Path archRelPath)

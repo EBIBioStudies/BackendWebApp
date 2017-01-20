@@ -33,6 +33,10 @@ public class FileUploadServlet extends ServiceServlet
 {
  private static final long serialVersionUID = 1L;
 
+ public static final String REL_PATH_PARAMETER = "relPath";
+ public static final String FILE_NAME_PARAMETER = "fileName";
+ public static final String FILE_PART_NAME = "file";
+ 
  /**
   * @see HttpServlet#HttpServlet()
   */
@@ -58,11 +62,19 @@ public class FileUploadServlet extends ServiceServlet
    return;
   }
   
-  String relPath = req.getParameter("relPath");
-  String fileName = req.getParameter("fileName");
+  String relPath = req.getParameter(REL_PATH_PARAMETER);
+  String fileName = req.getParameter(FILE_NAME_PARAMETER);
 
   if( relPath == null )
    relPath = "";
+  
+  if( fileName != null )
+  {
+   fileName = fileName.trim();
+   
+   if( fileName.length() == 0 )
+    fileName = null;
+  }
   
   User user  = sess.getUser();
   
@@ -107,14 +119,30 @@ public class FileUploadServlet extends ServiceServlet
   
   for( Part filePart : req.getParts() )
   {
-   if( ! "file".equals(filePart.getName() ) )
+   String pName = filePart.getName();
+   
+   if( pName == null || ! pName.startsWith(FILE_PART_NAME) )
     continue;
+   
+   if( pName.length() > FILE_PART_NAME.length() ) // part name should be either 'file' or 'fileNNN'
+   {
+    String rest = pName.substring(FILE_PART_NAME.length());
+    
+    try
+    {
+     Integer.parseInt(rest);
+    }
+    catch(Exception e)
+    {
+     continue;
+    }
+   }
    
    count++;
    
    InputStream fileContent = filePart.getInputStream();
    
-   if( count > 1 || fileName == null || fileName.trim().length() == 0 )
+   if( count > 1 || fileName == null )
     fileName = filePart.getSubmittedFileName();
    
    if( fileName != null )

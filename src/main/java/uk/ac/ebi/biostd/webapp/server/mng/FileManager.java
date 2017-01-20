@@ -15,20 +15,12 @@ public interface FileManager
  FilePointer checkFileExist(String name, PathInfo rootPi, User user) throws InvalidPathException;
  FilePointer checkFileExist(String name, PathInfo rootPI, User usr, Submission oldSbm) throws InvalidPathException;
 
-// FilePointer checkFileExist(String name, Path basePath);
-// FilePointer checkFileExist(String name, User usr);
-
-
-// File createSubmissionDir(Submission submission);
-// File createSubmissionDirFile(Submission submission, String srcFileName);
-
-// void copyToSubmissionFilesDir(Submission submission, FilePointer filePointer) throws IOException;
-
 
  void moveToHistory(Submission submission) throws IOException;
 
  void moveDirectory(Path src, Path dst) throws IOException;
 
+ long countDirectorySize(Path finalPath) throws IOException;
  void copyDirectory(Path src, Path dstp) throws IOException;
 
  String linkOrCopy(Path origDir, FilePointer filePointer) throws IOException;

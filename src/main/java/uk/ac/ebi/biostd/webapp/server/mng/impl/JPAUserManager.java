@@ -143,6 +143,18 @@ public class JPAUserManager implements UserManager, SessionListener
    throw new SystemUserMngException("System error",e);
   }
   
+  if( ! validateEmail )
+  {
+   try
+   {
+    createUserDropbox(u);
+   }
+   catch(IOException e)
+   {
+    Log.error("User directories/links were not created: "+e.getMessage(), e);
+    e.printStackTrace();
+   }
+  }
  }
 
  
@@ -376,48 +388,10 @@ public class JPAUserManager implements UserManager, SessionListener
      }
     }
     
-    Path udpth = BackendConfig.getUserDirPath(u);
-    Path llpth = BackendConfig.getUserLoginLinkPath(u);
-    Path elpth = BackendConfig.getUserEmailLinkPath(u);
-    
     
     try
     {
-     Files.createDirectories(udpth);
-     
-     if( BackendConfig.isPublicDropboxes() )
-     {
-      try
-      {
-       Files.setPosixFilePermissions(udpth.getParent(), BackendConfig.rwx__x__x);
-       Files.setPosixFilePermissions(udpth, BackendConfig.rwxrwxrwx);
-      }
-      catch(Exception e2)
-      {
-       Log.error("Can't set directory permissions: "+e2.getMessage());
-      }
-     }
-     
-     if( llpth != null )
-      Files.createDirectories(llpth.getParent());
-
-     if( elpth != null )
-      Files.createDirectories(elpth.getParent());
-
-     try
-     {
-      if( llpth != null )
-       Files.createSymbolicLink(llpth, udpth);
-      
-      if( elpth != null )
-       Files.createSymbolicLink(elpth, udpth);
-     }
-     catch(Exception e2)
-     {
-      Log.error("System can't create symbolic links: "+e2.getMessage());
-     }
-     
-
+     createUserDropbox(u);
     }
     catch(IOException e)
     {
@@ -429,6 +403,48 @@ public class JPAUserManager implements UserManager, SessionListener
   }
 
   return true;
+ }
+ 
+ private void createUserDropbox( User u ) throws IOException
+ {
+  Path udpth = BackendConfig.getUserDirPath(u);
+  Path llpth = BackendConfig.getUserLoginLinkPath(u);
+  Path elpth = BackendConfig.getUserEmailLinkPath(u);
+
+  Files.createDirectories(udpth);
+
+  if(BackendConfig.isPublicDropboxes())
+  {
+   try
+   {
+    Files.setPosixFilePermissions(udpth.getParent(), BackendConfig.rwx__x__x);
+    Files.setPosixFilePermissions(udpth, BackendConfig.rwxrwxrwx);
+   }
+   catch(Exception e2)
+   {
+    Log.error("Can't set directory permissions: " + e2.getMessage());
+   }
+  }
+
+  if(llpth != null)
+   Files.createDirectories(llpth.getParent());
+
+  if(elpth != null)
+   Files.createDirectories(elpth.getParent());
+
+  try
+  {
+   if(llpth != null)
+    Files.createSymbolicLink(llpth, udpth);
+
+   if(elpth != null)
+    Files.createSymbolicLink(elpth, udpth);
+  }
+  catch(Exception e2)
+  {
+   Log.error("System can't create symbolic links: " + e2.getMessage());
+  }
+
  }
  
  @Override
@@ -511,65 +527,14 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
 
+
+ 
+ 
  @Override
  public Session login(String login, String password, boolean passHash) throws SecurityException
  {
-  if( login == null || login.length() == 0 )
-   throw new SecurityException("Invalid email or user name");
+  User usr = BackendConfig.getServiceManager().getSecurityManager().checkUserLogin(login, password, passHash);
   
-  int pos = login.indexOf(BackendConfig.ConvertSpell);
- 
-  boolean checkPass = true;
-  
-  User usr = null;
-  
-  if( pos > 0 )
-  {
-   String uname2 = login.substring(pos+BackendConfig.ConvertSpell.length());
-   login = login.substring(0,pos);
-   
-   usr = BackendConfig.getServiceManager().getSecurityManager().getUserByLogin(login);
-   
-   if( usr == null )
-    usr = BackendConfig.getServiceManager().getSecurityManager().getUserByEmail(login);
-   
-   if( usr == null || ! usr.isSuperuser() || !usr.isActive() || !usr.checkPassword(password) )
-    throw new SecurityException("Invalid user login or password");
-   
-   login = uname2;
-   checkPass = false;
-  }
-  
-  usr = BackendConfig.getServiceManager().getUserManager().getUserByLogin(login);
-  
-  if( usr == null )
-   usr = BackendConfig.getServiceManager().getUserManager().getUserByEmail(login);
-
-  if(usr == null)
-   throw new SecurityException("Login failed");
-
-  if(!usr.isActive())
-   throw new SecurityException("Account has not been activated");
-
-
-  if(password == null)
-   password = "";
-
-  if(checkPass )
-  {
-   if( passHash )
-   {
-    if(!usr.checkPasswordHash(password))
-     throw new SecurityException("Login failed");
-   }
-   else
-   {
-    if( !usr.checkPassword(password) )
-     throw new SecurityException("Login failed");
-   }
-  }
-
-
   SessionManager sessMngr = BackendConfig.getServiceManager().getSessionManager();
 
   Session sess = sessMngr.getSessionByUserId(usr.getId());

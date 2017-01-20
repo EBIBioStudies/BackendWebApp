@@ -175,7 +175,7 @@ public class PathInfo
    pi.setRelPath(virtRelPath);
    pi.setRealPath(targetPath);
    pi.setRealBasePath(udir);
-   pi.setVirtBasePath(Paths.get(USER_VIRT_DIR));
+   pi.setVirtBasePath(Paths.get("/").resolve(USER_VIRT_DIR));
    pi.setVirtPath(pi.getVirtBasePath().resolve(virtRelPath));
    
    return pi;
