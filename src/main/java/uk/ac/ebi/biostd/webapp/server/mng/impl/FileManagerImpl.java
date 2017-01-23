@@ -16,7 +16,6 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.apache.commons.lang3.mutable.MutableLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -402,9 +401,18 @@ public class FileManagerImpl implements FileManager
   
   while( i < relPath.getNameCount() )
   {
-   cPath = cPath.resolve(FileNameUtil.encode( relPath.getName(i).toString() ));
+   String part = FileNameUtil.encode( relPath.getName(i).toString() );
+   
+   if( cPath == null )
+    cPath = Paths.get(part);
+   else
+    cPath = cPath.resolve(part);
+   
    i++;
   }
+  
+  if( cPath == null )
+   cPath = Paths.get("");
   
   if( fp == null )
   {

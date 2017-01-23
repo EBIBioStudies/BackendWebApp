@@ -461,8 +461,6 @@ public class DirServlet extends ServiceServlet
   }
   
   
-  System.out.println(pi);
-  
   PrintWriter out = resp.getWriter();
   
   JSONObject jsDir = new JSONObject();

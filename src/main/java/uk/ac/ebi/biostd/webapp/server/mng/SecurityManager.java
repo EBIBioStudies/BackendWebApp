@@ -33,6 +33,8 @@ public interface SecurityManager
 
  User addUser(User u) throws ServiceException;
  UserGroup addGroup(UserGroup ug) throws ServiceException;
+ boolean addUserToGroup(User usr, UserGroup grp) throws ServiceException;
+ boolean removeUserFromGroup(User usr, UserGroup grp) throws ServiceException;
 
  User getUserById( long id );
  User getUserByLogin( String login );
@@ -49,7 +51,6 @@ public interface SecurityManager
 
  boolean mayUserReadGroupFiles(User user, UserGroup g);
  boolean mayUserWriteGroupFiles(User user, UserGroup group);
-
-
+ boolean mayUserChangeGroup(User usr, UserGroup grp);
 
 }

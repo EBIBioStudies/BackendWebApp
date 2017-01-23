@@ -10,5 +10,7 @@ public enum Action
  retryact,
  passrstreq,
  passreset,
- creategroup
+ creategroup,
+ addusertogroup,
+ remuserfromgroup
 }

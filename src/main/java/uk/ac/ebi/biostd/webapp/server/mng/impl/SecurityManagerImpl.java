@@ -3,18 +3,19 @@ package uk.ac.ebi.biostd.webapp.server.mng.impl;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.pri.util.StringUtils;
 
 import uk.ac.ebi.biostd.authz.ACR;
 import uk.ac.ebi.biostd.authz.ACR.Permit;
@@ -44,6 +45,8 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
+
+import com.pri.util.StringUtils;
 
 public class SecurityManagerImpl implements SecurityManager
 {
@@ -578,7 +581,7 @@ public class SecurityManagerImpl implements SecurityManager
 
   if( u.getGroups() != null  )
   {
-   Collection<UserGroup> grps = new ArrayList<UserGroup>( u.getGroups().size() );
+   Set<UserGroup> grps = new HashSet<UserGroup>( );
    
    for( UserGroup g : u.getGroups() )
     grps.add( detachGroup(g, false) );
@@ -656,7 +659,7 @@ public class SecurityManagerImpl implements SecurityManager
   
   if( g.getUsers() != null && g.getUsers().size() > 0 && ldUsr )
   {
-   Collection<User> usrs = new ArrayList<User>( g.getUsers().size() );
+   Set<User> usrs = new HashSet<User>();
    
    for( User u : g.getUsers() )
     usrs.add( detachUser(u) );
@@ -875,6 +878,123 @@ public class SecurityManagerImpl implements SecurityManager
  public boolean mayUserWriteGroupFiles(User user, UserGroup g)
  {
   return mayUserReadGroupFiles( user,  g ); //To be changed for something smart
+ }
+
+ @Override
+ public boolean mayUserChangeGroup(User user, UserGroup grp)
+ {
+  return grp.checkPermission(SystemAction.CHANGE, user) == Permit.ALLOW;
+ }
+
+ @Override
+ public boolean addUserToGroup(User usr, UserGroup grp) throws ServiceException
+ {
+  return changeGroup(usr, grp, true);
+ }
+
+ @Override
+ public boolean removeUserFromGroup(User usr, UserGroup grp) throws ServiceException
+ {
+  return changeGroup(usr, grp, false);
+ }
+ 
+ private boolean changeGroup( User usr, UserGroup grp, boolean add ) throws ServiceException
+ {
+  EntityManager em = null;
+
+  em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+
+  boolean res = false;
+  
+  try
+  {
+   
+   trn.begin();
+   
+   TypedQuery<UserGroup> gq = em.createNamedQuery(UserGroup.GetByIdQuery,UserGroup.class);
+   
+   gq.setParameter("id", grp.getId());
+   
+   List<UserGroup> glist = gq.getResultList();
+   
+   if( glist == null || glist.size() == 0 )
+    new ServiceException("Group not found in DB");
+   
+   UserGroup dbGroup = glist.get(0);
+   
+   
+   TypedQuery<User> uq = em.createNamedQuery(User.GetByIdQuery,User.class);
+   
+   uq.setParameter("id", usr.getId());
+   
+   List<User> ulist = uq.getResultList();
+   
+   if( ulist == null || ulist.size() == 0 )
+    throw new ServiceException("User not found in DB");
+   
+   User dbUser = ulist.get(0);
+   
+   if( add )
+    res = dbGroup.addUser(dbUser);
+   else
+    res = dbGroup.removeUser(dbUser);
+   
+   trn.commit();
+  }
+  catch( ServiceException se )
+  {
+   throw se;
+  }
+  catch( Exception e )
+  {
+   try
+   {
+    if( em != null )
+    {
+     if( trn.isActive() )
+      trn.rollback();
+    }
+   }
+   catch(Exception e2)
+   {
+    log.error("Error during transaction roolback: "+e2.getClass().getName()+": "+e2.getMessage());
+    e2.printStackTrace();
+   }
+
+   e.printStackTrace();
+   throw new ServiceException("JPA exception: "+e.getClass().getName()+": "+e.getMessage(),e);
+  }
+  finally
+  {
+   if( em != null )
+    em.close();
+  }
+  
+  
+  UserGroup cacheGroup = groupMap.get( grp.getId() );
+  User cacheUser = userMap.get( usr.getId() );
+
+  if( cacheGroup==null || cacheUser==null ) // just in case. It shouldn't happen
+  {
+   loadCache();
+   return res;
+  }
+  
+  if( add )
+  {
+   cacheGroup.addUser(cacheUser);
+   cacheUser.addGroup(cacheGroup);
+  }
+  else
+  {
+   cacheGroup.removeUser(cacheUser);
+   cacheUser.removeGroup(cacheGroup);
+  }
+ 
+ 
+  return res;
  }
 
 }

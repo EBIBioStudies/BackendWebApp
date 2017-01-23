@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
@@ -18,11 +19,13 @@ import javax.servlet.http.HttpServletResponse;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.model.FileRef;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 
 /**
  * Servlet implementation class ToolsServlet
@@ -34,6 +37,7 @@ public class ToolsServlet extends ServiceServlet
 
  private static enum Operation
  {
+  RELINK_DROPBOXES,
   FIX_FILE_TYPE,
   FIX_FILE_SIZE,
   FIX_DIRECTORY_SIZE,
@@ -124,7 +128,13 @@ public class ToolsServlet extends ServiceServlet
     
     break;
 
+   case RELINK_DROPBOXES:
     
+    resp.setContentType("text/plain");
+    relinkDropboxes(resp.getWriter());
+    
+    break;
+ 
    case CLEAN_EXP_USERS:
     
     BackendConfig.getServiceManager().getSecurityManager().removeExpiredUsers();
@@ -140,6 +150,160 @@ public class ToolsServlet extends ServiceServlet
     break;
   }
   
+ }
+
+ private void relinkDropboxes(PrintWriter out) throws IOException
+ {
+  FileManager fMgr = BackendConfig.getServiceManager().getFileManager();
+  
+  Consumer<Path> wiper = new Consumer<Path>()
+  {
+   @Override
+   public void accept(Path f)
+   {
+    try
+    {
+     if( Files.isDirectory(f) )
+      fMgr.deleteDirectory(f);
+     else
+      Files.delete(f);   
+    }
+    catch(Exception e)
+    {
+     out.println("Can't delete: "+f);
+    }
+    
+   }
+  }; 
+  
+  Files.list(BackendConfig.getUsersIndexPath()).forEach(wiper);
+  Files.list(BackendConfig.getGroupIndexPath()).forEach(wiper);
+  
+  
+  EntityManager mngr = null;
+
+  mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+  EntityTransaction t = mngr.getTransaction();
+
+  t.begin();
+
+  List<User> users = mngr.createQuery("select u from User u where u.active=1", User.class).getResultList();
+
+  for(User u : users)
+  {
+
+   Path nud = BackendConfig.getUserDirPath(u);
+
+   if(! Files.exists(nud) )
+   {
+    Files.createDirectories(nud);
+    
+    if( BackendConfig.isPublicDropboxes() )
+    {
+     try
+     {
+      Files.setPosixFilePermissions(nud.getParent(), BackendConfig.rwx__x__x);
+      Files.setPosixFilePermissions(nud, BackendConfig.rwxrwxrwx);
+     }
+     catch(Exception e)
+     {
+      out.println("ERROR: setPosixFilePermissions failed " +  nud + " : " + e);
+      continue;
+     }
+    }
+   }
+   
+   if(u.getLogin() != null)
+   {
+    Path ll = BackendConfig.getUserLoginLinkPath(u);
+
+    try
+    {
+     Files.createDirectories(ll.getParent());
+     Files.createSymbolicLink(ll, nud);
+    }
+    catch(Exception e)
+    {
+     out.println("ERROR: Linking " + ll + " -> " + nud + " failed: " + e);
+     continue;
+    }
+   }
+
+   if(u.getEmail() != null)
+   {
+    Path ll = BackendConfig.getUserEmailLinkPath(u);
+
+    try
+    {
+     Files.createDirectories(ll.getParent());
+     Files.createSymbolicLink(ll, nud);
+    }
+    catch(Exception e)
+    {
+     out.println("ERROR: Linking " + ll + " -> " + nud + " failed: " + e);
+     continue;
+    }
+   }
+   
+   out.println("OK user: "+u.getFullName()+" <"+u.getEmail()+">");
+  }
+  
+  t.commit();
+  
+  
+  t.begin();
+
+  List<UserGroup> groups = mngr.createQuery("select g from UserGroup g where g.project=1", UserGroup.class).getResultList();
+
+  for(UserGroup g : groups)
+  {
+
+   Path nud = BackendConfig.getGroupDirPath(g);
+
+   if(! Files.exists(nud) )
+   {
+    Files.createDirectories(nud);
+    
+    if( BackendConfig.isPublicDropboxes() )
+    {
+     try
+     {
+      Files.setPosixFilePermissions(nud.getParent(), BackendConfig.rwx__x__x);
+      Files.setPosixFilePermissions(nud, BackendConfig.rwxrwxrwx);
+     }
+     catch(Exception e)
+     {
+      out.println("ERROR: setPosixFilePermissions failed " +  nud + " : " + e);
+      continue;
+     }
+    }
+   }
+   
+   if(g.getName() != null)
+   {
+    Path ll = BackendConfig.getGroupLinkPath(g);
+
+    try
+    {
+     Files.createDirectories(ll.getParent());
+     Files.createSymbolicLink(ll, nud);
+    }
+    catch(Exception e)
+    {
+     out.println("ERROR: Linking " + ll + " -> " + nud + " failed: " + e);
+     continue;
+    }
+   }
+
+ 
+   out.println("OK group: "+g.getName());
+  }
+  
+  t.commit();
+
+  
+  mngr.close();
  }
 
  private void fixFileSize(PrintWriter out)

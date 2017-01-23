@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
@@ -79,6 +78,8 @@ public class AuthServlet extends ServiceServlet
  public static final String FailURLParameter = "failURL";   
  public static final String ResetKeyParameter = "key";   
  public static final String AuxParameter = "aux";   
+ public static final String UserParameter = "user";   
+ public static final String GroupParameter = "group";   
  
  public static final String AuxParameterSeparator = ":";   
 
@@ -251,71 +252,16 @@ public class AuthServlet extends ServiceServlet
   else if( act == Action.passreset )
    passwordReset(params, request, resp);
   else if( act == Action.creategroup )
-   createGroup(params, request, resp, sess );
+   GroupActions.createGroup(params, request, resp, sess );
+  else if( act == Action.addusertogroup )
+   GroupActions.addUserToGroup(params, request, resp, sess );
+  else if( act == Action.remuserfromgroup )
+   GroupActions.remUserFromGroup(params, request, resp, sess );
 
  }
  
 
 
- private void createGroup(ParameterPool prms, HttpServletRequest request, Response resp, Session sess) throws IOException
- {
-  if(sess == null)
-  {
-   resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
-   return;
-  }
-
-  User usr = sess.getUser();
-
-  if(!usr.isSuperuser() && !BackendConfig.getServiceManager().getSecurityManager().mayUserCreateGroup(usr))
-  {
-   resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "Permission denied");
-   return;
-  }
-
-  String grName = prms.getParameter(ProjectParameter);
-  boolean isProject = "1".equals(grName) || "true".equalsIgnoreCase(grName) || "yes".equalsIgnoreCase(grName);
-  
-  grName = prms.getParameter(NameParameter);
-  String grDesc = prms.getParameter(DescriptionParameter);
-  
-  if( grName == null || (grName=grName.trim()).length() == 0 )
-  {
-   resp.respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL", "'"+NameParameter+"' parameter is not defined");
-   return;
-  }
-  
-  if( BackendConfig.getServiceManager().getUserManager().getGroup(grName) != null )
-  {
-   resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "Group exits");
-   return;
-  }
-  
-  UserGroup ug = new UserGroup();
-  
-  ug.setName(grName);
-  ug.setDescription(grDesc);
-  ug.setProject(isProject);
-  ug.setOwner(usr);
-  
-  
-  try
-  {
-   BackendConfig.getServiceManager().getUserManager().addGroup(ug);
-  }
-  catch( Throwable t )
-  {
-   resp.respond(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FAIL", "Add group error: "+t.getMessage());
-
-   if( t instanceof NullPointerException )
-    t.printStackTrace();
-   
-   return;
-  } 
-  
-  resp.respond(HttpServletResponse.SC_OK, "OK", null, new KV(NameParameter,grName));
-  
- }
  
  private void checkLoggedIn(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
  {
