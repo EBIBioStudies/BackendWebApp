@@ -535,20 +535,7 @@ public class FileManagerImpl implements FileManager
  
  private String pathToString(Path p)
  {
-  StringBuilder sb = new StringBuilder();
-
-  if( p.isAbsolute() )
-   sb.append('/');
-  
-  for( int i=0; i < p.getNameCount(); i++ )
-  {
-   if( i != 0  )
-    sb.append('/');
-   
-   sb.append(p.getName(i));
-  }
-  
-  return sb.toString();
+  return FileNameUtil.toUnixPath(p);
  }
  
  @Override

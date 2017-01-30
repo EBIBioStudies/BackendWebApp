@@ -33,7 +33,7 @@ public class FileUploadServlet extends ServiceServlet
 {
  private static final long serialVersionUID = 1L;
 
- public static final String REL_PATH_PARAMETER = "relPath";
+ public static final String REL_PATH_PARAMETER = "path";
  public static final String FILE_NAME_PARAMETER = "fileName";
  public static final String FILE_PART_NAME = "file";
  

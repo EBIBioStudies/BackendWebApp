@@ -7,5 +7,6 @@ enum Operation
  MOVE,
  RM,
  RMDIR,
- MKDIR
+ MKDIR,
+ SEARCH
 }

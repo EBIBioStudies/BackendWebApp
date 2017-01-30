@@ -8,6 +8,25 @@ import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 
 public class FileNameUtil
 {
+ public static String toUnixPath( Path p )
+ {
+  StringBuilder sb = new StringBuilder();
+
+  if( p.getRoot() != null )
+   sb.append('/');
+  
+  for( int i=0; i < p.getNameCount(); i++ )
+  {
+   if( i != 0  )
+    sb.append('/');
+   
+   sb.append(p.getName(i));
+  }
+  
+  return sb.toString();
+ }
+ 
+ 
  public static String encode( String src )
  {
   if( BackendConfig.isEncodeFileNames() )

@@ -20,6 +20,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.io.filefilter.AbstractFileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -45,6 +47,7 @@ public class DirServlet extends ServiceServlet
 
  private static final String SHOW_ARCHIVE_PARAMETER="showArchive";
  private static final String PATH_PARAMETER="path";
+ private static final String PATTERN_PARAMETER="pattern";
  private static final String FROM_PARAMETER="from";
  private static final String TO_PARAMETER="to";
  private static final String DEPTH_PARAMETER="depth";
@@ -120,6 +123,10 @@ public class DirServlet extends ServiceServlet
   {
    mkdir( req, resp, sess );
   }
+  else if( Operation.SEARCH.name().equalsIgnoreCase(cmd) )
+  {
+   search( req, resp, sess );
+  }
   else
   {
    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -130,6 +137,118 @@ public class DirServlet extends ServiceServlet
  }
  
  
+ private void search(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
+ {
+  String pattern = req.getParameter(PATTERN_PARAMETER);
+  String path = req.getParameter(PATH_PARAMETER);
+  
+  AbstractFileFilter filt = new WildcardFileFilter(pattern);
+  
+  User user = sess.getUser();
+
+  PathInfo pi = null;
+  
+  try
+  {
+   pi = PathInfo.getPathInfo(path, user);
+  }
+  catch(InvalidPathException e1)
+  {
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Invalid path\"\n}");
+   return;
+  }
+  
+  
+  PrintWriter out = resp.getWriter();
+  
+  JSONObject jsDir = new JSONObject();
+  
+
+  try
+  {
+   JSONArray files = new JSONArray();
+   jsDir.put("files", files);
+   jsDir.put("status", "OK");
+
+   Path udir = BackendConfig.getUserDirPath(user);
+
+   if(pi.getTarget() == PathTarget.ROOT)
+   {
+    findFiles(udir.toFile(), "/" + USER_VIRT_DIR, filt, files);
+
+    if(user.getGroups() != null)
+    {
+     for(UserGroup g : user.getGroups())
+     {
+      if(!g.isProject() || !BackendConfig.getServiceManager().getSecurityManager().mayUserReadGroupFiles(user, g))
+       continue;
+
+      String gpath = "/" + GROUP_VIRT_DIR + "/" + g.getName();
+      File rFile = BackendConfig.getGroupDirPath(g).toFile();
+      
+      if( rFile.exists() )
+       findFiles(rFile, gpath, filt, files);
+     }
+    }
+   }
+   else if(pi.getTarget() == PathTarget.GROUPS)
+   {
+    if(user.getGroups() != null)
+    {
+     for(UserGroup g : user.getGroups())
+     {
+      if(!g.isProject() || !BackendConfig.getServiceManager().getSecurityManager().mayUserReadGroupFiles(user, g))
+       continue;
+
+      String gpath = "/" + GROUP_VIRT_DIR + "/" + g.getName();
+      File rFile = BackendConfig.getGroupDirPath(g).toFile();
+      
+      if( rFile.exists() )
+       findFiles(rFile, gpath, filt, files);
+     }
+    }
+   }
+   else if( Files.exists(pi.getRealPath()) )
+    findFiles(pi.getRealPath().toFile(), FileNameUtil.toUnixPath(pi.getVirtPath()), filt, files);
+
+   out.println(jsDir.toString());
+
+   return;
+  }
+  catch(JSONException e)
+  {
+   // TODO Auto-generated catch block
+   e.printStackTrace();
+  }
+
+ }
+ 
+
+
+ private void findFiles(File realPath, String pathPfx, AbstractFileFilter filt, JSONArray files) throws IOException, JSONException
+ {
+  if( realPath.isDirectory() )
+  {
+   for( File p : realPath.listFiles() )
+   {
+    if( p.isDirectory() )
+     findFiles(p, pathPfx+'/'+p.getName(), filt, files);
+    else if( filt.accept(p) )
+     findFiles(p, pathPfx+'/'+p.getName(), filt, files);
+   }
+  }
+  else
+  {
+   JSONObject ent = new JSONObject();
+   ent.put("name", realPath.getName());
+   ent.put("path",pathPfx);
+   ent.put("size",realPath.length());
+   
+   files.put(ent);
+  }
+  
+ }
+
  private void mkdir(HttpServletRequest req, HttpServletResponse resp, Session sess) throws IOException
  {
   String from = req.getParameter(PATH_PARAMETER);
@@ -435,7 +554,7 @@ public class DirServlet extends ServiceServlet
   resp.getWriter().print("{\n\"status\": \"OK\",\n\"message\": \"Operation success\"\n}");
  }
 
- 
+
 
  private void dirList( String path, int depth, boolean showArch, HttpServletResponse resp, Session sess) throws IOException
  {
