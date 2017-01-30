@@ -148,6 +148,15 @@ public class DirServlet extends ServiceServlet
 
   PathInfo pi = null;
   
+  if( path == null )
+   path = "/";
+  
+  if( pattern == null )
+  {
+   resp.getWriter().print("{\n\"status\": \"FAIL\",\n\"message\": \"Pattern not specified\"\n}");
+   return;
+  }
+  
   try
   {
    pi = PathInfo.getPathInfo(path, user);
