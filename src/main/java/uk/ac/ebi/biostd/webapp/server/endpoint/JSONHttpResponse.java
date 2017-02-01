@@ -98,4 +98,16 @@ public class JSONHttpResponse implements Response
   else
    respond(code, sts, msg);
  }
+
+ @Override
+ public Format getFormat()
+ {
+  return Format.JSON;
+ }
+
+ @Override
+ public HttpServletResponse getHttpServletResponse()
+ {
+  return response;
+ }
 }

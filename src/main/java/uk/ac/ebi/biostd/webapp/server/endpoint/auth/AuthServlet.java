@@ -180,15 +180,13 @@ public class AuthServlet extends ServiceServlet
   
   String prm = request.getParameter(FormatParameter);
   
-  if( "json".equals(prm) )
-   resp = new JSONHttpResponse(response);
-  else if( "text".equals(prm) )
-   resp = new TextHttpResponse(response);
-  else if( jsonReq )
-   resp = new JSONHttpResponse(response);
-  else
-   resp = new TextHttpResponse(response);
+  boolean json = false;
+  
+  if( "json".equals(prm) || (! "text".equals(prm) && jsonReq) )
+   json = true;
 
+  resp = json? new JSONHttpResponse(response) : new TextHttpResponse(response);
+ 
   ParameterPool params = null;
   
   if( jsonReq )
@@ -253,6 +251,12 @@ public class AuthServlet extends ServiceServlet
    passwordReset(params, request, resp);
   else if( act == Action.creategroup )
    GroupActions.createGroup(params, request, resp, sess );
+  else if( act == Action.removegroup )
+   GroupActions.removeGroup(params, request, resp, sess );
+  else if( act == Action.listgroups )
+   GroupActions.listGroups(params, request, resp, sess );
+  else if( act == Action.listgroup )
+   GroupActions.listGroupMembers(params, request, resp, sess );
   else if( act == Action.addusertogroup )
    GroupActions.addUserToGroup(params, request, resp, sess );
   else if( act == Action.remuserfromgroup )

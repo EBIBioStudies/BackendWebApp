@@ -30,6 +30,10 @@ import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserACR;
 import uk.ac.ebi.biostd.authz.UserGroup;
+import uk.ac.ebi.biostd.authz.acr.GroupPermGrpACR;
+import uk.ac.ebi.biostd.authz.acr.GroupPermUsrACR;
+import uk.ac.ebi.biostd.authz.acr.GroupProfGrpACR;
+import uk.ac.ebi.biostd.authz.acr.GroupProfUsrACR;
 import uk.ac.ebi.biostd.authz.acr.SystemPermGrpACR;
 import uk.ac.ebi.biostd.authz.acr.SystemPermUsrACR;
 import uk.ac.ebi.biostd.authz.acr.SystemProfGrpACR;
@@ -61,7 +65,7 @@ public class SecurityManagerImpl implements SecurityManager
  private Map<String, User> userEmailMap = new HashMap<String, User>();
  private Map<String, User> userLoginMap = new HashMap<String, User>();
  private Map<String, UserGroup> groupNameMap = new HashMap<String, UserGroup>();
- 
+ private Map<Long, PermissionProfile> profileMap = new HashMap<Long, PermissionProfile>();
 
 
  public SecurityManagerImpl()
@@ -88,13 +92,13 @@ public class SecurityManagerImpl implements SecurityManager
   try
   {
    systemACR = new ArrayList<ACR>();
-   Map<Long, PermissionProfile> profMap = new HashMap<Long, PermissionProfile>();
    
    groupMap.clear();
    userMap.clear();
    userEmailMap.clear();
    userLoginMap.clear();
    groupNameMap.clear();
+   profileMap.clear();
 
    Query q = em.createQuery("SELECT usr FROM User usr");
    
@@ -110,7 +114,7 @@ public class SecurityManagerImpl implements SecurityManager
    List<UserGroup> grps = q.getResultList();
    
    for( UserGroup ug : grps )
-    detachGroup( ug, false );
+    detachGroup( ug, true );
    
    
    q = em.createQuery("SELECT acr FROM SystemPermGrpACR acr");
@@ -166,7 +170,7 @@ public class SecurityManagerImpl implements SecurityManager
     {
      SystemProfUsrACR nr = new SystemProfUsrACR();
      nr.setId( acr.getId() );
-     nr.setProfile( detachProfile(acr.getProfile(), profMap ) );
+     nr.setProfile( detachProfile(acr.getProfile()) );
      nr.setSubject( detachUser(acr.getSubject()) );
      
      systemACR.add(nr);
@@ -186,7 +190,7 @@ public class SecurityManagerImpl implements SecurityManager
     {
      SystemProfGrpACR nr = new SystemProfGrpACR();
      nr.setId( acr.getId() );
-     nr.setProfile( detachProfile(acr.getProfile(), profMap ) );
+     nr.setProfile( detachProfile(acr.getProfile()) );
      nr.setSubject( detachGroup(acr.getSubject(), true) );
      
      systemACR.add(nr);
@@ -399,8 +403,77 @@ public class SecurityManagerImpl implements SecurityManager
  
  
  @Override
+ public synchronized void removeGroup( long gid ) throws ServiceException
+ {
+  UserGroup ug = groupMap.get( gid );
+  
+  if( ug == null )
+   return;
+  
+  if( ug.isBuiltIn() )
+   throw new ServiceException("Can't remove built in group");
+  
+  EntityManager em = null;
+
+  em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  
+  EntityTransaction trn = em.getTransaction();
+
+  try
+  {
+   trn.begin();
+
+   UserGroup prst = em.find(UserGroup.class, gid);
+   
+   em.remove(prst);
+   
+   trn.commit();
+  }
+  catch( Exception e )
+  {
+   try
+   {
+    if( em != null )
+    {
+     if( trn.isActive() )
+      trn.rollback();
+     
+    }
+   }
+   catch(Exception e2)
+   {
+    log.error("Error during transaction roolback: "+e2.getClass().getName()+": "+e2.getMessage());
+    e2.printStackTrace();
+   }
+
+   e.printStackTrace();
+   throw new ServiceException("JPA exception: "+e.getClass().getName()+": "+e.getMessage(),e);
+  }
+  
+  groupMap.remove(gid);
+  groupNameMap.remove(ug.getName());
+  
+  if( ug.getUsers() != null )
+  {
+   for( User u : ug.getUsers() )
+    u.removeGroup(ug);
+  }
+  
+  if( ug.getGroups() != null )
+  {
+   for( UserGroup u : ug.getGroups() )
+    u.removeGroup(ug);
+  }
+  
+ }
+ 
+ 
+ @Override
  public synchronized UserGroup addGroup(UserGroup ug) throws ServiceException
  {
+  if( ug.isBuiltIn() )
+   throw new ServiceException("Can't create built in group");
+  
   EntityManager em = null;
   Collection<GroupACR> newSysACR = null;
 
@@ -584,18 +657,17 @@ public class SecurityManagerImpl implements SecurityManager
    Set<UserGroup> grps = new HashSet<UserGroup>( );
    
    for( UserGroup g : u.getGroups() )
-    grps.add( detachGroup(g, false) );
+    grps.add( detachGroup(g, true) );
 
    du.setGroups(grps);
   }
   
-  
   return du;
  }
  
- private PermissionProfile detachProfile( PermissionProfile pr, Map<Long, PermissionProfile> pmap ) // to pull profile structure from the DB. We need this to overcome lazy loading
+ private PermissionProfile detachProfile( PermissionProfile pr ) // to pull profile structure from the DB. We need this to overcome lazy loading
  {
-  PermissionProfile np=pmap.get(pr.getId());
+  PermissionProfile np=profileMap.get(pr.getId());
   
   if( np != null )
    return np;
@@ -605,7 +677,7 @@ public class SecurityManagerImpl implements SecurityManager
   np.setId( pr.getId() );
   np.setDescription( pr.getDescription() );
   
-  pmap.put(np.getId(), np);
+  profileMap.put(np.getId(), np);
   
   if( pr.getPermissions() != null && pr.getPermissions().size() > 0 )
   {
@@ -629,7 +701,7 @@ public class SecurityManagerImpl implements SecurityManager
    Collection<PermissionProfile> pps = new ArrayList<PermissionProfile>( pr.getProfiles().size() );
    
    for( PermissionProfile pp : pr.getProfiles() )
-    pps.add( detachProfile(pp, pmap) );
+    pps.add( detachProfile(pp) );
    
    np.setProfiles(pps);
   }
@@ -676,6 +748,31 @@ public class SecurityManagerImpl implements SecurityManager
    
    ug.setGroups( grps );
   }
+  
+  if( g.getPermissionForUserACRs() != null )
+  {
+   for( GroupPermUsrACR acr :  g.getPermissionForUserACRs() )
+    ug.addPermissionForUserACR(detachUser(acr.getSubject()), acr.getAction(), acr.isAllow() );
+  }
+  
+  if( g.getPermissionForGroupACRs() != null )
+  {
+   for( GroupPermGrpACR acr :  g.getPermissionForGroupACRs() )
+    ug.addPermissionForGroupACR(acr.getSubject().getId()==ug.getId()?ug:detachGroup(acr.getSubject(), true), acr.getAction(), acr.isAllow() );
+  }
+
+  if( g.getProfileForUserACRs() != null )
+  {
+   for( GroupProfUsrACR acr :  g.getProfileForUserACRs() )
+    ug.addProfileForUserACR( detachUser(acr.getSubject()), detachProfile(acr.getProfile()) );
+  }
+
+  if( g.getProfileForGroupACRs() != null )
+  {
+   for( GroupProfGrpACR acr :  g.getProfileForGroupACRs() )
+    ug.addProfileForGroupACR(acr.getSubject().getId()==ug.getId()?ug:detachGroup(acr.getSubject(), true), detachProfile(acr.getProfile()) );
+  }
+
   
   return ug;
  }
@@ -858,6 +955,12 @@ public class SecurityManagerImpl implements SecurityManager
  {
   return groupNameMap.get(name);
  }
+ 
+ @Override
+ public Collection<UserGroup> getGroups()
+ {
+  return groupMap.values();
+ }
 
  @Override
  public boolean mayUserReadGroupFiles(User user, UserGroup g)
@@ -889,12 +992,18 @@ public class SecurityManagerImpl implements SecurityManager
  @Override
  public boolean addUserToGroup(User usr, UserGroup grp) throws ServiceException
  {
+  if( grp.isBuiltIn() )
+   throw new ServiceException("Can't add user to built in group");
+  
   return changeGroup(usr, grp, true);
  }
 
  @Override
  public boolean removeUserFromGroup(User usr, UserGroup grp) throws ServiceException
  {
+  if( grp.isBuiltIn() )
+   throw new ServiceException("Can't remove user from built in group");
+
   return changeGroup(usr, grp, false);
  }
  

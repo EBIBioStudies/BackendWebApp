@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Group operation tests</title>
+
+<style type="text/css">
+
+.grpTable { border: 1px solid black; border-collapse: collapse; }
+.grpTable td, .grpTable th { border: 1px solid black; padding: 4px }
+
+.out { margin: 10px }
+
+</style>
+
+<script type="text/javascript">
+
+function doListGroups()
+{
+ var xmlhttp = new XMLHttpRequest();
+
+ xmlhttp.onreadystatechange = function() {
+
+  var out = document.getElementById("msg");
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+    out.innerHTML = "Error: "+xmlhttp.status;
+
+   var json = JSON.parse(xmlhttp.responseText);
+   
+   if( json.status == "FAIL")
+   {
+    out.innerHTML += "<br/>FAIL: "+json.message;
+    return;
+   }
+   
+   var tblOut = document.getElementById("grplist");
+   tblOut.innerHTML = "";
+   
+   var tbl = document.createElement("table");
+   tbl.className = "grpTable";
+   tblOut.appendChild(tbl);
+   
+   tbl.appendChild( createRow("th", "Name", "Description") );
+
+   
+   for( var i = 0; i < json.groups.length; i++ )
+    tbl.appendChild( createRow("td", json.groups[i].name, json.groups[i].description) );
+   
+  }
+ }
+
+ xmlhttp.open("GET", "../auth/listgroups?format=json", true);
+ xmlhttp.send(); 
+}
+
+function doListGroup()
+{
+ var xmlhttp = new XMLHttpRequest();
+
+ xmlhttp.onreadystatechange = function() {
+
+  var out = document.getElementById("msg");
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+    out.innerHTML = "Error: "+xmlhttp.status;
+
+   var json = JSON.parse(xmlhttp.responseText);
+   
+   if( json.status == "FAIL")
+   {
+    out.innerHTML += "<br/>FAIL: "+json.message;
+    return;
+   }
+   
+   var tblOut = document.getElementById("usrlist");
+   tblOut.innerHTML = "";
+   
+   var tbl = document.createElement("table");
+   tbl.className = "grpTable";
+   tblOut.appendChild(tbl);
+   
+   tbl.appendChild( createRow("th","Login", "Email", "Full Name") );
+
+   
+   for( i = 0; i < json.users.length; i++ )
+   {
+    tbl.appendChild( createUserRow(json.users[i].login, json.users[i].email, json.users[i].fullname) );
+   }
+   
+  }
+ }
+
+ xmlhttp.open("GET", "../auth/listgroup?format=json&name="+document.getElementById("group").value, true);
+ xmlhttp.send(); 
+}
+
+
+function createRow()
+{
+ var tag = arguments[0];
+
+ var tr =  document.createElement("tr");
+
+ for( i=1; i < arguments.length; i++ )
+ {
+  var td = document.createElement(tag);
+  td.innerHTML=arguments[i];
+  td.onclick = rowClicked;
+  tr.appendChild(td);
+ }
+ 
+ return tr;
+}
+
+function createUserRow()
+{
+ var tr =  document.createElement("tr");
+
+ var uid = arguments[0]?arguments[0]:arguments[1];
+ 
+ for( i=0; i < arguments.length; i++ )
+ {
+  var td = document.createElement("td");
+  td.innerHTML=arguments[i];
+  td.onclick = function(){ selectUser(uid)};
+  tr.appendChild(td);
+ }
+ 
+ return tr;
+}
+
+
+function rowClicked( obj )
+{
+ document.getElementById("group").value = obj.target.parentElement.getElementsByTagName("td")[0].innerHTML ;
+}
+
+function selectUser( usr )
+{
+ document.getElementById("user").value = usr ;
+}
+
+function doCreateGroup()
+{
+ var gName =  document.getElementById("group").value;
+ var proj = document.getElementById("isproj").checked;
+ var desc = encodeURIComponent(document.getElementById("desc").value);
+ 
+ var xmlhttp = new XMLHttpRequest();
+
+ xmlhttp.onreadystatechange = function() {
+
+  var out = document.getElementById("msg");
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+    out.innerHTML = "Error: "+xmlhttp.status;
+
+   var json = JSON.parse(xmlhttp.responseText);
+   
+   if( json.status == "FAIL")
+   {
+    out.innerHTML += "<br/>FAIL: "+json.message;
+    return;
+   }
+   
+  }
+ }
+
+ xmlhttp.open("GET", "../auth/creategroup?format=json&name="+gName+"&project="+proj+"&description="+desc, true);
+ xmlhttp.send(); 
+}
+
+function doRemoveGroup()
+{
+ var gName =  document.getElementById("group").value;
+ 
+ var xmlhttp = new XMLHttpRequest();
+
+ xmlhttp.onreadystatechange = function() {
+
+  var out = document.getElementById("msg");
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+    out.innerHTML = "Error: "+xmlhttp.status;
+
+   var json = JSON.parse(xmlhttp.responseText);
+   
+   if( json.status == "FAIL")
+   {
+    out.innerHTML += "<br/>FAIL: "+json.message;
+    return;
+   }
+   
+  }
+ }
+
+ xmlhttp.open("GET", "../auth/removegroup?format=json&name="+gName, true);
+ xmlhttp.send(); 
+}
+
+function doAdduser()
+{
+ var gName =  document.getElementById("group").value;
+ var uName =  document.getElementById("user").value;
+ 
+ var xmlhttp = new XMLHttpRequest();
+
+ xmlhttp.onreadystatechange = function() {
+
+  var out = document.getElementById("msg");
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+    out.innerHTML = "Error: "+xmlhttp.status;
+
+   var json = JSON.parse(xmlhttp.responseText);
+   
+   if( json.status == "FAIL")
+   {
+    out.innerHTML += "<br/>FAIL: "+json.message;
+    return;
+   }
+   
+  }
+ }
+
+ xmlhttp.open("GET", "../auth/addusertogroup?format=json&group="+gName+"&user="+uName, true);
+ xmlhttp.send(); 
+}
+
+function doRemuser()
+{
+ var gName =  document.getElementById("group").value;
+ var uName =  document.getElementById("user").value;
+ 
+ var xmlhttp = new XMLHttpRequest();
+
+ xmlhttp.onreadystatechange = function() {
+
+  var out = document.getElementById("msg");
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+    out.innerHTML = "Error: "+xmlhttp.status;
+
+   var json = JSON.parse(xmlhttp.responseText);
+   
+   if( json.status == "FAIL")
+   {
+    out.innerHTML += "<br/>FAIL: "+json.message;
+    return;
+   }
+   
+  }
+ }
+
+ xmlhttp.open("GET", "../auth/remuserfromgroup?format=json&group="+gName+"&user="+uName, true);
+ xmlhttp.send(); 
+}
+
+</script>
+
+</head>
+<body>
+<table>
+<tr>
+<td>Group : </td><td><input type="text" id="group" style="width: 200px"/></td>
+<td>Description: <input type="text" id="desc" style="width: 200px"/></td>
+<td colspan="5"><input type="checkbox" id="isproj" checked="1"> Project</td>
+</tr>
+<tr>
+<td>User : </td><td colspan="5"><input type="text" id="user" style="width: 200px"/></td>
+</tr>
+
+
+<tr>
+</tr>
+</table>
+<td><button onClick="doListGroups()">List All Groups</button></td>
+<td><button onClick="doListGroup()">List Group</button></td>
+<td><button onClick="doCreateGroup()">Create Group</button></td>
+<td><button onClick="doRemoveGroup()">Remove Group</button></td>
+<td><button onClick="doAdduser()">Add user to group</button></td>
+<td><button onClick="doRemuser()">Remove user from group</button></td>
+
+
+<div id="msg" class="out"></div>
+<div id="grplist" class="out"></div>
+<div id="usrlist" class="out"></div>
+</body>
+</html>

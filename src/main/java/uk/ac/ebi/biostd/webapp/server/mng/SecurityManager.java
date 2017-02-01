@@ -1,5 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
+import java.util.Collection;
+
 import uk.ac.ebi.biostd.authz.AuthorizationTemplate;
 import uk.ac.ebi.biostd.authz.AuthzObject;
 import uk.ac.ebi.biostd.authz.User;
@@ -32,7 +34,6 @@ public interface SecurityManager
  boolean mayUserCreateIdGenerator(User usr);
 
  User addUser(User u) throws ServiceException;
- UserGroup addGroup(UserGroup ug) throws ServiceException;
  boolean addUserToGroup(User usr, UserGroup grp) throws ServiceException;
  boolean removeUserFromGroup(User usr, UserGroup grp) throws ServiceException;
 
@@ -42,7 +43,10 @@ public interface SecurityManager
  
  User getAnonymousUser();
 
+ UserGroup addGroup(UserGroup ug) throws ServiceException;
  UserGroup getGroup(String name);
+ Collection<UserGroup> getGroups();
+ void removeGroup(long id) throws ServiceException;
 
  boolean mayUserManageTags(User user);
 

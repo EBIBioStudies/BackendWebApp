@@ -82,4 +82,16 @@ public class TextHttpResponse implements Response
   else
    respond(code, sts, msg);
  }
+ 
+ @Override
+ public Format getFormat()
+ {
+  return Format.TEXT;
+ }
+
+ @Override
+ public HttpServletResponse getHttpServletResponse()
+ {
+  return response;
+ }
 }

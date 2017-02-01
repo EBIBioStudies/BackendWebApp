@@ -17,6 +17,7 @@ import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
+import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
@@ -157,6 +158,57 @@ public class JPAUserManager implements UserManager, SessionListener
   }
  }
 
+ 
+ @Override
+ public synchronized void removeGroup(String gName) throws UserMngException
+ {
+  
+  UserGroup ug = BackendConfig.getServiceManager().getSecurityManager().getGroup(gName);
+  
+  if( ug == null )
+   throw new UserMngException("Group not found");
+  
+  try
+  {
+   BackendConfig.getServiceManager().getSecurityManager().removeGroup(ug.getId());
+  }
+  catch(ServiceException e)
+  {
+   throw new SystemUserMngException("System error",e);
+  }
+  
+  if( ! ug.isProject() )
+   return;
+  
+  Path udpth = BackendConfig.getGroupDirPath(ug);
+  Path llpth = BackendConfig.getGroupLinkPath(ug);
+  
+  
+  FileManager fmgr = BackendConfig.getServiceManager().getFileManager();
+  
+  try
+  {
+   fmgr.deleteDirectory(udpth);
+   
+   try
+   {
+    if( llpth != null )
+     Files.delete(llpth );
+   }
+   catch(Exception e2)
+   {
+    Log.error("System can't delete symbolic links: "+e2.getMessage());
+   }
+   
+  }
+  catch(IOException e)
+  {
+   Log.error("Group directories were not removed: "+e.getMessage(), e);
+   e.printStackTrace();
+  }
+  
+ }
+ 
  
  @Override
  public synchronized void addGroup(UserGroup ug) throws UserMngException

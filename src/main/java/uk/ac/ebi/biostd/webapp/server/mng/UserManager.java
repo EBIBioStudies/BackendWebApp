@@ -36,6 +36,8 @@ public interface UserManager
  UserGroup getGroup(String grName);
 
  void addGroup(UserGroup ug) throws UserMngException;
+ void removeGroup(String grName) throws UserMngException;
+
 
 
 
