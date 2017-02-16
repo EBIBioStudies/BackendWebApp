@@ -248,7 +248,7 @@ public class FormattingOutputModule implements OutputModule
   {
    formatter.header(hdrs, outStream);
    
-   char[] buf = new char[4089*1000];
+   char[] buf = new char[4096*1000];
    
    int read;
    
@@ -256,8 +256,8 @@ public class FormattingOutputModule implements OutputModule
     outStream.write(buf, 0, read);
   }
   
-  if( ! tmpFile.delete() )
-   log.warn("Task '"+name+"': Can't delete temporary file: " + tmpFile);
+//  if( ! tmpFile.delete() )
+//   log.warn("Task '"+name+"': Can't delete temporary file: " + tmpFile);
   
   if(outFile.exists() && !outFile.delete())
    log.error("Task '"+name+"': Can't delete file: " + outFile);
