@@ -11,10 +11,14 @@ import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ReqResp;
 import uk.ac.ebi.biostd.webapp.server.export.ExportTask;
+import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 
 public class ECTasks
 {
  static final String ThreadsParameter = "threads";
+ static final String LockerParameter = "locker";
+
+ 
  static final int MaxThreads = 32;
 
  private static final Logger log = LoggerFactory.getLogger(ECTasks.class);
@@ -134,6 +138,64 @@ public class ECTasks
   }, "Manual export task").start();
   
   rqrs.getResponse().respond(HttpServletResponse.SC_OK, "OK","Export task started");
+ }
+
+ 
+ 
+ private static void lockExport(ReqResp rqrs, User usr, boolean lck) throws IOException
+ {
+  if( ! usr.isSuperuser() && ! BackendConfig.getServiceManager().getSecurityManager().mayUserLockExport(usr) )
+  {
+   rqrs.getResponse().respond(HttpServletResponse.SC_FORBIDDEN, "FAIL","User has no permission to lock export task");
+   return;
+  }
+  
+  String locker = rqrs.getParameterPool().getParameter(LockerParameter);
+  if( locker == null || (locker=locker.trim()).length() == 0 )
+  {
+   rqrs.getResponse().respond(HttpServletResponse.SC_BAD_REQUEST, "FAIL",LockerParameter+" parameter is not defined");
+   return;
+  }
+
+  if( BackendConfig.getExportTask() == null )
+  {
+   rqrs.getResponse().respond(HttpServletResponse.SC_OK, "FAIL","Export task is not configured");
+   return;
+  }
+  
+  
+  TaskInfo taskInfo = BackendConfig.getExportTask();
+  
+  boolean res;
+  
+  String opName;
+  
+  if( lck )
+  {
+   opName = "lock";
+   res = taskInfo.lock( locker );
+  }
+  else
+  {
+   opName = "unlock";
+   res = taskInfo.unlock( locker );
+  }
+  
+  if( res )
+   rqrs.getResponse().respond(HttpServletResponse.SC_OK, "OK","Export task successully "+opName+"ed");
+  else
+   rqrs.getResponse().respond(HttpServletResponse.SC_OK, "OK","Export task was "+opName+"ed");
+  
+ }
+
+ public static void lockExport(ReqResp rqrs, User usr) throws IOException
+ {
+  lockExport(rqrs, usr, true);
+ }
+
+ public static void unlockExport(ReqResp rqrs, User usr) throws IOException
+ {
+  lockExport(rqrs, usr, false);
  }
 
 }

@@ -16,6 +16,8 @@ public class ExportControlServlet extends ServiceServlet
  
  static final String CommandForceTask = "force";
  static final String CommandInterruptTask = "interrupt";
+ static final String CommandLockExport = "lock";
+ static final String CommandUnlockExport = "unlock";
  
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException
@@ -44,6 +46,14 @@ public class ExportControlServlet extends ServiceServlet
   else if( CommandInterruptTask.equals(cmd) )
   {
    ECTasks.forceInterrupt(rqrs, sess.getUser());
+  }
+  else if( CommandLockExport.equals(cmd) )
+  {
+   ECTasks.lockExport(rqrs, sess.getUser());
+  }
+  else if( CommandUnlockExport.equals(cmd) )
+  {
+   ECTasks.unlockExport(rqrs, sess.getUser());
   }
   else if( cmd == null || cmd.length() == 0 )
   {

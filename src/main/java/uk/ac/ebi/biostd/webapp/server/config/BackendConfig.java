@@ -60,6 +60,8 @@ public class BackendConfig
  public static final long defaultActivationTimeout = 2*24*60*60*1000L; 
  public static final long defaultPassResetTimeout  = 1*24*60*60*1000L; 
  
+ public static final long exportLockTimeout = 1*60*60*1000L;
+ public static final long exportLockDelay = 10*60*1000L;
  
 // public static final String GuestsGroup = "@Guests";
 // public static final String EveryoneGroup = "@Everyone";
@@ -866,6 +868,16 @@ public class BackendConfig
  public static boolean isEncodeFileNames()
  {
   return EncodeFileNames;
+ }
+
+ public static long getExportLockTimeoutMsec()
+ {
+  return exportLockTimeout;
+ }
+
+ public static long getExportLockDelayMsec()
+ {
+  return exportLockDelay;
  }
 
 }

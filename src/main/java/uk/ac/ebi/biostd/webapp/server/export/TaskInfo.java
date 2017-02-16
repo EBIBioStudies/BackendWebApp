@@ -1,10 +1,15 @@
 package uk.ac.ebi.biostd.webapp.server.export;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public class TaskInfo extends TimerTask
 {
@@ -17,6 +22,8 @@ public class TaskInfo extends TimerTask
  private int enqueueTimeMoD =-1;
 
  private int periodMin =-1;
+ 
+ private Map<String,Long> lockMap = new HashMap<String, Long>();
 
  private boolean enqueued;
  
@@ -74,6 +81,38 @@ public class TaskInfo extends TimerTask
  @Override
  public void run()
  {
+  
+  boolean delay = false;
+  
+  synchronized(lockMap)
+  {
+   if( lockMap.size() > 0 )
+   {
+    long ctime = System.currentTimeMillis();
+    
+    Iterator<Map.Entry<String, Long>> iter = lockMap.entrySet().iterator();
+    
+    while( iter.hasNext() )
+    {
+     long ltime = iter.next().getValue();
+     
+     if( (ctime-ltime) > BackendConfig.getExportLockTimeoutMsec() )
+      iter.remove();
+     else
+      delay = true;
+    }
+   }
+  }
+  
+  if( delay )
+  {
+   log.info("Delaying export task: " + task.getName());
+   
+   timer.schedule(this, BackendConfig.getExportLockDelayMsec());
+   
+   return;
+  }
+  
   log.info("Starting scheduled task: " + task.getName());
 
   new Thread(new Runnable()
@@ -106,6 +145,26 @@ public class TaskInfo extends TimerTask
  public void setTimer(Timer timer)
  {
   this.timer = timer;
+ }
+
+ public boolean lock(String locker)
+ {
+  synchronized(lockMap)
+  {
+   boolean res = lockMap.put(locker, System.currentTimeMillis()) != null;
+   
+   return res;
+  }
+ }
+
+ public boolean unlock(String locker)
+ {
+  synchronized(lockMap)
+  {
+   boolean res = lockMap.remove(locker) != null;
+  
+   return res;
+  }
  }
 
 }
