@@ -61,11 +61,14 @@ public class OutputTask implements Runnable
    if( str == null )
     terminate = true;
    
-   if( terminate && inQueue.size() == 0  )
+   if( terminate && inQueue.size() == 0 )
    {
     putIntoQueue(new ControlMessage(Type.OUTPUT_FINISH, this));
     return;
    }
+   
+   if( str == null )
+    continue;
    
    try
    {
