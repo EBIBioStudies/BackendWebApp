@@ -57,4 +57,7 @@ public interface SecurityManager
  boolean mayUserWriteGroupFiles(User user, UserGroup group);
  boolean mayUserChangeGroup(User usr, UserGroup grp);
 
+ boolean mayUserControlExport(User usr);
+ boolean mayUserLockExport(User usr);
+
 }

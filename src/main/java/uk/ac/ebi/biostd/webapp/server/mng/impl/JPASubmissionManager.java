@@ -1131,28 +1131,30 @@ public class JPASubmissionManager implements SubmissionManager
     }
 
 
-    String pAcc = Submission.getNodeAttachTo(si.getSubmission());
+    List<String> pAccL = Submission.getNodeAttachTo(si.getSubmission());
 
-    if(pAcc != null && (pAcc = pAcc.trim()).length() != 0)
+    if(pAccL != null && pAccL.size() != 0)
     {
-     Submission s = getSubmissionByAcc(pAcc, em);
-
-     if(s == null)
+     for(String pAcc : pAccL)
      {
-      si.getLogNode().log(Level.ERROR, "Submission attribute 'AttachTo' points to non existing submission '" + pAcc + "'");
-      submOk = false;
+      Submission s = getSubmissionByAcc(pAcc, em);
 
-      continue;
-     }
+      if(s == null)
+      {
+       si.getLogNode().log(Level.ERROR, "Submission attribute 'AttachTo' points to non existing submission '" + pAcc + "'");
+       submOk = false;
 
-     if(!BackendConfig.getServiceManager().getSecurityManager().mayUserAttachToSubmission(s, usr))
-     {
-      si.getLogNode().log(Level.ERROR, "User has no permission to attach to submission: " + pAcc);
-      submOk = false;
-      continue;
+       continue;
+      }
+
+      if(!BackendConfig.getServiceManager().getSecurityManager().mayUserAttachToSubmission(s, usr))
+      {
+       si.getLogNode().log(Level.ERROR, "User has no permission to attach to submission: " + pAcc);
+       submOk = false;
+       continue;
+      }
      }
     }
-    
     
     if( si.getGlobalSections() != null )
     {
@@ -1999,7 +2001,7 @@ public class JPASubmissionManager implements SubmissionManager
 
    try (PrintStream out = new PrintStream(trnSbmPath.resolve(si.getSubmission().getAccNo() + ".json").toFile()))
    {
-    new JSONFormatter(out).format(doc);
+    new JSONFormatter(out, true).format(doc);
    }
    catch(Exception e)
    {
@@ -3175,7 +3177,7 @@ public class JPASubmissionManager implements SubmissionManager
    
    try( PrintStream out = new PrintStream( trnSbmPath.resolve(sbm.getAccNo()+".json").toFile() ) )
    {
-    new JSONFormatter(out).format(doc);
+    new JSONFormatter(out, true).format(doc);
    }
    catch (Exception e) 
    {

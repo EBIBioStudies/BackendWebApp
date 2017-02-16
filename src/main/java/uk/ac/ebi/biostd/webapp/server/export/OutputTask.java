@@ -10,16 +10,20 @@ public class OutputTask implements Runnable
  private final Appendable out;
  private final BlockingQueue<Object> inQueue;
  private final BlockingQueue<ControlMessage> controlQueue;
+ 
+ private String separator;
+ 
  private final String name;
  
  private int outCount=0;
  
- public OutputTask( String name, Appendable out, BlockingQueue<Object> inQueue, BlockingQueue<ControlMessage> controlQueue)
+ public OutputTask( String name, Appendable out, String sep, BlockingQueue<Object> inQueue, BlockingQueue<ControlMessage> controlQueue)
  {
   this.out = out;
   this.inQueue = inQueue;
   this.controlQueue = controlQueue;
   this.name=name;
+  separator = sep;
  }
  
 
@@ -65,6 +69,9 @@ public class OutputTask implements Runnable
    
    try
    {
+    if( separator != null && outCount > 0 )
+     out.append(separator);
+    
     out.append(str);
     outCount++;
    }

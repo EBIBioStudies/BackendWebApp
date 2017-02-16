@@ -89,10 +89,8 @@ function doListGroup()
    tbl.appendChild( createRow("th","Login", "Email", "Full Name") );
 
    
-   for( i = 0; i < json.users.length; i++ )
-   {
+   for( var i = 0; i < json.users.length; i++ )
     tbl.appendChild( createUserRow(json.users[i].login, json.users[i].email, json.users[i].fullname) );
-   }
    
   }
  }
@@ -182,7 +180,7 @@ function doCreateGroup()
 
 function doRemoveGroup()
 {
- var gName =  document.getElementById("group").value;
+ var gName =  encodeURIComponent(document.getElementById("group").value);
  
  var xmlhttp = new XMLHttpRequest();
 
@@ -213,8 +211,8 @@ function doRemoveGroup()
 
 function doAdduser()
 {
- var gName =  document.getElementById("group").value;
- var uName =  document.getElementById("user").value;
+ var gName =  encodeURIComponent(document.getElementById("group").value);
+ var uName =  encodeURIComponent(document.getElementById("user").value);
  
  var xmlhttp = new XMLHttpRequest();
 
@@ -245,8 +243,8 @@ function doAdduser()
 
 function doRemuser()
 {
- var gName =  document.getElementById("group").value;
- var uName =  document.getElementById("user").value;
+ var gName =  encodeURIComponent(document.getElementById("group").value);
+ var uName =  encodeURIComponent(document.getElementById("user").value);
  
  var xmlhttp = new XMLHttpRequest();
 

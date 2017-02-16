@@ -949,6 +949,18 @@ public class SecurityManagerImpl implements SecurityManager
  }
 
 
+ @Override
+ public boolean mayUserControlExport(User usr)
+ {
+  return checkSystemPermission(SystemAction.CONTROLEXPORT, usr);
+ }
+ 
+ @Override
+ public boolean mayUserLockExport(User usr)
+ {
+  return checkSystemPermission(SystemAction.LOCKEXPORT, usr);
+ }
+
 
  @Override
  public UserGroup getGroup(String name)
@@ -1105,5 +1117,6 @@ public class SecurityManagerImpl implements SecurityManager
  
   return res;
  }
+
 
 }

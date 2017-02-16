@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONArray;
@@ -19,8 +18,9 @@ import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ReqResp;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ReqResp.Format;
 import uk.ac.ebi.biostd.webapp.server.endpoint.Response;
-import uk.ac.ebi.biostd.webapp.server.endpoint.Response.Format;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
@@ -30,18 +30,21 @@ public class GroupActions
 {
  private static Logger log = LoggerFactory.getLogger(GroupActions.class);
  
- static void remUserFromGroup(ParameterPool params, HttpServletRequest request, Response resp, Session sess) throws IOException
+ static void remUserFromGroup(ReqResp rqrs, Session sess) throws IOException
  {
-  changeGroup(params, request, resp, sess, false);
+  changeGroup(rqrs, sess, false);
  }
 
- static void addUserToGroup(ParameterPool params, HttpServletRequest request, Response resp, Session sess) throws IOException
+ static void addUserToGroup(ReqResp rqrs, Session sess) throws IOException
  {
-  changeGroup(params, request, resp, sess, true);
+  changeGroup(rqrs, sess, true);
  }
  
- static void changeGroup (ParameterPool params, HttpServletRequest request, Response resp, Session sess, boolean add) throws IOException
+ static void changeGroup (ReqResp rqrs, Session sess, boolean add) throws IOException
  {
+  ParameterPool params = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+  
   if(sess == null || sess.isAnonymouns() )
   {
    resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
@@ -123,8 +126,11 @@ public class GroupActions
    
  }
 
- static void createGroup(ParameterPool prms, HttpServletRequest request, Response resp, Session sess) throws IOException
+ static void createGroup(ReqResp rqrs, Session sess) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   if(sess == null || sess.isAnonymouns() )
   {
    resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
@@ -183,8 +189,11 @@ public class GroupActions
   
  }
 
- static void removeGroup(ParameterPool prms, HttpServletRequest request, Response resp, Session sess) throws IOException
+ static void removeGroup(ReqResp rqrs, Session sess) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   if(sess == null || sess.isAnonymouns() )
   {
    resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
@@ -236,8 +245,10 @@ public class GroupActions
 
  
  
- static void listGroups(ParameterPool prms, HttpServletRequest request, Response resp, Session sess) throws IOException
+ static void listGroups(ReqResp rqrs, Session sess) throws IOException
  {
+  Response resp = rqrs.getResponse();
+
   if(sess == null || sess.isAnonymouns() )
   {
    resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
@@ -304,8 +315,11 @@ public class GroupActions
  }
  
  
- public static void listGroupMembers(ParameterPool prms, HttpServletRequest request, Response resp, Session sess) throws IOException
+ public static void listGroupMembers(ReqResp rqrs, Session sess) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   if(sess == null || sess.isAnonymouns() )
   {
    resp.respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");

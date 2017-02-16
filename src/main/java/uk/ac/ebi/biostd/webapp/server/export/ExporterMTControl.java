@@ -73,10 +73,14 @@ public class ExporterMTControl
     
     BlockingQueue<Object> outQueue = new ArrayBlockingQueue<>(100);
 
-    outputs.add(new OutputTask(req.getName()+"",req.getOut(), outQueue, controlMsgQueue));
+    StringBuilder sb = new StringBuilder();
+    req.getFormatter().separator(sb);
+    
+    String sep = sb.length()==0?null:sb.toString();
+    
+    outputs.add(new OutputTask(req.getName()+"",req.getOut(), sep,  outQueue, controlMsgQueue));
 
     formatters.add(new FormattingModule(req.getFormatter(), outQueue, limit));
-
    }
 
 //   ExecutorService tPool = Executors.newFixedThreadPool(threads + outputs.size());
@@ -235,7 +239,7 @@ public class ExporterMTControl
      {
       if( ft.getOutQueue() != null )
       {
-       ft.getOutQueue().clear();
+//       ft.getOutQueue().clear();
        putIntoQueue(ft.getOutQueue(), po);
       }
      }

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,15 +29,11 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.util.StringUtils;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
-import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
-import uk.ac.ebi.biostd.webapp.server.endpoint.JSONHttpResponse;
-import uk.ac.ebi.biostd.webapp.server.endpoint.JSONReqParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ReqResp;
 import uk.ac.ebi.biostd.webapp.server.endpoint.Response;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
-import uk.ac.ebi.biostd.webapp.server.endpoint.TextHttpResponse;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
@@ -161,119 +156,52 @@ public class AuthServlet extends ServiceServlet
    }
   }
 
-  boolean jsonReq = false;
-  
-  String cType = request.getContentType();
-  
-  if( cType != null )
-  {
-   int pos = cType.indexOf(';');
-   
-   if( pos > 0 )
-    cType = cType.substring(0,pos).trim();
-
-   jsonReq = cType.equalsIgnoreCase("application/json");
-  }
-
-  
-  Response resp = null;
-  
-  String prm = request.getParameter(FormatParameter);
-  
-  boolean json = false;
-  
-  if( "json".equals(prm) || (! "text".equals(prm) && jsonReq) )
-   json = true;
-
-  resp = json? new JSONHttpResponse(response) : new TextHttpResponse(response);
- 
-  ParameterPool params = null;
-  
-  if( jsonReq )
-  {
-   Charset cs = Charset.defaultCharset();
-   
-   String enc = request.getCharacterEncoding();
-   
-   if( enc != null )
-   {
-    try
-    {
-     cs = Charset.forName(enc);
-    }
-    catch( Exception e )
-    {}
-   }
-   
-   String reqBody = null;
-   
-  
-   reqBody = StringUtils.readFully(request.getInputStream(), cs);
-  
-   if( reqBody == null || reqBody.length() == 0 )
-   {
-    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    response.setContentType("text/plain");
-    response.getWriter().print("FAIL Empty JSON request body");
-    return;
-   }
-   
-   try
-   {
-    params = new JSONReqParameterPool(reqBody, request.getRemoteAddr());
-   }
-   catch( Exception e )
-   {
-    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    response.getWriter().print("FAIL Invalid JSON request body");
-    return;
-   }
-  }
-  else
-   params = new HttpReqParameterPool(request);
-  
+  ReqResp rqrs = new ReqResp(request, response);
   
   if( act == Action.check )
-   checkLoggedIn(params, request, resp);
+   checkLoggedIn(rqrs);
   else if( act == Action.signin )
-   signin(params, resp);
+   signin(rqrs);
   else if( act == Action.signout )
-   signout(params, request, resp);
+   signout(rqrs);
   else if( act == Action.signup )
-   signup(params, request, resp);
+   signup(rqrs);
   else if( act == Action.activate )
-   activate(params, request, response, resp);
+   activate(rqrs);
   else if( act == Action.retryact )
-   retryActivation(params, request, resp);
+   retryActivation(rqrs);
   else if( act == Action.passrstreq )
-   passwordResetRequest(params, request, resp);
+   passwordResetRequest(rqrs);
   else if( act == Action.passreset )
-   passwordReset(params, request, resp);
+   passwordReset(rqrs);
   else if( act == Action.creategroup )
-   GroupActions.createGroup(params, request, resp, sess );
+   GroupActions.createGroup(rqrs, sess);
   else if( act == Action.removegroup )
-   GroupActions.removeGroup(params, request, resp, sess );
+   GroupActions.removeGroup(rqrs, sess );
   else if( act == Action.listgroups )
-   GroupActions.listGroups(params, request, resp, sess );
+   GroupActions.listGroups(rqrs, sess );
   else if( act == Action.listgroup )
-   GroupActions.listGroupMembers(params, request, resp, sess );
+   GroupActions.listGroupMembers(rqrs, sess );
   else if( act == Action.addusertogroup )
-   GroupActions.addUserToGroup(params, request, resp, sess );
+   GroupActions.addUserToGroup(rqrs, sess );
   else if( act == Action.remuserfromgroup )
-   GroupActions.remUserFromGroup(params, request, resp, sess );
+   GroupActions.remUserFromGroup(rqrs, sess );
 
  }
  
 
 
  
- private void checkLoggedIn(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void checkLoggedIn( ReqResp rqrs ) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+  
   String prm = prms.getParameter(SessionIdParameter);
   
   if( prm == null )
   {
-   prm  = getCookieSessId(request);
+   prm  = getCookieSessId(rqrs.getHttpServletRequest());
    
    if( prm == null )
    {
@@ -322,8 +250,11 @@ public class AuthServlet extends ServiceServlet
   resp.respond(HttpServletResponse.SC_OK, "OK", null, outInfo ); // safe for null emails
  }
  
- private void signin( ParameterPool prms, Response resp) throws IOException
+ private void signin( ReqResp rqrs ) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   String uname = prms.getParameter(UserLoginParameter);
   
   if( uname == null )
@@ -394,13 +325,16 @@ public class AuthServlet extends ServiceServlet
  }
  
  
- private void signout( ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void signout( ReqResp rqrs ) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   String prm = prms.getParameter(SessionIdParameter);
   
   if( prm == null )
   {
-   prm  = getCookieSessId(request);
+   prm  = getCookieSessId(rqrs.getHttpServletRequest());
    
    if( prm == null )
    {
@@ -427,11 +361,14 @@ public class AuthServlet extends ServiceServlet
  }
  
  
- private void signup( ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void signup( ReqResp rqrs ) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   User usr = null;
 
-  if( ! checkRecaptchas(prms, request, resp, null) )
+  if( ! checkRecaptchas(rqrs, null) )
    return;
   
   List<String[]> aux = null;
@@ -567,8 +504,11 @@ public class AuthServlet extends ServiceServlet
  }
  
  
- private void activate( ParameterPool prms, HttpServletRequest request, HttpServletResponse response, Response resp) throws IOException
+ private void activate( ReqResp rqrs ) throws IOException
  {
+  Response resp = rqrs.getResponse();
+  HttpServletRequest request = rqrs.getHttpServletRequest();
+  
   String actKey = request.getPathInfo();
   
 
@@ -632,8 +572,11 @@ public class AuthServlet extends ServiceServlet
 
  }
  
- private void retryActivation( ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void retryActivation( ReqResp rqrs ) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   String email = prms.getParameter(UserEmailParameter);
   
   if( email == null )
@@ -646,7 +589,7 @@ public class AuthServlet extends ServiceServlet
   email = email.trim();
   
   
-  if( ! checkRecaptchas(prms, request, resp, null) )
+  if( ! checkRecaptchas(rqrs, null) )
    return;
 
 
@@ -682,8 +625,11 @@ public class AuthServlet extends ServiceServlet
 
  }
 
- private void passwordResetRequest(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void passwordResetRequest(ReqResp rqrs) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   String email = prms.getParameter(UserEmailParameter);
   
   String succURL = null;
@@ -704,7 +650,7 @@ public class AuthServlet extends ServiceServlet
  
   email = email.trim();
   
-  if( ! checkRecaptchas(prms, request, resp, failURL) )
+  if( ! checkRecaptchas(rqrs, failURL) )
    return;
   
 
@@ -754,14 +700,17 @@ public class AuthServlet extends ServiceServlet
 
  }
  
- private boolean checkRecaptchas(ParameterPool prms, HttpServletRequest request, Response resp, String failURL) throws IOException
+ private boolean checkRecaptchas(ReqResp rqrs, String failURL) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+
   String cptResp = prms.getParameter(ReCaptcha2ResponseParameter);
   
   if( cptResp != null )
   {
    
-   if ( !checkRecaptcha2(cptResp, request.getRemoteAddr()) ) 
+   if ( !checkRecaptcha2(cptResp, rqrs.getHttpServletRequest().getRemoteAddr()) ) 
    {
     resp.respondRedir(HttpServletResponse.SC_FORBIDDEN, "FAIL CAPTCHA", "Captcha response is not valid", failURL);
 
@@ -806,8 +755,11 @@ public class AuthServlet extends ServiceServlet
   return true;
  }
 
- private void passwordReset(ParameterPool prms, HttpServletRequest request, Response resp) throws IOException
+ private void passwordReset(ReqResp rqrs) throws IOException
  {
+  ParameterPool prms = rqrs.getParameterPool();
+  Response resp = rqrs.getResponse();
+  
   String actKey = prms.getParameter(ResetKeyParameter);
   
 
@@ -822,7 +774,7 @@ public class AuthServlet extends ServiceServlet
   
 //  actKey = actKey.substring(actKey.lastIndexOf('/')+1);
   
-  if( ! checkRecaptchas(prms, request, resp, failURL) )
+  if( ! checkRecaptchas(rqrs, failURL) )
    return;
 
   
