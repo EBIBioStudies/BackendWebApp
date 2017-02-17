@@ -115,14 +115,14 @@ public class SingleSubmissionServlet extends ServiceServlet
    return;
   }
   
+  String ctVal = req.getParameter(CutTechinicalInfoParameter);
+  boolean cutTech = ! ("no".equalsIgnoreCase(ctVal) || "false".equalsIgnoreCase(ctVal) || "0".equals(ctVal) ) ;
   
   if( format.equalsIgnoreCase("json") )
   {
    resp.setContentType("application/json; charset=utf-8");
 
-   JSONFormatter jfmt = new JSONFormatter();
-   
-   jfmt.format(sub, out);
+   new JSONFormatter(out, cutTech).format(sub, out);
   }
   else if( format.equalsIgnoreCase("csv") )
   {
@@ -149,11 +149,6 @@ public class SingleSubmissionServlet extends ServiceServlet
   else
   {
    resp.setContentType("text/xml; charset=utf-8");
-   
-   String ctVal = req.getParameter(CutTechinicalInfoParameter);
-   
-   boolean cutTech = "yes".equalsIgnoreCase(ctVal) || "true".equalsIgnoreCase(ctVal) || "1".equals(ctVal) ;
-   
    new PageMLFormatter(out, cutTech).format(sub, out);
   }
 
