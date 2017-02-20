@@ -1,6 +1,9 @@
 package uk.ac.ebi.biostd.webapp.server;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Constructor;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -11,12 +14,13 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.MissingResourceException;
+import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
+import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,8 +30,6 @@ import javax.persistence.Persistence;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
-import javax.servlet.ServletRegistration;
-
 
 import org.hibernate.search.cfg.Environment;
 import org.hibernate.search.jpa.FullTextEntityManager;
@@ -62,6 +64,9 @@ import uk.ac.ebi.biostd.webapp.server.util.ServletContextParamPool;
 public class WebAppInit implements ServletContextListener 
 {
 // public static final String DefaultName = "_default_";
+
+ static final String ApplicationConfigNode = "BioStdWebApp";
+ static final String ApplicationBasePathParameter = "appBasePath";
 
  static final String DBParamPrefix = "db.";
  static final String ServiceParamPrefix = "biostd.";
@@ -357,23 +362,45 @@ public class WebAppInit implements ServletContextListener
   
   ParamPool config = null;
 
-  ResourceBundle rb = null;
+  config = new ServletContextParamPool(ctx);
 
-  try
+  String bPath = config.getParameter(ApplicationBasePathParameter);
+  
+  if( bPath == null )
   {
-   rb = ResourceBundle.getBundle("testconfig");
-  }
-  catch(MissingResourceException ex)
-  {
+   Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
+   bPath = prefs.get(ApplicationBasePathParameter, null);
   }
 
-  if(rb != null)
-   config = new ResourceBundleParamPool(rb);
+  if(bPath == null)
+  {
+   readConfig(config);
+  }
   else
-   config = new ServletContextParamPool(ctx);
-  
-  
-  readConfig(config);
+  {
+   ResourceBundle rb = null;
+   
+   File bPathFile = new File(bPath);
+   File cfgFile = new File(bPathFile,"config.properties");
+   
+   if( cfgFile.exists() )
+   {
+    try( Reader fr = new FileReader(cfgFile) )
+    {
+     rb = new PropertyResourceBundle(fr);
+    }
+    catch(Exception e)
+    {
+     log.error("Can't read config file: "+cfgFile);
+     throw new RuntimeException("Can't read config file: "+cfgFile);
+    }
+    
+    readConfig(new ResourceBundleParamPool(rb));
+   }
+   else if( bPathFile.exists() )
+    bPathFile.mkdirs();
+  }
+
   
   /*
   WebResourceRoot resRoot = null;
