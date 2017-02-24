@@ -24,12 +24,6 @@ import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 
 public class BackendConfig
 {
- public static Path getSubmissionsTransactionPath()
- {
-  return submissionsTransactionPath;
- }
-
-
  
  public static final String SessionDir = "sessions";
 
@@ -66,7 +60,9 @@ public class BackendConfig
 // public static final String GuestsGroup = "@Guests";
 // public static final String EveryoneGroup = "@Everyone";
 // public static final String AuthenticatedGroup = "@Authenticated";
+ public static final String             DefaultSubmissionPrefix             = "S-";
 
+ 
  public static final String             PublicTag                           = "Public";
 
  public static final String             SubmissionHistoryPostfix            = "#ver";
@@ -127,107 +123,92 @@ public class BackendConfig
  private static final String sessionTokenHeader = "X-Session-Token";   //think about security issues on system that ignore file name cases
 
 
- private static String dataMountPath;
- private static String recapchaPrivateKey;
+// private static long activationTimeout = defaultActivationTimeout;
+// private static long passResetTimeout = defaultPassResetTimeout;
 
- private static long instanceId;
- private static AtomicInteger sequence;
-
- private static ServiceManager defaultServiceManager;
- private static EntityManagerFactory emf;
- private static TaskInfo expTaskInfo;
-
- private static boolean createFileStructure=false;
-
- private static Path baseDirectory;
- private static Path workDirectory;
- private static Path userGroupDropboxPath;
- private static Path userGroupIndexPath;
- private static Path usersIndexPath;
- private static Path groupsIndexPath;
- private static Path submissionsPath;
- private static Path submissionsHistoryPath;
- private static Path submissionsTransactionPath;
- private static Path publicFTPPath;
- private static Path submissionUpdatePath;
- private static Path ftpRootPath;
- private static Path dropboxPath;
-
- private static String updateListenerURLPfx;
- private static String updateListenerURLSfx;
- 
- private static String activationEmailSubject;
- private static String passResetEmailSubject;
- private static String subscriptionEmailSubject;
- 
- private static Path activationEmailPlainTextFile;
- private static Path activationEmailHtmlFile;
- private static Path passResetEmailPlainTextFile;
- private static Path passResetEmailHtmlFile;
- 
- private static Path subscriptionEmailHtmlFile;
- private static Path subscriptionEmailPlainTextFile;
- 
- private static String defaultSubmissionAccPrefix = null;
- private static String defaultSubmissionAccSuffix = null;
- 
- private static int updateWaitPeriod = 5;
- private static int maxUpdatesPerFile = 50;
- 
- private static boolean fileLinkAllowed=true;
-
- private static boolean publicDropboxes = false;
- 
- private static boolean enableUnsafeRequests=true;
- private static boolean mandatoryAccountActivation=true;
- 
- private static boolean searchEnabled=false;
- 
- private static long activationTimeout = defaultActivationTimeout;
- private static long passResetTimeout = defaultPassResetTimeout;
-
- private static Map<String, Object> databaseConfig;
+ private static ConfigBean conf;
  
  public static void init( int contextHash )
  {
-  instanceId = System.currentTimeMillis() ^ contextHash;
-  sequence = new AtomicInteger();
+  conf = new ConfigBean();
+  
+  initConfigBean(conf);
+  
+  conf.setInstanceId( System.currentTimeMillis() ^ contextHash );
+ }
+ 
+ private static void initConfigBean( ConfigBean cfg )
+ {
+  cfg.setCreateFileStructure(true);
+  cfg.setDefaultSubmissionAccPrefix(DefaultSubmissionPrefix);
+  cfg.setDropboxPath(Paths.get("dropbox"));
+  
+  Map<String, Object> dbConf = new HashMap<String, Object>();
+
+  
+  dbConf.put("hibernate.connection.driver_class","com.mysql.jdbc.Driver");
+  dbConf.put("hibernate.connection.username","");
+  dbConf.put("hibernate.connection.password","");
+  dbConf.put("hibernate.cache.use_query_cache","false");
+  dbConf.put("hibernate.ejb.discard_pc_on_close","true");
+  dbConf.put("hibernate.connection.url","jdbc:mysql://mysql-fg-biostudy.ebi.ac.uk:4469/biostd_beta?autoReconnect=true&amp;useUnicode=yes&amp;characterEncoding=UTF-8");
+  dbConf.put("hibernate.dialect","org.hibernate.dialect.MySQLDialect");
+  dbConf.put("hibernate.hbm2ddl.auto","update");
+  dbConf.put("hibernate.c3p0.max_size","30");
+  dbConf.put("hibernate.c3p0.min_size","0");
+  dbConf.put("hibernate.c3p0.timeout","5000");
+  dbConf.put("hibernate.c3p0.max_statements","0");
+  dbConf.put("hibernate.c3p0.idle_test_period","300");
+  dbConf.put("hibernate.c3p0.acquire_increment","2");
+  dbConf.put("hibernate.c3p0.unreturnedConnectionTimeout","1800");
+  dbConf.put("hibernate.search.default.indexBase","index");
+  dbConf.put("hibernate.search.default.directory_provider","filesystem");
+  dbConf.put("hibernate.search.lucene_version","LUCENE_54");
+  
+  cfg.setDatabaseConfig(dbConf);
+  
+  cfg.setSequence(new AtomicInteger() );
  }
  
  public static long getInstanceId()
  {
-  return instanceId;
+  return conf.getInstanceId();
  }
  
  public static int getSeqNumber()
  {
-  return sequence.getAndIncrement();
+  return conf.getSequence().getAndIncrement();
  }
  
  public static boolean readParameter(String param, String val) throws ServiceConfigException
+ {
+  return readParameter(param, val, conf);
+ }
+
+ public static boolean readParameter(String param, String val, ConfigBean cfg) throws ServiceConfigException
  {
   val = val.trim();
   param = param.trim();
   
   if( DefaultSubmissionAccPrefixParameter.equals(param) )
   {
-   defaultSubmissionAccPrefix=val;
+   cfg.setDefaultSubmissionAccPrefix(val);
    
    return true;
   }
 
   if( DefaultSubmissionAccSuffixParameter.equals(param) )
   {
-   defaultSubmissionAccSuffix=val;
+   cfg.setDefaultSubmissionAccSuffix(val);
    
    return true;
   }
 
   if( BaseDirParameter.equals(param) )
   {
-   baseDirectory=FileSystems.getDefault().getPath(val);
+   cfg.setBaseDirectory(FileSystems.getDefault().getPath(val));
    
-   if( ! baseDirectory.isAbsolute() )
+   if( ! cfg.getBaseDirectory().isAbsolute() )
     throw new ServiceConfigException(BaseDirParameter+": path should be absolute");
    
    return true;
@@ -235,7 +216,7 @@ public class BackendConfig
 
   if( WorkdirParameter.equals(param) )
   {
-   workDirectory=createPath(WorkdirParameter,val);
+   cfg.setWorkDirectory(createPath(WorkdirParameter,val));
    
    return true;
   }
@@ -243,7 +224,7 @@ public class BackendConfig
 
   if( FTPRootPathParameter.equals(param) )
   {
-   ftpRootPath=FileSystems.getDefault().getPath(val);
+   cfg.setFtpRootPath(FileSystems.getDefault().getPath(val));
    
    return true;
   }
@@ -251,14 +232,14 @@ public class BackendConfig
   
   if( SubmissionDirParameter.equals(param) )
   {
-   submissionsPath = createPath(SubmissionDirParameter,val);
+   cfg.setSubmissionsPath(createPath(SubmissionDirParameter,val));
 
    return true;
   }
   
   if( SubmissionUpdateParameter.equals(param) )
   {
-   submissionUpdatePath = createPath(SubmissionUpdateParameter,val);
+   cfg.setSubmissionUpdatePath(createPath(SubmissionUpdateParameter,val));
 
    return true;
   }
@@ -270,12 +251,12 @@ public class BackendConfig
    if( pos < 0 )
     throw new ServiceConfigException(UpdateURLParameter+" should contain "+UpdateURLFilePlaceholder+" placeholder");
    
-   updateListenerURLPfx = val.substring(0,pos);
-   updateListenerURLSfx = val.substring(pos+UpdateURLFilePlaceholder.length());
+   cfg.setUpdateListenerURLPfx(val.substring(0,pos));
+   cfg.setUpdateListenerURLSfx(val.substring(pos+UpdateURLFilePlaceholder.length()));
 
    try
    {
-    new URL(updateListenerURLPfx+"aaa.txt"+updateListenerURLSfx);
+    new URL(cfg.getUpdateListenerURLPfx()+"aaa.txt"+cfg.getUpdateListenerURLSfx());
    }
    catch(Exception e)
    {
@@ -289,7 +270,7 @@ public class BackendConfig
   {
    try
    {
-    updateWaitPeriod = Integer.parseInt(val);
+    cfg.setUpdateWaitPeriod(Integer.parseInt(val));
    }
    catch(Exception e)
    {
@@ -303,7 +284,7 @@ public class BackendConfig
   {
    try
    {
-    maxUpdatesPerFile = Integer.parseInt(val);
+    cfg.setMaxUpdatesPerFile( Integer.parseInt(val) );
    }
    catch(Exception e)
    {
@@ -316,36 +297,35 @@ public class BackendConfig
   
   if( SubmissionHistoryDirParameter.equals(param) )
   {
-   submissionsHistoryPath = createPath(SubmissionHistoryDirParameter,val);
-
+   cfg.setSubmissionsHistoryPath( createPath(SubmissionHistoryDirParameter,val) );
  
    return true;
   }
   
   if( SubmissionTransactionDirParameter.equals(param) )
   {
-   submissionsTransactionPath = createPath(SubmissionTransactionDirParameter,val);
+   cfg.setSubmissionsTransactionPath( createPath(SubmissionTransactionDirParameter,val) );
  
    return true;
   }
 
   if( PublicFTPDirParameter.equals(param) )
   {
-   publicFTPPath = createPath(PublicFTPDirParameter,val);
+   cfg.setPublicFTPPath( createPath(PublicFTPDirParameter,val) );
  
    return true;
   }
 
   if( UserGroupDirParameter.equals(param) )
   {
-   userGroupDropboxPath = createPath(UserGroupDirParameter, val);
+   cfg.setUserGroupDropboxPath( createPath(UserGroupDirParameter, val) );
    
    return true;
   }
   
   if( PublicDropboxesParameter.equals(param) )
   {
-   publicDropboxes= "true".equalsIgnoreCase(val) || "yes".equalsIgnoreCase(val) || "1".equals(val) ;
+   cfg.setPublicDropboxes( "true".equalsIgnoreCase(val) || "yes".equalsIgnoreCase(val) || "1".equals(val) );
    
    return true;
   }
@@ -353,62 +333,62 @@ public class BackendConfig
   
   if( UserGroupIndexDirParameter.equals(param) )
   {
-   userGroupIndexPath = createPath(UserGroupIndexDirParameter,val);
+   cfg.setUserGroupIndexPath( createPath(UserGroupIndexDirParameter,val) );
 
-   usersIndexPath = userGroupIndexPath.resolve(UsersDir);
-   groupsIndexPath = userGroupIndexPath.resolve(GroupsDir);
+   cfg.setUsersIndexPath( cfg.getUserGroupIndexPath().resolve(UsersDir) );
+   cfg.setGroupsIndexPath( cfg.getUserGroupIndexPath().resolve(GroupsDir) );
    
    return true;
   }
 
   if( DataMountPathParameter.equals(param) )
   {
-   dataMountPath=val;
+   cfg.setDataMountPath(val);
    return true;
   }
   
   if( RecapchaPrivateKeyParameter.equals(param) )
   {
-   recapchaPrivateKey=val;
+   cfg.setRecapchaPrivateKey(val);
    return true;
   }
 
   if( AllowFileLinksParameter.equals(param) )
   {
-   fileLinkAllowed = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   cfg.setFileLinkAllowed( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
    return true;
   }
   
   if( EnableUnsafeRequestsParameter.equals(param) )
   {
-   enableUnsafeRequests = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   cfg.setEnableUnsafeRequests( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
    return true;
   }
 
 
   if( CreateFileStructureParameter.equals(param) )
   {
-   createFileStructure = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   cfg.setCreateFileStructure( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
    return true; 
   }
   
   if( MandatoryAccountActivationParameter.equals(param) )
   {
-   mandatoryAccountActivation = val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1");
+   cfg.setMandatoryAccountActivation( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
    return true; 
   }
 
 
   if( ActivationEmailSubjectParameter.equals(param) )
   {
-   activationEmailSubject=val;
+   cfg.setActivationEmailSubject(val);
    
    return true;
   }
   
   if( PassResetEmailSubjectParameter.equals(param) )
   {
-   passResetEmailSubject=val;
+   cfg.setPassResetEmailSubject(val);
    
    return true;
   }
@@ -417,14 +397,14 @@ public class BackendConfig
   
   if( ActivationEmailPlainTextParameter.equals(param) )
   {
-   activationEmailPlainTextFile=createPath(ActivationEmailPlainTextParameter,val);
+   cfg.setActivationEmailPlainTextFile(createPath(ActivationEmailPlainTextParameter,val));
    
    return true;
   }
 
   if( ActivationEmailHtmlParameter.equals(param) )
   {
-   activationEmailHtmlFile=createPath(ActivationEmailHtmlParameter,val);
+   cfg.setActivationEmailHtmlFile(createPath(ActivationEmailHtmlParameter,val) );
    
    return true;
   }
@@ -434,7 +414,7 @@ public class BackendConfig
   {
    try
    {
-    activationTimeout = (long) ( Double.parseDouble(val) * 60 * 60 * 1000L );
+    cfg.setActivationTimeout( (long) ( Double.parseDouble(val) * 60 * 60 * 1000L ) ) ;
    }
    catch(Exception e)
    {
@@ -447,7 +427,7 @@ public class BackendConfig
   
   if( SubscriptionEmailSubjectParameter.equals(param) )
   {
-   subscriptionEmailSubject=val;
+   cfg.setSubscriptionEmailSubject(val);
    
    return true;
   }
@@ -455,14 +435,14 @@ public class BackendConfig
 
   if( SubscriptionEmailPlainTextParameter.equals(param) )
   {
-   subscriptionEmailPlainTextFile=createPath(SubscriptionEmailPlainTextParameter,val);
+   cfg.setSubscriptionEmailPlainTextFile( createPath(SubscriptionEmailPlainTextParameter,val) );
    
    return true;
   }
 
   if( SubscriptionEmailHtmlParameter.equals(param) )
   {
-   subscriptionEmailHtmlFile=createPath(SubscriptionEmailHtmlParameter,val);
+   cfg.setSubscriptionEmailHtmlFile( createPath(SubscriptionEmailHtmlParameter,val) );
    
    return true;
   }
@@ -470,14 +450,14 @@ public class BackendConfig
   
   if( PassResetEmailPlainTextParameter.equals(param) )
   {
-   passResetEmailPlainTextFile=createPath(PassResetEmailPlainTextParameter,val);
+   cfg.setPassResetEmailPlainTextFile( createPath(PassResetEmailPlainTextParameter,val) );
    
    return true;
   }
 
   if( PassResetEmailHtmlParameter.equals(param) )
   {
-   passResetEmailHtmlFile=createPath(PassResetEmailHtmlParameter,val);
+   cfg.setPassResetEmailHtmlFile( createPath(PassResetEmailHtmlParameter,val) );
    
    return true;
   }
@@ -487,7 +467,7 @@ public class BackendConfig
   {
    try
    {
-    passResetTimeout = Integer.parseInt(val) * 60 * 60 * 1000L;
+    cfg.setPassResetTimeout( Integer.parseInt(val) * 60 * 60 * 1000L );
    }
    catch(Exception e)
    {
@@ -508,8 +488,8 @@ public class BackendConfig
   if( np.isAbsolute() )
    return np;
   
-  if( baseDirectory != null )
-   return baseDirectory.resolve(np);
+  if( conf.getBaseDirectory() != null )
+   return conf.getBaseDirectory().resolve(np);
 
   throw new ServiceConfigException(prm+": path should be either absolute or "+BaseDirParameter+" parameter should be defined before");
  }
@@ -517,59 +497,59 @@ public class BackendConfig
  
  public static Path getWorkDirectory()
  {
-  return workDirectory;
+  return conf.getWorkDirectory();
  }
  
  public static void setWorkDirectory( String dir )
  {
-  workDirectory=FileSystems.getDefault().getPath(dir);
+  conf.setWorkDirectory( FileSystems.getDefault().getPath(dir) );
  }
 
  public static ServiceManager getServiceManager()
  {
-  return defaultServiceManager;
+  return conf.getDefaultServiceManager();
  }
  
  public static void setServiceManager(ServiceManager serviceManager)
  {
-  defaultServiceManager = serviceManager;
+  conf.setDefaultServiceManager( serviceManager );
  }
 
 
  public static void setEntityManagerFactory(EntityManagerFactory e)
  {
-  emf=e;
+  conf.setEmf( e );
  }
  
  public static EntityManagerFactory getEntityManagerFactory()
  {
-  return emf;
+  return conf.getEmf();
  }
 
 
  public static String getDataMountPath()
  {
-  return dataMountPath;
+  return conf.getDataMountPath();
  }
 
  public static Path getUserGroupIndexPath()
  {
-  return userGroupIndexPath;
+  return conf.getUserGroupIndexPath();
  }
 
  public static Path getUserGroupDropboxPath()
  {
-  return userGroupDropboxPath;
+  return conf.getUserGroupDropboxPath();
  }
  
  public static Path getUsersIndexPath()
  {
-  return usersIndexPath;
+  return conf.getUsersIndexPath();
  }
 
  public static Path getGroupIndexPath()
  {
-  return groupsIndexPath;
+  return conf.getGroupsIndexPath();
  }
 
  public static String getUserDropboxRelPath(User user)
@@ -589,12 +569,12 @@ public class BackendConfig
  
  public static Path getUserDirPath(User user)
  {
-  return userGroupDropboxPath.resolve( getUserDropboxRelPath(user) );
+  return conf.getUserGroupDropboxPath().resolve( getUserDropboxRelPath(user) );
  }
 
  public static Path getGroupDirPath( UserGroup g )
  {
-  return userGroupDropboxPath.resolve( getGroupDropboxRelPath(g) );
+  return conf.getUserGroupDropboxPath().resolve( getGroupDropboxRelPath(g) );
  }
 
  public static Path getUserLoginLinkPath( User u )
@@ -635,7 +615,7 @@ public class BackendConfig
  
  public static Path getSubmissionsPath()
  {
-  return submissionsPath;
+  return conf.getSubmissionsPath();
  }
 
  public static String getSubmissionRelativePath( Submission sbm )
@@ -645,7 +625,7 @@ public class BackendConfig
  
  public static Path getSubmissionPath(Submission sbm)
  {
-  return submissionsPath.resolve( getSubmissionRelativePath(sbm) );
+  return conf.getSubmissionsPath().resolve( getSubmissionRelativePath(sbm) );
  }
 
 
@@ -666,177 +646,176 @@ public class BackendConfig
 
  public static Path getSubmissionsHistoryPath()
  {
-  return submissionsHistoryPath;
+  return conf.getSubmissionsHistoryPath();
  }
  
  public static Path getSubmissionHistoryPath(Submission sbm)
  {
-  return submissionsHistoryPath.resolve( getSubmissionRelativePath(sbm) + SubmissionHistoryPostfix + Math.abs(sbm.getVersion()) );
+  return conf.getSubmissionsHistoryPath().resolve( getSubmissionRelativePath(sbm) + SubmissionHistoryPostfix + Math.abs(sbm.getVersion()) );
  }
 
 
  public static String getRecapchaPrivateKey()
  {
-  return recapchaPrivateKey;
+  return conf.getRecapchaPrivateKey();
  }
 
 
  public static boolean isLinkingAllowed()
  {
-  return fileLinkAllowed;
+  return conf.isFileLinkAllowed();
  }
 
  public static Path getPublicFTPPath()
  {
-  return publicFTPPath;
+  return conf.getPublicFTPPath();
  }
  
  public static Path getSubmissionUpdatePath()
  {
-  return submissionUpdatePath;
+  return conf.getSubmissionUpdatePath();
  }
 
  public static String getUpdateListenerURLPrefix()
  {
-  return updateListenerURLPfx;
+  return conf.getUpdateListenerURLPfx();
  }
  
  public static String getUpdateListenerURLPostfix()
  {
-  return updateListenerURLSfx;
+  return conf.getUpdateListenerURLSfx();
  }
 
  public static void setPublicFTPPath(Path publicFTPPath)
  {
-  BackendConfig.publicFTPPath = publicFTPPath;
+  conf.setPublicFTPPath( publicFTPPath );
  }
 
  public static String getDefaultSubmissionAccPrefix()
  {
-  return defaultSubmissionAccPrefix;
+  return conf.getDefaultSubmissionAccPrefix();
  }
 
  public static String getDefaultSubmissionAccSuffix()
  {
-  return defaultSubmissionAccSuffix;
+  return conf.getDefaultSubmissionAccSuffix();
  }
 
  public static int getUpdateWaitPeriod()
  {
-  return updateWaitPeriod;
+  return conf.getUpdateWaitPeriod();
  }
 
  public static int getMaxUpdatesPerFile()
  {
-  return maxUpdatesPerFile;
+  return conf.getMaxUpdatesPerFile();
  }
 
  public static boolean isCreateFileStructure()
  {
-  return createFileStructure;
+  return conf.isCreateFileStructure();
  }
 
  public static Path getBaseDirectory()
  {
-  return baseDirectory;
+  return conf.getBaseDirectory();
  }
 
  public static Path getFtpRootPath()
  {
-  return ftpRootPath;
+  return conf.getFtpRootPath();
  }
 
  public static Path getDropboxPath()
  {
-  return dropboxPath;
+  return conf.getDropboxPath();
  }
 
 
  public static TaskInfo getExportTask()
  {
-  return expTaskInfo;
+  return conf.getExpTaskInfo();
  }
  
  public static void setExportTask( TaskInfo ti )
  {
-  expTaskInfo = ti;
+  conf.setExpTaskInfo( ti );
  }
 
  public static void setDatabaseConfig(Map<String, Object> dbConfig)
  {
-  databaseConfig = new HashMap<String, Object>(dbConfig);
+  conf.setDatabaseConfig( new HashMap<String, Object>(dbConfig) );
   
  }
  
  public static Map<String, Object> getDatabaseConfig()
  {
-  return databaseConfig;
-  
+  return conf.getDatabaseConfig();
  }
  
  public static String getActivationEmailSubject()
  {
-  return activationEmailSubject;
+  return conf.getActivationEmailSubject();
  }
 
  public static Path getActivationEmailPlainTextFile()
  {
-  return activationEmailPlainTextFile;
+  return conf.getActivationEmailPlainTextFile();
  }
 
  public static Path getActivationEmailHtmlFile()
  {
-  return activationEmailHtmlFile;
+  return conf.getActivationEmailHtmlFile();
  }
 
  public static boolean isEnableUnsafeRequests()
  {
-  return enableUnsafeRequests;
+  return conf.isEnableUnsafeRequests();
  }
 
  public static boolean isMandatoryAccountActivation()
  {
-  return mandatoryAccountActivation;
+  return conf.isMandatoryAccountActivation();
  }
 
  public static boolean isPublicDropboxes()
  {
-  return publicDropboxes;
+  return conf.isPublicDropboxes();
  }
  
  public static boolean isSearchEnabled()
  {
-  return searchEnabled;
+  return conf.isSearchEnabled();
  }
 
  public static void setSearchEnabled(boolean searchEnabled)
  {
-  BackendConfig.searchEnabled = searchEnabled;
+  conf.setSearchEnabled( searchEnabled );
  }
 
  public static long getActivationTimeout()
  {
-  return activationTimeout;
+  return conf.getActivationTimeout();
  }
  
  public static long getPasswordResetTimeout()
  {
-  return passResetTimeout;
+  return conf.getPassResetTimeout();
  }
 
  public static Path getPassResetEmailHtmlFile()
  {
-  return passResetEmailHtmlFile;
+  return conf.getPassResetEmailHtmlFile();
  }
 
  public static Path getPassResetEmailPlainTextFile()
  {
-  return passResetEmailPlainTextFile;
+  return conf.getPassResetEmailPlainTextFile();
  }
 
  public static String getPassResetEmailSubject()
  {
-  return passResetEmailSubject;
+  return conf.getPassResetEmailSubject();
  }
 
 
@@ -852,19 +831,24 @@ public class BackendConfig
 
  public static Path getSubscriptionEmailHtmlFile()
  {
-  return subscriptionEmailHtmlFile;
+  return conf.getSubscriptionEmailHtmlFile();
  }
 
  public static Path getSubscriptionEmailPlainTextFile()
  {
-  return subscriptionEmailPlainTextFile;
+  return conf.getSubscriptionEmailPlainTextFile();
  }
  
  public static String getSubscriptionEmailSubject()
  {
-  return subscriptionEmailSubject;
+  return conf.getSubscriptionEmailSubject();
  }
 
+ public static Path getSubmissionsTransactionPath()
+ {
+  return conf.getSubmissionsTransactionPath();
+ }
+ 
  public static boolean isEncodeFileNames()
  {
   return EncodeFileNames;

@@ -23,6 +23,7 @@ public class SearchMapper
  public static final String mTimeField = "MTime";
  public static final String rTimeField = "RTime";
  public static final String ownerField = "owner";
+ public static final String versionField = "version";
 
 
  public static SearchMapping makeMapping()
@@ -80,9 +81,16 @@ public class SearchMapper
      .index(Index.YES)
      .store(Store.NO)
      .sortableField()
+   .property(versionField, ElementType.METHOD)
+    .field()
+     .numericField()
+     .analyze(Analyze.NO)
+     .index(Index.YES)
+     .store(Store.NO)
    .property(ownerField, ElementType.METHOD)
     .indexEmbedded()
     .includePaths(emailField)
+    .includeEmbeddedObjectId(true)
 
  ;
   

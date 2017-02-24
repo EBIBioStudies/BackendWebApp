@@ -43,6 +43,7 @@ import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.hibernate.search.jpa.FullTextEntityManager;
@@ -2839,10 +2840,12 @@ public class JPASubmissionManager implements SubmissionManager
 
    if( ssr.getAccNo() != null )
    {
-    TermQuery tq = new TermQuery( new Term(SearchMapper.accNoField, ssr.getAccNo()) );
+    WildcardQuery tq = new WildcardQuery( new Term(SearchMapper.accNoField, ssr.getAccNo()) );
     qb.add(tq, BooleanClause.Occur.MUST);
    }
   
+   qb.add(NumericRangeQuery.newIntRange(SearchMapper.versionField, 0, null, true, false), BooleanClause.Occur.MUST);
+   
    long from, to;
    String field;
 
