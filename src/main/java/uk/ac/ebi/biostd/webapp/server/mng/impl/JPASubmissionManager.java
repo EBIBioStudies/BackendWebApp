@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -927,7 +928,6 @@ public class JPASubmissionManager implements SubmissionManager
     return res;
    }
 
-   Path usrPath = BackendConfig.getUserDirPath(usr);
    
    Map<String, ElementPointer> smbIdMap = checkSubmissionAccNoUniq(doc);
    Map<String, ElementPointer> secIdMap = checkSectionAccNoUniq(doc);
@@ -1323,6 +1323,9 @@ public class JPASubmissionManager implements SubmissionManager
      else
       si.getOriginalSubmission().setVersion(-si.getOriginalSubmission().getVersion());
     }
+    
+    if( subm.getSecretKey() == null )
+     subm.setSecretKey(UUID.randomUUID().toString());
     
     em.persist(subm);
     

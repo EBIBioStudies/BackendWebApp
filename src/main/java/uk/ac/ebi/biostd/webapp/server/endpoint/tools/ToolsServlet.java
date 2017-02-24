@@ -38,6 +38,7 @@ public class ToolsServlet extends ServiceServlet
  private static enum Operation
  {
   RELINK_DROPBOXES,
+  FIX_SECRET_KEY,
   FIX_FILE_TYPE,
   FIX_FILE_SIZE,
   FIX_DIRECTORY_SIZE,
@@ -113,6 +114,12 @@ public class ToolsServlet extends ServiceServlet
     
     break;
 
+   case FIX_SECRET_KEY:
+    
+    resp.setContentType("text/plain");
+    fixSecretKey(resp.getWriter());
+    
+    break;
 
    case UPDATE_USER_DIR_LAYOUT:
     
@@ -150,6 +157,50 @@ public class ToolsServlet extends ServiceServlet
     break;
   }
   
+ }
+
+ private void fixSecretKey(PrintWriter writer)
+ {
+  EntityManager mngr = null;
+
+  mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+  TypedQuery<Submission> query = mngr.createQuery("select s from Submission s where s.secretKey is null", Submission.class);
+  query.setMaxResults(30);
+  
+  List<Submission> sLst = null;
+  
+  int count=0;
+  
+  while( true )
+  {
+   EntityTransaction t = mngr.getTransaction();
+
+   t.begin();
+
+   sLst = query.getResultList();
+   
+   if( sLst.size() == 0 )
+   {
+    t.commit();
+    
+    writer.println("Processing finished. Total: "+count);
+    break;
+   }
+   
+   for( Submission s : sLst )
+   {
+    s.setSecretKey(UUID.randomUUID().toString());
+    count++;
+   }
+   
+   t.commit();
+   
+   writer.println("Processed submissions: "+count);
+
+  }
+  
+  mngr.close();
  }
 
  private void relinkDropboxes(PrintWriter out) throws IOException
