@@ -2832,6 +2832,15 @@ public class JPASubmissionManager implements SubmissionManager
     qb.add(queryParser.parse(ssr.getKeywords()), BooleanClause.Occur.MUST);
    }
 
+   if( u.isSuperuser() || BackendConfig.getServiceManager().getSecurityManager().mayUserListAllSubmissions(u) )
+   {
+    if( ssr.getOwnerId() > 0 )
+     qb.add(NumericRangeQuery.newLongRange(SearchMapper.ownerField+'.'+SearchMapper.idField, ssr.getOwnerId(), ssr.getOwnerId(), true, true), BooleanClause.Occur.MUST);
+   }
+   else
+    qb.add(NumericRangeQuery.newLongRange(SearchMapper.ownerField+'.'+SearchMapper.idField, u.getId(), u.getId(), true, true), BooleanClause.Occur.MUST);
+    
+   
    if( ssr.getOwner() != null )
    {
     TermQuery tq = new TermQuery( new Term(SearchMapper.ownerField+'.'+SearchMapper.emailField, ssr.getOwner()) );
@@ -2844,7 +2853,10 @@ public class JPASubmissionManager implements SubmissionManager
     qb.add(tq, BooleanClause.Occur.MUST);
    }
   
-   qb.add(NumericRangeQuery.newIntRange(SearchMapper.versionField, 0, null, true, false), BooleanClause.Occur.MUST);
+   if( ssr.getFromVersion() > Integer.MIN_VALUE || ssr.getToVersion() < Integer.MAX_VALUE  )
+    qb.add(NumericRangeQuery.newIntRange(SearchMapper.versionField, ssr.getFromVersion(), ssr.getToVersion(), true, false), BooleanClause.Occur.MUST);
+   else
+    qb.add(NumericRangeQuery.newIntRange(SearchMapper.versionField, 0, null, true, false), BooleanClause.Occur.MUST);
    
    long from, to;
    String field;
@@ -2853,37 +2865,22 @@ public class JPASubmissionManager implements SubmissionManager
    to = ssr.getToCTime();
    field = SearchMapper.cTimeField;
 
-   if(from > 0 || to > 0)
-   {
-    if(to == 0)
-     to = Long.MAX_VALUE;
-
+   if(from > Long.MIN_VALUE || to < Long.MAX_VALUE)
     qb.add(NumericRangeQuery.newLongRange(field, from, to, true, true), BooleanClause.Occur.MUST);
-   }
 
    from = ssr.getFromMTime();
    to = ssr.getToMTime();
    field = SearchMapper.mTimeField;
 
-   if(from > 0 || to > 0)
-   {
-    if(to == 0)
-     to = Long.MAX_VALUE;
-
+   if(from > Long.MIN_VALUE || to < Long.MAX_VALUE)
     qb.add(NumericRangeQuery.newLongRange(field, from, to, true, true), BooleanClause.Occur.MUST);
-   }
 
    from = ssr.getFromRTime();
    to = ssr.getToRTime();
    field = SearchMapper.rTimeField;
 
-   if(from > 0 || to > 0)
-   {
-    if(to == 0)
-     to = Long.MAX_VALUE;
-
+   if(from > Long.MIN_VALUE || to < Long.MAX_VALUE)
     qb.add(NumericRangeQuery.newLongRange(field, from, to, true, true), BooleanClause.Occur.MUST);
-   }
 
    Sort sort = null;
 

@@ -20,6 +20,7 @@ public interface SecurityManager
 
  User checkUserLogin(String login, String pass, boolean passHash) throws SecurityException;
  
+ boolean mayUserListAllSubmissions(User u);
  boolean mayUserReadSubmission(Submission sub, User user);
 
  boolean mayUserCreateSubmission(User usr);

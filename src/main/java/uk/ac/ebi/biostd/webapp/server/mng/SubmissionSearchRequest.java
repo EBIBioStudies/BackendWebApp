@@ -11,14 +11,19 @@ public class SubmissionSearchRequest
  
  private String keywords;
 
- private long fromCTime;
- private long toCTime;
+ private long fromCTime=Long.MIN_VALUE;
+ private long toCTime=Long.MAX_VALUE;
 
- private long fromMTime;
- private long toMTime;
+ private long fromMTime=Long.MIN_VALUE;
+ private long toMTime=Long.MAX_VALUE;
 
- private long fromRTime;
- private long toRTime;
+ private long fromRTime=Long.MIN_VALUE;
+ private long toRTime=Long.MAX_VALUE;
+ 
+ private int fromVersion=Integer.MIN_VALUE;
+ private int toVersion=Integer.MAX_VALUE;
+ 
+ private long ownerId;
  
  private String owner;
  private String accNo;
@@ -146,6 +151,36 @@ public class SubmissionSearchRequest
  public void setAccNo(String accNo)
  {
   this.accNo = accNo;
+ }
+
+ public int getFromVersion()
+ {
+  return fromVersion;
+ }
+
+ public void setFromVersion(int fromVersion)
+ {
+  this.fromVersion = fromVersion;
+ }
+
+ public int getToVersion()
+ {
+  return toVersion;
+ }
+
+ public void setToVersion(int toVersion)
+ {
+  this.toVersion = toVersion;
+ }
+
+ public long getOwnerId()
+ {
+  return ownerId;
+ }
+
+ public void setOwnerId(long ownerId)
+ {
+  this.ownerId = ownerId;
  }
  
  

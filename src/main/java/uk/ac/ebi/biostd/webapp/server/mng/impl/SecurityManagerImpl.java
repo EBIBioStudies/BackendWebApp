@@ -17,6 +17,8 @@ import javax.persistence.TypedQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.pri.util.StringUtils;
+
 import uk.ac.ebi.biostd.authz.ACR;
 import uk.ac.ebi.biostd.authz.ACR.Permit;
 import uk.ac.ebi.biostd.authz.AccessTag;
@@ -49,8 +51,6 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
-
-import com.pri.util.StringUtils;
 
 public class SecurityManagerImpl implements SecurityManager
 {
@@ -805,6 +805,12 @@ public class SecurityManagerImpl implements SecurityManager
  }
  
  @Override
+ public boolean mayUserListAllSubmissions(User usr)
+ {
+  return checkSystemPermission(SystemAction.LISTALLSUBM, usr);
+ }
+ 
+ @Override
  public boolean mayUserCreateGroup(User usr)
  {
   return checkSystemPermission(SystemAction.CREATEGROUP, usr);
@@ -1117,6 +1123,8 @@ public class SecurityManagerImpl implements SecurityManager
  
   return res;
  }
+
+
 
 
 }
