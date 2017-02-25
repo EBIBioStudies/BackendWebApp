@@ -32,6 +32,7 @@ public class SubmissionListServlet extends ServiceServlet
  public static final String limitParameter = "limit";
  public static final String offserParameter = "offset";
  public static final String ownerParameter = "owner";
+ public static final String ownerIdParameter = "ownerId";
  public static final String accNoParameter = "accNo";
  public static final String keywordsParameter = "keywords";
  public static final String cTimeFromParameter = "cTimeFrom";
@@ -40,6 +41,8 @@ public class SubmissionListServlet extends ServiceServlet
  public static final String mTimeToParameter = "mTimeTo";
  public static final String rTimeFromParameter = "rTimeFrom";
  public static final String rTimeToParameter = "rTimeTo";
+ public static final String versionFromParameter = "versionFrom";
+ public static final String versionToParameter = "versionTo";
  public static final String sortByParameter = "sortBy";
  
  
@@ -164,6 +167,7 @@ public class SubmissionListServlet extends ServiceServlet
    ssrSet = true;
   }
   
+  
   val = params.getParameter(accNoParameter);
   
   if( val != null && (val=val.trim()).length() > 0 )
@@ -188,7 +192,10 @@ public class SubmissionListServlet extends ServiceServlet
    }
   }
 
-  
+  ssrSet = setIntParameter(params.getParameter(versionFromParameter), ssr::setFromVersion) || ssrSet;
+  ssrSet = setIntParameter(params.getParameter(versionToParameter), ssr::setToVersion) || ssrSet;
+  ssrSet = setIntParameter(params.getParameter(ownerIdParameter), ssr::setOwnerId) || ssrSet;
+
   ssrSet = setLongParameter(params.getParameter(cTimeFromParameter), ssr::setFromCTime) || ssrSet;
   ssrSet = setLongParameter(params.getParameter(cTimeToParameter), ssr::setToCTime) || ssrSet;
   ssrSet = setLongParameter(params.getParameter(mTimeFromParameter), ssr::setFromMTime) || ssrSet;
@@ -271,6 +278,28 @@ public class SubmissionListServlet extends ServiceServlet
    
    if( val < 0 )
     val=0;
+   
+   setter.accept(val);
+  }
+  catch(Throwable t)
+  {
+   return false;
+  }
+  
+  
+  return true;
+ }
+ 
+ private boolean setIntParameter(String pval, Consumer<Integer> setter )
+ {
+  if( pval == null )
+   return false;
+  
+  pval = pval.trim();
+  
+  try
+  {
+   int val = Integer.parseInt(pval);
    
    setter.accept(val);
   }
