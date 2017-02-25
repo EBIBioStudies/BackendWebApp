@@ -31,9 +31,13 @@ public class SearchMapper
   SearchMapping mapping = new SearchMapping();
   
   mapping.entity(User.class)
-  .indexed()
    .property(idField, ElementType.METHOD)
     .documentId()
+    .field()
+     .numericField()
+     .analyze(Analyze.NO)
+     .index(Index.YES)
+     .store(Store.NO)
    .property(loginField, ElementType.METHOD)
     .field()
      .analyze(Analyze.NO)
