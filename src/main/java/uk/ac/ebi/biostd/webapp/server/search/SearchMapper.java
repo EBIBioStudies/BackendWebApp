@@ -32,11 +32,7 @@ public class SearchMapper
   
   mapping.entity(User.class)
    .property(idField, ElementType.METHOD)
-    .field()
-     .numericField()
-     .analyze(Analyze.NO)
-     .index(Index.YES)
-     .store(Store.NO)
+     .documentId()
    .property(loginField, ElementType.METHOD)
     .field()
      .analyze(Analyze.NO)
@@ -92,6 +88,7 @@ public class SearchMapper
      .store(Store.NO)
    .property(ownerField, ElementType.METHOD)
     .indexEmbedded()
+    .includeEmbeddedObjectId(true)
     .includePaths(emailField,idField)
 
  ;
