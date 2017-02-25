@@ -32,7 +32,6 @@ public class SearchMapper
   
   mapping.entity(User.class)
    .property(idField, ElementType.METHOD)
-    .documentId()
     .field()
      .numericField()
      .analyze(Analyze.NO)
