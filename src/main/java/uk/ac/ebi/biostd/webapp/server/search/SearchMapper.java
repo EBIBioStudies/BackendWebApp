@@ -89,8 +89,7 @@ public class SearchMapper
      .store(Store.NO)
    .property(ownerField, ElementType.METHOD)
     .indexEmbedded()
-    .includePaths(emailField)
-    .includePaths(idField)
+    .includePaths(emailField,idField)
 
  ;
   
