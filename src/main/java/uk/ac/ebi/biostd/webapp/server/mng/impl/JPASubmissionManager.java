@@ -2859,7 +2859,7 @@ public class JPASubmissionManager implements SubmissionManager
    if( ssr.getFromVersion() > Integer.MIN_VALUE || ssr.getToVersion() < Integer.MAX_VALUE  )
     qb.add(NumericRangeQuery.newIntRange(SearchMapper.versionField, ssr.getFromVersion(), ssr.getToVersion(), true, false), BooleanClause.Occur.MUST);
    else
-    qb.add(NumericRangeQuery.newIntRange(SearchMapper.versionField, 0, null, true, false), BooleanClause.Occur.MUST);
+    qb.add(NumericRangeQuery.newIntRange(SearchMapper.versionField, 0, Integer.MAX_VALUE, true, false), BooleanClause.Occur.MUST);
    
    long from, to;
    String field;
