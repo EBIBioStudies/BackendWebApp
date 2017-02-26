@@ -2838,10 +2838,10 @@ public class JPASubmissionManager implements SubmissionManager
    if( u.isSuperuser() || BackendConfig.getServiceManager().getSecurityManager().mayUserListAllSubmissions(u) )
    {
     if( ssr.getOwnerId() > 0 )
-     qb.add(NumericRangeQuery.newLongRange(SearchMapper.ownerField+'.'+SearchMapper.idField, ssr.getOwnerId(), ssr.getOwnerId(), true, true), BooleanClause.Occur.MUST);
+     qb.add(NumericRangeQuery.newLongRange(SearchMapper.ownerField+'.'+SearchMapper.numidField, ssr.getOwnerId(), ssr.getOwnerId(), true, true), BooleanClause.Occur.MUST);
    }
    else
-    qb.add(NumericRangeQuery.newLongRange(SearchMapper.ownerField+'.'+SearchMapper.idField, u.getId(), u.getId(), true, true), BooleanClause.Occur.MUST);
+    qb.add(NumericRangeQuery.newLongRange(SearchMapper.ownerField+'.'+SearchMapper.numidField, u.getId(), u.getId(), true, true), BooleanClause.Occur.MUST);
     
    
    if( ssr.getOwner() != null )
