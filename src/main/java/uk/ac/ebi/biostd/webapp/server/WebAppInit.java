@@ -397,7 +397,7 @@ public class WebAppInit implements ServletContextListener
     
     readConfig(new ResourceBundleParamPool(rb));
    }
-   else if( bPathFile.exists() )
+   else if( ! bPathFile.exists() )
     bPathFile.mkdirs();
  
   }

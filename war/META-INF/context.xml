@@ -1,6 +1,0 @@
-<Context>
-
- <Parameter name='pageant.dataDir' value='e:/dev/temp/data'/>
- <Parameter name='pageant.dataMountPath' value='/data'/>
-
-</Context>

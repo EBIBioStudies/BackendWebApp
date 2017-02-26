@@ -13,6 +13,7 @@ import uk.ac.ebi.biostd.model.Submission;
 public class SearchMapper
 {
  public static final String idField = "id";
+ public static final String numidField = "numid";
 
  public static final String loginField = "login";
  public static final String emailField = "email";
@@ -32,7 +33,10 @@ public class SearchMapper
   
   mapping.entity(User.class)
    .property(idField, ElementType.METHOD)
+    .documentId()
+     .name(idField+"1")
     .field()
+     .name(numidField)
      .numericField()
      .analyze(Analyze.NO)
      .index(Index.YES)
@@ -92,8 +96,7 @@ public class SearchMapper
      .store(Store.NO)
    .property(ownerField, ElementType.METHOD)
     .indexEmbedded()
-    .includeEmbeddedObjectId(true)
-    .includePaths(emailField,idField)
+    .includePaths(emailField,numidField)
 
  ;
   
