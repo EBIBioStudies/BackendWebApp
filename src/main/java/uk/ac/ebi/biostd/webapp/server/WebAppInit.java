@@ -671,17 +671,20 @@ public class WebAppInit implements ServletContextListener
    
    EntityManager entityManager = BackendConfig.getEntityManagerFactory().createEntityManager();
    FullTextEntityManager fullTextEntityManager = Search.getFullTextEntityManager(entityManager);
-   try
-   {
-    log.info("Starting Hibernate indexer");
-    fullTextEntityManager.createIndexer().startAndWait();
-    log.info("Hibernate indexer: done");
-   }
-   catch(InterruptedException e)
-   {
-    log.error("Can't initialize Hibernate search: "+e.getMessage());
-    throw new RuntimeException("BioStd webapp initialization failed");
-   }
+
+   fullTextEntityManager.createIndexer().start();
+
+//   try
+//   {
+//    log.info("Starting Hibernate indexer");
+//    fullTextEntityManager.createIndexer().startAndWait();
+//    log.info("Hibernate indexer: done");
+//   }
+//   catch(InterruptedException e)
+//   {
+//    log.error("Can't initialize Hibernate search: "+e.getMessage());
+//    throw new RuntimeException("BioStd webapp initialization failed");
+//   }
    
    fullTextEntityManager.close();
   }
