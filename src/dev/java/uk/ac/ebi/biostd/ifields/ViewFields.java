@@ -21,7 +21,7 @@ public class ViewFields
  {
 
 //  IndexReader r = DirectoryReader.open(FSDirectory.open(Paths.get("e:\\games\\index\\uk.ac.ebi.biostd.model.Submission")));
-  IndexReader r = DirectoryReader.open(FSDirectory.open(Paths.get("c:\\Dev\\tmp\\biostd_app\\index\\uk.ac.ebi.biostd.model.Submission")));
+  IndexReader r = DirectoryReader.open(FSDirectory.open(Paths.get(args[0])));
   
   
   for( LeafReaderContext rc : r.leaves() )
@@ -33,6 +33,9 @@ public class ViewFields
   }
   
   int num = r.numDocs();
+  
+  System.out.println("Total docs: "+num);
+  
   for ( int i = 0; i < num && i < 10; i++)
   {
           Document d = r.document(i);
