@@ -1003,6 +1003,7 @@ public class JPASubmissionManager implements SubmissionManager
       submission.setCTime(oldSbm.getCTime());
       si.setOriginalSubmission(oldSbm);
       submission.setVersion(oldSbm.getVersion() + 1);
+      submission.setSecretKey(oldSbm.getSecretKey());
       
 //      Integer __oldVer = __accVerMap.get(oldSbm.getAccNo());
 //      
