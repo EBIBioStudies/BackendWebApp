@@ -161,46 +161,61 @@ public class ToolsServlet extends ServiceServlet
 
  private void fixSecretKey(PrintWriter writer)
  {
+  
   EntityManager mngr = null;
+  TypedQuery<Submission> query = null;
 
-  mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
-
-  TypedQuery<Submission> query = mngr.createQuery("select s from Submission s where s.secretKey is null", Submission.class);
-  query.setMaxResults(30);
-  
-  List<Submission> sLst = null;
-  
   int count=0;
+  int emCount=0;
   
   while( true )
   {
+   if(emCount > 1000)
+   {
+    emCount = 0;
+    mngr.close();
+    mngr = null;
+   }
+
+   if(mngr == null)
+   {
+    mngr = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+    query = mngr.createQuery("select s from Submission s where s.secretKey is null", Submission.class);
+    query.setMaxResults(50);
+   }
+
+   List<Submission> sLst = null;
+
    EntityTransaction t = mngr.getTransaction();
 
    t.begin();
 
    sLst = query.getResultList();
-   
-   if( sLst.size() == 0 )
+
+   if(sLst.size() == 0)
    {
     t.commit();
-    
-    writer.println("Processing finished. Total: "+count);
+
+    writer.println("Processing finished. Total: " + count);
     break;
    }
-   
-   for( Submission s : sLst )
+
+   for(Submission s : sLst)
    {
     s.setSecretKey(UUID.randomUUID().toString());
     count++;
+    emCount++;
    }
-   
+
    t.commit();
-   
-   writer.println("Processed submissions: "+count);
+
+   writer.println("Processed submissions: " + count);
 
   }
-  
-  mngr.close();
+
+  if( mngr != null )
+   mngr.close();
  }
 
  private void relinkDropboxes(PrintWriter out) throws IOException
