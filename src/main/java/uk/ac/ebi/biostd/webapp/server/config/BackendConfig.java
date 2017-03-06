@@ -16,6 +16,7 @@ import javax.persistence.EntityManagerFactory;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
@@ -126,6 +127,7 @@ public class BackendConfig
 // private static long activationTimeout = defaultActivationTimeout;
 // private static long passResetTimeout = defaultPassResetTimeout;
 
+  
  private static ConfigBean conf;
  
  public static void init( int contextHash )
@@ -862,6 +864,26 @@ public class BackendConfig
  public static long getExportLockDelayMsec()
  {
   return exportLockDelay;
+ }
+
+ public static Map<String, Object> getEmailConfig()
+ {
+  return conf.getEmailConfig();
+ }
+ 
+ public static TaskConfig getTaskConfig()
+ {
+  return conf.getTaskConfig();
+ }
+ 
+ public static void setEmailConfig(Map<String, Object> emailConfig)
+ {
+  conf.setEmailConfig(emailConfig);
+ }
+
+ public static void setTaskConfig(TaskConfig taskConfig)
+ {
+  conf.setTaskConfig(taskConfig); 
  }
 
 }

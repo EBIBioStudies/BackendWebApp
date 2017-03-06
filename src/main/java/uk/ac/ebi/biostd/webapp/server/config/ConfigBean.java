@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.persistence.EntityManagerFactory;
 
+import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 
@@ -71,7 +72,8 @@ public class ConfigBean
  private long                 passResetTimeout;
 
  private Map<String, Object> databaseConfig;
- 
+ private Map<String, Object> emailConfig;
+ private TaskConfig taskConfig;
  
  public String getDataMountPath()
  {
@@ -511,6 +513,26 @@ public class ConfigBean
  public void setDatabaseConfig(Map<String, Object> databaseConfig)
  {
   this.databaseConfig = databaseConfig;
+ }
+
+ public TaskConfig getTaskConfig()
+ {
+  return taskConfig;
+ }
+
+ public void setTaskConfig(TaskConfig taskConfig)
+ {
+  this.taskConfig = taskConfig;
+ }
+
+ public Map<String, Object> getEmailConfig()
+ {
+  return emailConfig;
+ }
+
+ public void setEmailConfig(Map<String, Object> emailConfig)
+ {
+  this.emailConfig = emailConfig;
  }
 
 }
