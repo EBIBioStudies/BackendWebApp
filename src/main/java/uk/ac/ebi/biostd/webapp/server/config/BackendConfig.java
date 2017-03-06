@@ -1,6 +1,5 @@
 package uk.ac.ebi.biostd.webapp.server.config;
 
-import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,7 +17,6 @@ import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
-import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 
@@ -71,52 +69,11 @@ public class BackendConfig
  public static final String             UsersDir                            = "Users";
  public static final String             GroupsDir                           = "Groups";
 
- public static final String             CreateFileStructureParameter        = "createFileStructure";
 
- public static final String             BaseDirParameter                    = "baseDir";
- 
- public static final String             WorkdirParameter                    = "workDir";
-
- public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
- public static final String             UserGroupDirParameter               = "userGroupDir";
- public static final String             UserGroupIndexDirParameter          = "userGroupIndexDir";
- public static final String             PublicDropboxesParameter            = "publicDropboxes";
- public static final String             SubmissionDirParameter              = "submissionDir";
- public static final String             SubmissionTransactionDirParameter   = "submissionTransactionDir";
- public static final String             SubmissionHistoryDirParameter       = "submissionHistoryDir";
- public static final String             AllowFileLinksParameter             = "allowFileLinks";
- public static final String             PublicFTPDirParameter               = "publicFTPDir";
- public static final String             SubmissionUpdateParameter           = "updateDir";
- public static final String             UpdateURLParameter                  = "updateListenerURL";
- public static final String             UpdateURLFilePlaceholder            = "{file}";
- public static final String             UpdateWaitPeriodParameter           = "updateWaitPeriod";
- public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
- public static final String             FTPRootPathParameter                = "FTPRootPath";
- 
- public static final String             MandatoryAccountActivationParameter = "mandatoryAccountActivation";
- public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
- public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";
- public static final String             ActivationEmailHtmlParameter        = "activationEmailHtmlFile";
- public static final String             ActivationTimeoutParameter          = "activationTimeout";
- public static final String             ActivationTimeoutParameterHours     = "activationTimeoutHours";
-
- public static final String             SubscriptionEmailSubjectParameter     = "subscriptionEmailSubject";
- public static final String             SubscriptionEmailPlainTextParameter   = "subscriptionEmailPlainTextFile";
- public static final String             SubscriptionEmailHtmlParameter        = "subscriptionEmailHtmlFile";
- 
- public static final String             PassResetTimeoutParameter           = "passwordResetTimeout";
- public static final String             PassResetEmailSubjectParameter      = "passwordResetEmailSubject";
- public static final String             PassResetEmailPlainTextParameter    = "passwordResetEmailPlainTextFile";
- public static final String             PassResetEmailHtmlParameter         = "passwordResetEmailHtmlFile";
- 
- public static final String             DefaultSubmissionAccPrefixParameter = "defaultSubmissionAccNoPrefix";
- public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
 
  public static boolean EncodeFileNames = false; 
  
  
- public static final String DataMountPathParameter = "dataMountPath";
- public static final String RecapchaPrivateKeyParameter = "recapcha_private_key";
  
  public static final int maxPageTabSize=5000000;
 
@@ -182,318 +139,14 @@ public class BackendConfig
   return conf.getSequence().getAndIncrement();
  }
  
- public static boolean readParameter(String param, String val) throws ServiceConfigException
+ public static ConfigBean createConfig()
  {
-  return readParameter(param, val, conf);
+  return new ConfigBean();
  }
-
- public static boolean readParameter(String param, String val, ConfigBean cfg) throws ServiceConfigException
+ 
+ public static void setConfig( ConfigBean cfg )
  {
-  val = val.trim();
-  param = param.trim();
-  
-  if( DefaultSubmissionAccPrefixParameter.equals(param) )
-  {
-   cfg.setDefaultSubmissionAccPrefix(val);
-   
-   return true;
-  }
-
-  if( DefaultSubmissionAccSuffixParameter.equals(param) )
-  {
-   cfg.setDefaultSubmissionAccSuffix(val);
-   
-   return true;
-  }
-
-  if( BaseDirParameter.equals(param) )
-  {
-   cfg.setBaseDirectory(FileSystems.getDefault().getPath(val));
-   
-   if( ! cfg.getBaseDirectory().isAbsolute() )
-    throw new ServiceConfigException(BaseDirParameter+": path should be absolute");
-   
-   return true;
-  }
-
-  if( WorkdirParameter.equals(param) )
-  {
-   cfg.setWorkDirectory(createPath(WorkdirParameter,val));
-   
-   return true;
-  }
-  
-
-  if( FTPRootPathParameter.equals(param) )
-  {
-   cfg.setFtpRootPath(FileSystems.getDefault().getPath(val));
-   
-   return true;
-  }
-
-  
-  if( SubmissionDirParameter.equals(param) )
-  {
-   cfg.setSubmissionsPath(createPath(SubmissionDirParameter,val));
-
-   return true;
-  }
-  
-  if( SubmissionUpdateParameter.equals(param) )
-  {
-   cfg.setSubmissionUpdatePath(createPath(SubmissionUpdateParameter,val));
-
-   return true;
-  }
-  
-  if( UpdateURLParameter.equals(param) )
-  {
-   int pos = val.indexOf(UpdateURLFilePlaceholder);
-   
-   if( pos < 0 )
-    throw new ServiceConfigException(UpdateURLParameter+" should contain "+UpdateURLFilePlaceholder+" placeholder");
-   
-   cfg.setUpdateListenerURLPfx(val.substring(0,pos));
-   cfg.setUpdateListenerURLSfx(val.substring(pos+UpdateURLFilePlaceholder.length()));
-
-   try
-   {
-    new URL(cfg.getUpdateListenerURLPfx()+"aaa.txt"+cfg.getUpdateListenerURLSfx());
-   }
-   catch(Exception e)
-   {
-    throw new ServiceConfigException(UpdateURLParameter+": invalid URL '"+val+"'");
-   }
-   
-   return true;
-  }
-
-  if( UpdateWaitPeriodParameter.equals(param) )
-  {
-   try
-   {
-    cfg.setUpdateWaitPeriod(Integer.parseInt(val));
-   }
-   catch(Exception e)
-   {
-    throw new ServiceConfigException(UpdateWaitPeriodParameter+": integer value expected '"+val+"'");
-   }
-   
-   return true;
-  }
-  
-  if( MaxUpdatesPerFileParameter.equals(param) )
-  {
-   try
-   {
-    cfg.setMaxUpdatesPerFile( Integer.parseInt(val) );
-   }
-   catch(Exception e)
-   {
-    throw new ServiceConfigException(MaxUpdatesPerFileParameter+": integer value expected '"+val+"'");
-   }
-   
-   return true;
-  }
-
-  
-  if( SubmissionHistoryDirParameter.equals(param) )
-  {
-   cfg.setSubmissionsHistoryPath( createPath(SubmissionHistoryDirParameter,val) );
- 
-   return true;
-  }
-  
-  if( SubmissionTransactionDirParameter.equals(param) )
-  {
-   cfg.setSubmissionsTransactionPath( createPath(SubmissionTransactionDirParameter,val) );
- 
-   return true;
-  }
-
-  if( PublicFTPDirParameter.equals(param) )
-  {
-   cfg.setPublicFTPPath( createPath(PublicFTPDirParameter,val) );
- 
-   return true;
-  }
-
-  if( UserGroupDirParameter.equals(param) )
-  {
-   cfg.setUserGroupDropboxPath( createPath(UserGroupDirParameter, val) );
-   
-   return true;
-  }
-  
-  if( PublicDropboxesParameter.equals(param) )
-  {
-   cfg.setPublicDropboxes( "true".equalsIgnoreCase(val) || "yes".equalsIgnoreCase(val) || "1".equals(val) );
-   
-   return true;
-  }
-
-  
-  if( UserGroupIndexDirParameter.equals(param) )
-  {
-   cfg.setUserGroupIndexPath( createPath(UserGroupIndexDirParameter,val) );
-
-   cfg.setUsersIndexPath( cfg.getUserGroupIndexPath().resolve(UsersDir) );
-   cfg.setGroupsIndexPath( cfg.getUserGroupIndexPath().resolve(GroupsDir) );
-   
-   return true;
-  }
-
-  if( DataMountPathParameter.equals(param) )
-  {
-   cfg.setDataMountPath(val);
-   return true;
-  }
-  
-  if( RecapchaPrivateKeyParameter.equals(param) )
-  {
-   cfg.setRecapchaPrivateKey(val);
-   return true;
-  }
-
-  if( AllowFileLinksParameter.equals(param) )
-  {
-   cfg.setFileLinkAllowed( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
-   return true;
-  }
-  
-  if( EnableUnsafeRequestsParameter.equals(param) )
-  {
-   cfg.setEnableUnsafeRequests( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
-   return true;
-  }
-
-
-  if( CreateFileStructureParameter.equals(param) )
-  {
-   cfg.setCreateFileStructure( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
-   return true; 
-  }
-  
-  if( MandatoryAccountActivationParameter.equals(param) )
-  {
-   cfg.setMandatoryAccountActivation( val.equalsIgnoreCase("yes") || val.equalsIgnoreCase("true") || val.equals("1") );
-   return true; 
-  }
-
-
-  if( ActivationEmailSubjectParameter.equals(param) )
-  {
-   cfg.setActivationEmailSubject(val);
-   
-   return true;
-  }
-  
-  if( PassResetEmailSubjectParameter.equals(param) )
-  {
-   cfg.setPassResetEmailSubject(val);
-   
-   return true;
-  }
-
-
-  
-  if( ActivationEmailPlainTextParameter.equals(param) )
-  {
-   cfg.setActivationEmailPlainTextFile(createPath(ActivationEmailPlainTextParameter,val));
-   
-   return true;
-  }
-
-  if( ActivationEmailHtmlParameter.equals(param) )
-  {
-   cfg.setActivationEmailHtmlFile(createPath(ActivationEmailHtmlParameter,val) );
-   
-   return true;
-  }
-  
-  
-  if( ActivationTimeoutParameter.equals(param) || ActivationTimeoutParameterHours.equals(param) )
-  {
-   try
-   {
-    cfg.setActivationTimeout( (long) ( Double.parseDouble(val) * 60 * 60 * 1000L ) ) ;
-   }
-   catch(Exception e)
-   {
-    throw new ServiceConfigException(ActivationTimeoutParameter+": integer value expected '"+val+"'");
-   }
-   
-   return true;
-  }
-  
-  
-  if( SubscriptionEmailSubjectParameter.equals(param) )
-  {
-   cfg.setSubscriptionEmailSubject(val);
-   
-   return true;
-  }
-
-
-  if( SubscriptionEmailPlainTextParameter.equals(param) )
-  {
-   cfg.setSubscriptionEmailPlainTextFile( createPath(SubscriptionEmailPlainTextParameter,val) );
-   
-   return true;
-  }
-
-  if( SubscriptionEmailHtmlParameter.equals(param) )
-  {
-   cfg.setSubscriptionEmailHtmlFile( createPath(SubscriptionEmailHtmlParameter,val) );
-   
-   return true;
-  }
-
-  
-  if( PassResetEmailPlainTextParameter.equals(param) )
-  {
-   cfg.setPassResetEmailPlainTextFile( createPath(PassResetEmailPlainTextParameter,val) );
-   
-   return true;
-  }
-
-  if( PassResetEmailHtmlParameter.equals(param) )
-  {
-   cfg.setPassResetEmailHtmlFile( createPath(PassResetEmailHtmlParameter,val) );
-   
-   return true;
-  }
-  
-  
-  if( PassResetTimeoutParameter.equals(param) )
-  {
-   try
-   {
-    cfg.setPassResetTimeout( Integer.parseInt(val) * 60 * 60 * 1000L );
-   }
-   catch(Exception e)
-   {
-    throw new ServiceConfigException(PassResetTimeoutParameter+": integer value expected '"+val+"'");
-   }
-   
-   return true;
-  }
-  
-  return false;
-
- }
-
- private static Path createPath( String prm, String p ) throws ServiceConfigException
- {
-  Path np = FileSystems.getDefault().getPath(p);
-  
-  if( np.isAbsolute() )
-   return np;
-  
-  if( conf.getBaseDirectory() != null )
-   return conf.getBaseDirectory().resolve(np);
-
-  throw new ServiceConfigException(prm+": path should be either absolute or "+BaseDirParameter+" parameter should be defined before");
+  conf = cfg;
  }
  
  
