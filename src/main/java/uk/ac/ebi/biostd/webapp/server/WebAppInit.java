@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +20,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -46,9 +43,7 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
-import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
-import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceInitExceprion;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
@@ -123,105 +118,7 @@ public class WebAppInit implements ServletContextListener
  }
 
  
- private void readConfig( ParamPool config ) throws ServiceInitExceprion
- {
 
-  log.info("Initializing BioStudies web app");
-
-  Matcher outMtch = Pattern.compile("^"+OutputParamPrefix+"(?:\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
-
-  boolean confOk = true;
-  
-  Enumeration<String> pNames = config.getNames();
-
-  String baseDir = config.getParameter(ServiceParamPrefix+BackendConfig.BaseDirParameter);
-  
-  if( baseDir != null )
-  {
-   try
-   {
-    if(!BackendConfig.readParameter(BackendConfig.BaseDirParameter, baseDir))
-     log.warn("Unknown configuration parameter: " + BackendConfig.BaseDirParameter + " will be ignored");
-   }
-   catch(ServiceConfigException e)
-   {
-    log.error("Invalid parameter value: " + BackendConfig.BaseDirParameter + "=" + baseDir+" "+e.getMessage());
-    confOk = false;
-   }
-  }
-  
-  while(pNames.hasMoreElements())
-  {
-   String key = pNames.nextElement();
-   String val = config.getParameter(key);
-
-   if(key.startsWith(DBParamPrefix))
-    dbConfig.put(key.substring(DBParamPrefix.length()), val);
-   else if(key.startsWith(ServiceParamPrefix))
-   {
-    String param = key.substring(ServiceParamPrefix.length());
-
-    try
-    {
-     if(!BackendConfig.readParameter(param, val))
-      log.warn("Unknown configuration parameter: " + key + " will be ignored");
-    }
-    catch(ServiceConfigException e)
-    {
-     log.error("Invalid parameter value: " + key + "=" + val+" "+e.getMessage());
-     confOk = false;
-    }
-   }
-   else if(key.startsWith(TaskParamPrefix))
-   {
-    if(taskConfig == null)
-     taskConfig = new TaskConfig("export");
-
-    String param = key.substring(TaskParamPrefix.length());
-
-    outMtch.reset(param);
-
-    if(outMtch.matches())
-    {
-     String outName = outMtch.group(1);
-     String outParam = outMtch.group(2);
-
-     if(outName == null)
-      outName = "_default_";
-
-     taskConfig.addOutputParameter(outName, outParam, val);
-    }
-    else
-    {
-     try
-     {
-      if(!taskConfig.readParameter(param, val))
-       log.warn("Unknown configuration parameter: " + key + " will be ignored");
-     }
-     catch(TaskConfigException e)
-     {
-      log.error("Parameter read error: "+e.getMessage());
-      confOk = false;
-     }
-    }
-
-   }
-   else if(key.startsWith(EmailParamPrefix))
-   {
-
-   }
-   else
-    log.warn("Invalid parameter {} will be ignored.", key);
-   
-   
-  }
-
-  if(!confOk)
-  {
-   throw new RuntimeException("BioStudies webapp initialization failed");
-  }
-
- }
  
  private TaskInfo createTask(TaskConfig tc) throws TaskConfigException
  {
@@ -416,222 +313,6 @@ public class WebAppInit implements ServletContextListener
   }
   */
   
-  if( BackendConfig.isCreateFileStructure() && BackendConfig.getBaseDirectory() != null )
-  {
-   try
-   {
-    Files.createDirectories(BackendConfig.getBaseDirectory());
-    Files.setPosixFilePermissions(BackendConfig.getBaseDirectory(), BackendConfig.rwxrwx___);
-   }
-   catch( UnsupportedOperationException e )
-   {
-    log.warn("Filesystem doesn't support POSIX file permissions. Please check base directory permissions manually");
-   }
-   catch(IOException e)
-   {
-    throw new RuntimeException("Directory access error: "+BackendConfig.getBaseDirectory());
-   }
-  }
-  
-  Path dir = BackendConfig.getWorkDirectory();
-  
-  if( dir == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.WorkdirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-  
-  if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
-  
-  dir = BackendConfig.getUserGroupDropboxPath();
-  
-  if( dir == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.UserGroupDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-  
-  if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
-
-  
-  dir = BackendConfig.getUserGroupIndexPath();
-  
-  if( dir == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.UserGroupIndexDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-
-  if( ! checkDirectory( BackendConfig.getUsersIndexPath() ) )
-   throw new RuntimeException("Directory access error: "+BackendConfig.getUsersIndexPath() );
-
-  if( ! checkDirectory( BackendConfig.getGroupIndexPath() ) )
-   throw new RuntimeException("Directory access error: "+BackendConfig.getGroupIndexPath() );
-
-  
-  if( ! checkDirectory( BackendConfig.getSubmissionUpdatePath() ) )
-   throw new RuntimeException("Directory access error: "+BackendConfig.getSubmissionUpdatePath() );
- 
-
-  dir = BackendConfig.getSubmissionsPath();
-  
-  if( dir == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.SubmissionDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-  
-  if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
-
-  
-  dir = BackendConfig.getSubmissionsHistoryPath();
-  
-  if( dir == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.SubmissionHistoryDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-  
-  if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
-
-  
-  dir = BackendConfig.getSubmissionsTransactionPath();
-  
-  if( dir == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.SubmissionTransactionDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-
-  if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
-
-//  if( BackendConfig.getServiceManager().getEmailService() == null )
-//  {
-//   log.error("Email service is not configured");
-//   throw new RuntimeException("Invalid configuration");
-//  }
-  
-  if( BackendConfig.isMandatoryAccountActivation() && BackendConfig.getActivationEmailSubject() == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.ActivationEmailSubjectParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-
-  if( BackendConfig.isMandatoryAccountActivation() && BackendConfig.getActivationEmailPlainTextFile() == null && BackendConfig.getActivationEmailHtmlFile() == null )
-  {
-   log.error("At least one of "+ServiceParamPrefix+BackendConfig.ActivationEmailPlainTextParameter+" "+
-     ServiceParamPrefix+BackendConfig.ActivationEmailHtmlParameter+" parameters must be set");
-   throw new RuntimeException("Invalid configuration");
-  }
-
-  Path emailFile = BackendConfig.getActivationEmailPlainTextFile();
-  
-  if( BackendConfig.isMandatoryAccountActivation() && emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
-  {
-   log.error(ServiceParamPrefix+BackendConfig.ActivationEmailPlainTextParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
-  }
-  
-  emailFile = BackendConfig.getActivationEmailHtmlFile();
-  
-  if( BackendConfig.isMandatoryAccountActivation() && emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
-  {
-   log.error(ServiceParamPrefix+BackendConfig.ActivationEmailHtmlParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
-  }
-  
-  
-  if( BackendConfig.getPassResetEmailSubject() == null )
-  {
-   log.error("Mandatory "+ServiceParamPrefix+BackendConfig.PassResetEmailSubjectParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
-  }
-
-  if( BackendConfig.getPassResetEmailPlainTextFile() == null && BackendConfig.getPassResetEmailHtmlFile() == null )
-  {
-   log.error("At least one of "+ServiceParamPrefix+BackendConfig.PassResetEmailPlainTextParameter+" "+
-     ServiceParamPrefix+BackendConfig.PassResetEmailHtmlParameter+" parameters must be set");
-   throw new RuntimeException("Invalid configuration");
-  }  
-  
-  emailFile = BackendConfig.getPassResetEmailPlainTextFile();
-  
-  if( emailFile == null || ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
-  {
-   log.error(ServiceParamPrefix+BackendConfig.PassResetEmailPlainTextParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
-  }
-
-  emailFile = BackendConfig.getPassResetEmailHtmlFile();
-  
-  if( emailFile == null || ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
-  {
-   log.error(ServiceParamPrefix+BackendConfig.PassResetEmailHtmlParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
-  }
-
-  
-  if( BackendConfig.getSubscriptionEmailSubject() != null || BackendConfig.getSubscriptionEmailPlainTextFile() != null || BackendConfig.getSubscriptionEmailHtmlFile() != null )
-  {
-   if( BackendConfig.getSubscriptionEmailSubject() == null || BackendConfig.getSubscriptionEmailPlainTextFile() == null || BackendConfig.getSubscriptionEmailHtmlFile() == null )
-   {
-    log.error("To activate tag subscriptions service the following parameters should be set: "
-     +ServiceParamPrefix+BackendConfig.SubscriptionEmailSubjectParameter
-     +", "+ServiceParamPrefix+BackendConfig.SubscriptionEmailPlainTextParameter
-     +", "+ServiceParamPrefix+BackendConfig.SubscriptionEmailHtmlParameter
-      );
-    throw new RuntimeException("Invalid configuration");
-   }
-   
-   emailFile = BackendConfig.getSubscriptionEmailPlainTextFile();
-
-   if(  ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) )
-   {
-    log.error(ServiceParamPrefix+BackendConfig.SubscriptionEmailPlainTextParameter+" should point to a regular readable file");
-    throw new RuntimeException("Invalid configuration");
-   }
-
-   emailFile = BackendConfig.getSubscriptionEmailHtmlFile();
-   
-   if(  ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile)  )
-   {
-    log.error(ServiceParamPrefix+BackendConfig.SubscriptionEmailHtmlParameter+" should point to a regular readable file");
-    throw new RuntimeException("Invalid configuration");
-   }
-  }
-  
-  
-  Path sbmTestDir = BackendConfig.getSubmissionsPath().resolve("~tmp");
-  try
-  {
-   Path trnTestDir = BackendConfig.getSubmissionsTransactionPath().resolve("~tmp");
-   
-   Files.createDirectory(sbmTestDir);
-   Files.deleteIfExists(trnTestDir);
-   Files.move(sbmTestDir, trnTestDir);
-   Files.delete(trnTestDir);
-  }
-  catch(IOException e1)
-  {
-   try
-   {
-    Files.deleteIfExists(sbmTestDir);
-   }
-   catch(IOException e)
-   {
-   }
-  
-   log.error("Submission transaction directory: test oparation failed: "+e1.getMessage());
-   log.error("Submission transaction directory should be on the same physical drive with submissions directory");
-
-   throw new RuntimeException("Invalid configuration");
-  }
-
   
   
   BackendConfig.setDatabaseConfig( dbConfig );
@@ -777,38 +458,6 @@ public class WebAppInit implements ServletContextListener
   */
  }
 
- private boolean checkDirectory(Path file)
- {
-  if( Files.exists( file ) )
-  {
-   if( ! Files.isDirectory( file ) )
-   {
-    log.error("Path "+file+" is not a directory");
-    return false;
-   }
-   
-   if( ! Files.isWritable(file) )
-   {
-    log.error("Directory "+file+" is not writable");
-    return false;
-   }
-  }
-  else if( BackendConfig.isCreateFileStructure() )
-  {
-   try
-   {
-    Files.createDirectories( file );
-   }
-   catch(IOException e)
-   {
-    log.error("Can't create directory: "+file );
-    return false;
-   }
-  }
-  else
-   return false;
-  
-  return true;
- }
+ 
 	
 }
