@@ -20,7 +20,6 @@
 	<target name="build">
 
 		<fail unless="gwt.home">gwt.home property should point to GWT SDK</fail>
-		<fail unless="tomcat.home">tomcat.home property should point to Tomcat8</fail>
 		
 		<delete dir="${build}"/>
 
@@ -40,12 +39,6 @@
 			<filelist>
 				<file name="${gwt.home}/gwt-servlet.jar"/>
 				<file name="${gwt.home}/gwt-dev.jar"/>
-				<file name="${tomcat.home}/lib/catalina.jar"/>
-				<file name="${tomcat.home}/lib/tomcat-api.jar"/>
-				<file name="${tomcat.home}/lib/tomcat-util.jar"/>
-				<file name="${tomcat.home}/lib/tomcat-util-scan.jar"/>
-				<file name="${tomcat.home}/lib/tomcat-coyote.jar"/>
-				<file name="${tomcat.home}/bin/tomcat-juli.jar"/>
 			</filelist>
 	    </path>
 		

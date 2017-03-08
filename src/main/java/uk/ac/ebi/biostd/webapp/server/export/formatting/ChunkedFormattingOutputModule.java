@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.out.TextStreamFormatter;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.config.ConfigurationManager;
 import uk.ac.ebi.biostd.webapp.server.export.ExporterStat;
 import uk.ac.ebi.biostd.webapp.server.export.FSProvider;
 import uk.ac.ebi.biostd.webapp.server.export.FTPFSProvider;
@@ -124,8 +125,8 @@ public class ChunkedFormattingOutputModule implements OutputModule
   {
    if( BackendConfig.getBaseDirectory() == null )
    {
-    log.error("Output module '"+name+"': Temporary directory path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
-    throw new TaskConfigException("Output module '"+name+"': Temporary directory path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
+    log.error("Output module '"+name+"': Temporary directory path should be absolute or relative to path defined by '"+ConfigurationManager.BaseDirParameter+"' parameter");
+    throw new TaskConfigException("Output module '"+name+"': Temporary directory path should be absolute or relative to path defined by '"+ConfigurationManager.BaseDirParameter+"' parameter");
    }
    
    tmpDir = BackendConfig.getBaseDirectory().resolve(tmpDir);
@@ -172,8 +173,8 @@ public class ChunkedFormattingOutputModule implements OutputModule
   {
    if( BackendConfig.getBaseDirectory() == null )
    {
-    log.error("Output module '"+name+"': Output file path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
-    throw new TaskConfigException("Output module '"+name+"': TOutput file path should be absolute or relative to path defined by '"+BackendConfig.BaseDirParameter+"' parameter");
+    log.error("Output module '"+name+"': Output file path should be absolute or relative to path defined by '"+ConfigurationManager.BaseDirParameter+"' parameter");
+    throw new TaskConfigException("Output module '"+name+"': TOutput file path should be absolute or relative to path defined by '"+ConfigurationManager.BaseDirParameter+"' parameter");
    }
    
    outDir = BackendConfig.getBaseDirectory().resolve(outDir);

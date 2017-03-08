@@ -2,7 +2,6 @@ package uk.ac.ebi.biostd.webapp.server.config;
 
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.persistence.EntityManagerFactory;
 
@@ -14,9 +13,6 @@ public class ConfigBean
 {
  private String               dataMountPath;
  private String               recapchaPrivateKey;
-
- private long                 instanceId;
- private AtomicInteger        sequence;
 
  private ServiceManager       defaultServiceManager;
  private EntityManagerFactory emf;
@@ -95,25 +91,6 @@ public class ConfigBean
   this.recapchaPrivateKey = recapchaPrivateKey;
  }
 
- public long getInstanceId()
- {
-  return instanceId;
- }
-
- public void setInstanceId(long instanceId)
- {
-  this.instanceId = instanceId;
- }
-
- public AtomicInteger getSequence()
- {
-  return sequence;
- }
-
- public void setSequence(AtomicInteger sequence)
- {
-  this.sequence = sequence;
- }
 
  public ServiceManager getDefaultServiceManager()
  {
