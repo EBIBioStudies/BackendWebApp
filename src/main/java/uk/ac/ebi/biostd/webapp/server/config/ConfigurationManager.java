@@ -79,12 +79,19 @@ public class ConfigurationManager
  private static Logger log = LoggerFactory.getLogger(ConfigurationManager.class);
 
  
- public ConfigurationManager()
+ public ConfigurationManager( ParamPool ctx )
  {
   if( log == null )
    log = LoggerFactory.getLogger(getClass());
- }
  
+  contextParamPool = ctx;
+ }
+
+ public void loadConfiguration()
+ {
+  // TODO Auto-generated method stub
+  
+ }
 
  public static boolean readConfiguration( ParamPool config ) throws ServiceInitExceprion
  {
@@ -758,5 +765,7 @@ public class ConfigurationManager
   
   return true;
  }
+
+
 
 }

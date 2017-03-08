@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.config.ConfigurationManager;
 import uk.ac.ebi.biostd.webapp.server.email.EmailInitException;
 import uk.ac.ebi.biostd.webapp.server.email.EmailService;
 import uk.ac.ebi.biostd.webapp.server.export.ExportTask;
@@ -255,7 +256,10 @@ public class WebAppInit implements ServletContextListener
  {
   ServletContext ctx = ctxEv.getServletContext();
   
-  BackendConfig.init( ctx.getContextPath().hashCode() );
+  BackendConfig.setInstanceId( ctx.getContextPath().hashCode() );
+  BackendConfig.setConfigurationManager( new ConfigurationManager(new ServletContextParamPool(ctx)) );
+  
+  BackendConfig.getConfigurationManager().loadConfiguration();
   
   ParamPool config = null;
 

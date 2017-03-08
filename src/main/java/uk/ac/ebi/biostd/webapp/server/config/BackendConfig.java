@@ -83,18 +83,13 @@ public class BackendConfig
 
 // private static long activationTimeout = defaultActivationTimeout;
 // private static long passResetTimeout = defaultPassResetTimeout;
-
-  
- private static ConfigBean conf;
+ private static long instanceId;
+ private static AtomicInteger        sequence = new AtomicInteger(1);
  
- public static void init( int contextHash )
- {
-  conf = new ConfigBean();
-  
-  initConfigBean(conf);
-  
-  conf.setInstanceId( System.currentTimeMillis() ^ contextHash );
- }
+ private static ConfigurationManager configurationManager;
+ 
+ private static ConfigBean conf= new ConfigBean();
+ 
  
  private static void initConfigBean( ConfigBean cfg )
  {
@@ -131,12 +126,18 @@ public class BackendConfig
  
  public static long getInstanceId()
  {
-  return conf.getInstanceId();
+  return instanceId;
  }
+ 
+ public static void setInstanceId(long iid)
+ {
+  instanceId = System.currentTimeMillis() ^ iid;
+ }
+ 
  
  public static int getSeqNumber()
  {
-  return conf.getSequence().getAndIncrement();
+  return sequence.getAndIncrement();
  }
  
  public static ConfigBean createConfig()
@@ -538,5 +539,17 @@ public class BackendConfig
  {
   conf.setTaskConfig(taskConfig); 
  }
+
+ public static ConfigurationManager getConfigurationManager()
+ {
+  return configurationManager;
+ }
+
+ public static void setConfigurationManager(ConfigurationManager configurationManager)
+ {
+  BackendConfig.configurationManager = configurationManager;
+ }
+
+
 
 }
