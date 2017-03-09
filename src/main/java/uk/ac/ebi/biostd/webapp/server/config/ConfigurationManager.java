@@ -1,6 +1,8 @@
 package uk.ac.ebi.biostd.webapp.server.config;
 
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -8,6 +10,9 @@ import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.PropertyResourceBundle;
+import java.util.ResourceBundle;
+import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,9 +24,14 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceInitExceprion;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
+import uk.ac.ebi.biostd.webapp.server.util.PreferencesParamPool;
+import uk.ac.ebi.biostd.webapp.server.util.ResourceBundleParamPool;
 
 public class ConfigurationManager
 {
+ static final String ApplicationConfigNode = "BioStdWebApp";
+ static final String ConfigFileName =  "config.properties";
+
  static final String DBParamPrefix = "db.";
  static final String ServiceParamPrefix = "biostd.";
  static final String TaskParamPrefix = "export.";
@@ -30,10 +40,13 @@ public class ConfigurationManager
 
  static final String OutputClassParameter = "class";
  
- public static final String             CreateFileStructureParameter        = "createFileStructure";
 
+ public static final String             ConfigurationResetParameter         = "resetConfig";
+
+ 
  public static final String             BaseDirParameter                    = "baseDir";
  
+ public static final String             CreateFileStructureParameter        = "createFileStructure";
  public static final String             WorkdirParameter                    = "workDir";
 
  public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
@@ -87,15 +100,77 @@ public class ConfigurationManager
   contextParamPool = ctx;
  }
 
- public void loadConfiguration()
+ public void loadConfiguration() throws ConfigurationException
+ {
+  ConfigBean cfgBean = BackendConfig.createConfig(); 
+  
+  Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
+
+  if( ! checkReset( prefs.get(ConfigurationResetParameter, null), "app preferences" ) )
+  {
+   if( ! checkReset( contextParamPool.getParameter(ConfigurationResetParameter), "webapp" ) )
+    loadDefaults( cfgBean );
+   
+   readConfiguration(contextParamPool, cfgBean);
+  }
+  
+  readConfiguration(new PreferencesParamPool(prefs), cfgBean);
+  
+  if( cfgBean.getBaseDirectory() != null )
+  {
+   if( ! cfgBean.getBaseDirectory().isAbsolute() )
+    throw new ConfigurationException(BaseDirParameter+" sould be absolute");
+   
+   ResourceBundle rb = null;
+   
+   Path cfgFile = cfgBean.getBaseDirectory().resolve(ConfigFileName);
+   
+   if( Files.exists(cfgFile) )
+   {
+    try( Reader fr = new FileReader(cfgFile.toFile()) )
+    {
+     rb = new PropertyResourceBundle(fr);
+    }
+    catch(Exception e)
+    {
+     log.error("Can't read config file: "+cfgFile);
+     throw new ConfigurationException("Can't read config file: "+cfgFile);
+    }
+    
+    if( checkReset( rb.getString(ConfigurationResetParameter), "config file" ) )
+     cfgBean = BackendConfig.createConfig(); 
+    
+    readConfiguration(new ResourceBundleParamPool(rb), cfgBean);
+   }
+  }
+
+  
+  
+ }
+ 
+ boolean checkReset( String rst, String context ) throws ConfigurationException
+ {
+  if( rst == null )
+   return false;
+  
+  if(  "true".equalsIgnoreCase(rst) || "yes".equalsIgnoreCase(rst) || "1".equals(rst) )
+   return true;
+  
+  if( !( "false".equalsIgnoreCase(rst) || "no".equalsIgnoreCase(rst) || "0".equals(rst) )  )
+   throw new ConfigurationException("Invalid parameter value "+ConfigurationResetParameter+"="+rst+" within "+context+" context");
+  
+  return false;
+ }
+
+ private void loadDefaults(ConfigBean cfgBean)
  {
   // TODO Auto-generated method stub
   
  }
 
- public static boolean readConfiguration( ParamPool config ) throws ServiceInitExceprion
+ public static boolean readConfiguration( ParamPool config, ConfigBean cfgBean ) throws ServiceInitExceprion
  {
-  ConfigBean cfgBean = BackendConfig.createConfig(); 
+//  ConfigBean cfgBean = BackendConfig.createConfig(); 
   
   Map<String, Object> dbConfig = new HashMap<String, Object>();
   Map<String, Object> emailConfig = new HashMap<String, Object>();

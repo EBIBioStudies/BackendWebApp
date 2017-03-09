@@ -121,7 +121,6 @@ public class BackendConfig
   
   cfg.setDatabaseConfig(dbConf);
   
-  cfg.setSequence(new AtomicInteger() );
  }
  
  public static long getInstanceId()
