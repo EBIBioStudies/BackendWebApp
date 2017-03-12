@@ -121,6 +121,68 @@ public class BackendConfig
   
   cfg.setDatabaseConfig(dbConf);
   
+//  <Parameter name='biostd.createFileStructure' value='true'/>
+//
+//  <Parameter name='biostd.baseDir' value='/nfs/biostudies/.adm/databases/beta'/>
+//
+//  <Parameter name='biostd.workDir' value='work'/>
+//  <Parameter name='biostd.userGroupDir' value='/nfs/biostudies/ftp/pub/.dropbox/.beta'/>
+//  <Parameter name='biostd.userGroupIndexDir' value='usergroup'/>
+//  <Parameter name='biostd.publicDropboxes' value='true'/>
+//  <Parameter name='biostd.submissionDir' value='submission'/>
+//  <Parameter name='biostd.submissionHistoryDir' value='history'/>
+//  <Parameter name='biostd.submissionTransactionDir' value='transaction'/>
+//  <Parameter name='biostd.updateDir' value='updates'/>
+//  <Parameter name='biostd.updateListenerURL' value='http://wwwdev.ebi.ac.uk/biostudies/admin/reload-xml/{file}?delete=true'/>
+//
+//  <Parameter name='biostd.allowFileLinks' value='true'/>
+//
+//  <Parameter name='biostd.updateWaitPeriod' value='10'/>
+//  <Parameter name='biostd.maxUpdatesPerFile' value='50'/>
+//
+//  <Parameter name='biostd.mandatoryAccountActivation' value='true'/>
+//
+//  <Parameter name='biostd.publicFTPDir' value='/nfs/biostudies/ftp/pub/.beta'/>
+//
+//  <Parameter name='biostd.defaultSubmissionAccNoPrefix' value='S-BSMS'/>
+//
+//
+//  <Parameter name='export.invokeTime' value='02:20'/>
+//  <Parameter name='export.threadTTL' value='1000'/>
+//  <Parameter name='export.threads' value='8'/>
+//  <Parameter name='export.output[ui-xml].class' value='uk.ac.ebi.biostd.webapp.server.export.formatting.FormattingOutputModule'/>
+//  <Parameter name='export.output[ui-xml].outfile' value='updates/studies.xml'/>
+//  <Parameter name='export.output[ui-xml].format' value='uk.ac.ebi.biostd.out.pageml.PageMLFormatter'/>
+//  <Parameter name='export.output[ui-xml].tmpdir' value='tmp/xml'/>
+//  <Parameter name='export.output[ui-json].class' value='uk.ac.ebi.biostd.webapp.server.export.formatting.FormattingOutputModule'/>
+//  <Parameter name='export.output[ui-json].outfile' value='updates/studies.json'/>
+//  <Parameter name='export.output[ui-json].format' value='uk.ac.ebi.biostd.out.json.JSONFormatter'/>
+//  <Parameter name='export.output[ui-json].tmpdir' value='tmp/json'/>
+//
+//
+//
+//  <Parameter name='biostd.activationEmailSubject' value='Biostudy DB account activation (BETA instance)'/>
+//  <Parameter name='biostd.activationEmailPlainTextFile' value='/nfs/biostudies/.adm/misc/email/activationMail.txt'/>
+//  <Parameter name='biostd.activationEmailHtmlFile' value='/nfs/biostudies/.adm/misc/email/activationMail.html'/>
+//
+//  <Parameter name='biostd.passwordResetEmailSubject' value='Biostudy DB password reset (BETA instance)'/>
+//  <Parameter name='biostd.passwordResetEmailPlainTextFile' value='/nfs/biostudies/.adm/misc/email/passResetMail.txt'/>
+//  <Parameter name='biostd.passwordResetEmailHtmlFile' value='/nfs/biostudies/.adm/misc/email/passResetMail.html'/>
+//
+//  <Parameter name='biostd.subscriptionEmailSubject' value='Biostudy DB subscription notification'/>
+//  <Parameter name='biostd.subscriptionEmailPlainTextFile' value='/nfs/biostudies/.adm/misc/email/subscriptionMail-beta.txt'/>
+//  <Parameter name='biostd.subscriptionEmailHtmlFile' value='/nfs/biostudies/.adm/misc/email/subscriptionMail-beta.html'/>
+//
+//
+//  <Parameter name='email.SMTPHost' value='smtp.ebi.ac.uk'/>
+//  <Parameter name='email.to' value='gostev@ebi.ac.uk'/>
+//  <Parameter name='email.errorsTo' value='gostev@ebi.ac.uk'/>
+//  <Parameter name='email.from' value='BioStudy beta &lt;biostudies-dev@ebi.ac.uk&gt;'/>
+//
+//  <Parameter name='biostd.dataMountPath' value='/data'/>
+//  <Parameter name='biostd.recapcha_private_key' value='6Lcmlv0SAAAAANysy6M8YdozfJnOQxc2JB9WaOS1'/>
+
+  
  }
  
  public static long getInstanceId()
