@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
-import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceInitExceprion;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.PreferencesParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ResourceBundleParamPool;
@@ -164,11 +163,34 @@ public class ConfigurationManager
 
  private void loadDefaults(ConfigBean cfgBean)
  {
-  // TODO Auto-generated method stub
+  Map<String, Object> dbConf = new HashMap<String, Object>();
+
   
+  dbConf.put("hibernate.connection.driver_class","com.mysql.jdbc.Driver");
+  dbConf.put("hibernate.connection.username","");
+  dbConf.put("hibernate.connection.password","");
+  dbConf.put("hibernate.cache.use_query_cache","false");
+  dbConf.put("hibernate.ejb.discard_pc_on_close","true");
+  dbConf.put("hibernate.connection.url","jdbc:mysql://mysql-fg-biostudy.ebi.ac.uk:4469/biostd_beta?autoReconnect=true&amp;useUnicode=yes&amp;characterEncoding=UTF-8");
+  dbConf.put("hibernate.dialect","org.hibernate.dialect.MySQLDialect");
+  dbConf.put("hibernate.hbm2ddl.auto","update");
+  dbConf.put("hibernate.c3p0.max_size","30");
+  dbConf.put("hibernate.c3p0.min_size","0");
+  dbConf.put("hibernate.c3p0.timeout","5000");
+  dbConf.put("hibernate.c3p0.max_statements","0");
+  dbConf.put("hibernate.c3p0.idle_test_period","300");
+  dbConf.put("hibernate.c3p0.acquire_increment","2");
+  dbConf.put("hibernate.c3p0.unreturnedConnectionTimeout","1800");
+  dbConf.put("hibernate.search.default.indexBase","index");
+  dbConf.put("hibernate.search.default.directory_provider","filesystem");
+  dbConf.put("hibernate.search.lucene_version","LUCENE_54");
+
+  
+  cfgBean.setDatabaseConfig(dbConf);
+
  }
 
- public static boolean readConfiguration( ParamPool config, ConfigBean cfgBean ) throws ServiceInitExceprion
+ public static boolean readConfiguration( ParamPool config, ConfigBean cfgBean ) throws ConfigurationException
  {
 //  ConfigBean cfgBean = BackendConfig.createConfig(); 
   
