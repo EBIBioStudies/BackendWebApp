@@ -69,6 +69,18 @@
     <servlet-name>SubmitServlet</servlet-name>
     <url-pattern>/submit/*</url-pattern>
   </servlet-mapping>
+ 
+   <servlet>
+    <description></description>
+    <display-name>HTML form submit servlet</display-name>
+    <servlet-name>FormSubmitServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.submit.FormSubmitServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>FormSubmitServlet</servlet-name>
+    <url-pattern>/formsubmit</url-pattern>
+  </servlet-mapping>
+ 
   
   <servlet>
     <description>Stores and retrieves user defined data</description>
