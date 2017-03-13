@@ -90,6 +90,8 @@ public class ConfigurationManager
  public static final String             DataMountPathParameter              = "dataMountPath";
  public static final String             RecapchaPrivateKeyParameter         = "recapcha_private_key";
  
+ public static final String             HibernateSearchIndexDirParameter    = "hibernate.search.default.indexBase";
+ 
  private ParamPool contextParamPool;
  
  private static Logger log = LoggerFactory.getLogger(ConfigurationManager.class);
@@ -147,6 +149,38 @@ public class ConfigurationManager
    }
   }
 
+  Path baseP = cfgBean.getBaseDirectory();
+  
+  if( baseP != null && baseP.isAbsolute() )
+  {
+   cfgBean.setUserGroupDropboxPath(adjustPath(cfgBean.getUserGroupDropboxPath(),baseP));
+   
+   cfgBean.setUserGroupIndexPath(adjustPath(cfgBean.getUserGroupIndexPath(),baseP));
+   cfgBean.setUsersIndexPath(adjustPath(cfgBean.getUsersIndexPath(),baseP));
+   cfgBean.setGroupsIndexPath(adjustPath(cfgBean.getGroupsIndexPath(),baseP));
+   
+   cfgBean.setWorkDirectory(adjustPath(cfgBean.getWorkDirectory(),baseP));
+   cfgBean.setSubmissionsPath(adjustPath(cfgBean.getSubmissionsPath(),baseP));
+   cfgBean.setSubmissionsHistoryPath(adjustPath(cfgBean.getSubmissionsHistoryPath(),baseP));
+   cfgBean.setSubmissionsTransactionPath(adjustPath(cfgBean.getSubmissionsTransactionPath(),baseP));
+   cfgBean.setSubmissionUpdatePath(adjustPath(cfgBean.getSubmissionUpdatePath(),baseP));
+   
+   cfgBean.setPublicFTPPath(adjustPath(cfgBean.getPublicFTPPath(),baseP));
+   
+   adjustResource(cfgBean.getActivationEmailHtmlFile(), baseP);
+   adjustResource(cfgBean.getActivationEmailPlainTextFile(), baseP);
+
+   adjustResource(cfgBean.getPassResetEmailHtmlFile(), baseP);
+   adjustResource(cfgBean.getPassResetEmailPlainTextFile(), baseP);
+
+   adjustResource(cfgBean.getSubscriptionEmailHtmlFile(), baseP);
+   adjustResource(cfgBean.getSubscriptionEmailPlainTextFile(), baseP);
+   
+   cfgBean.getDatabaseConfig().put(HibernateSearchIndexDirParameter, adjustPath( cfgBean.getDatabaseConfig().get(HibernateSearchIndexDirParameter) ));
+  }
+  
+  
+  
   validateConfiguration(cfgBean);
   
   ConfigBean oldConfig = BackendConfig.getConfig();
@@ -154,6 +188,18 @@ public class ConfigurationManager
   BackendConfig.setConfig(cfgBean);
  }
  
+ private void adjustResource(Resource activationEmailHtmlFile, Path baseP)
+ {
+  // TODO Auto-generated method stub
+  
+ }
+
+ private Path adjustPath( Path pth, Path basePath )
+ {
+  // TODO Auto-generated method stub
+  return null;
+ }
+
  boolean checkReset( String rst, String context ) throws ConfigurationException
  {
   if( rst == null )
@@ -173,13 +219,13 @@ public class ConfigurationManager
   Map<String, Object> dbConf = new HashMap<String, Object>();
 
   
-  dbConf.put("hibernate.connection.driver_class","com.mysql.jdbc.Driver");
+  dbConf.put("hibernate.connection.driver_class","org.h2.Driver");
   dbConf.put("hibernate.connection.username","");
   dbConf.put("hibernate.connection.password","");
   dbConf.put("hibernate.cache.use_query_cache","false");
   dbConf.put("hibernate.ejb.discard_pc_on_close","true");
-  dbConf.put("hibernate.connection.url","jdbc:mysql://mysql-fg-biostudy.ebi.ac.uk:4469/biostd_beta?autoReconnect=true&amp;useUnicode=yes&amp;characterEncoding=UTF-8");
-  dbConf.put("hibernate.dialect","org.hibernate.dialect.MySQLDialect");
+  dbConf.put("hibernate.connection.url","jdbc:h2:db");
+  dbConf.put("hibernate.dialect","org.hibernate.dialect.H2Dialect");
   dbConf.put("hibernate.hbm2ddl.auto","update");
   dbConf.put("hibernate.c3p0.max_size","30");
   dbConf.put("hibernate.c3p0.min_size","0");
@@ -187,8 +233,8 @@ public class ConfigurationManager
   dbConf.put("hibernate.c3p0.max_statements","0");
   dbConf.put("hibernate.c3p0.idle_test_period","300");
   dbConf.put("hibernate.c3p0.acquire_increment","2");
-  dbConf.put("hibernate.c3p0.unreturnedConnectionTimeout","1800");
-  dbConf.put("hibernate.search.default.indexBase","index");
+  dbConf.put("hibernate.c3p0.unreturnedConnectionTimeout","18000");
+  dbConf.put(HibernateSearchIndexDirParameter,"index");
   dbConf.put("hibernate.search.default.directory_provider","filesystem");
   dbConf.put("hibernate.search.lucene_version","LUCENE_54");
 
