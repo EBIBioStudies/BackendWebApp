@@ -23,17 +23,19 @@ public class ConfigBean
 
  private Path                 baseDirectory;
  private Path                 workDirectory;
+
  private Path                 userGroupDropboxPath;
+ 
  private Path                 userGroupIndexPath;
  private Path                 usersIndexPath;
  private Path                 groupsIndexPath;
+ 
  private Path                 submissionsPath;
  private Path                 submissionsHistoryPath;
  private Path                 submissionsTransactionPath;
- private Path                 publicFTPPath;
  private Path                 submissionUpdatePath;
- private Path                 ftpRootPath;
- private Path                 dropboxPath;
+ 
+ private Path                 publicFTPPath;
 
  private String               updateListenerURLPfx;
  private String               updateListenerURLSfx;
@@ -44,6 +46,7 @@ public class ConfigBean
 
  private Resource             activationEmailPlainTextFile;
  private Resource             activationEmailHtmlFile;
+ 
  private Resource             passResetEmailPlainTextFile;
  private Resource             passResetEmailHtmlFile;
 
@@ -241,26 +244,6 @@ public class ConfigBean
  public void setSubmissionUpdatePath(Path submissionUpdatePath)
  {
   this.submissionUpdatePath = submissionUpdatePath;
- }
-
- public Path getFtpRootPath()
- {
-  return ftpRootPath;
- }
-
- public void setFtpRootPath(Path ftpRootPath)
- {
-  this.ftpRootPath = ftpRootPath;
- }
-
- public Path getDropboxPath()
- {
-  return dropboxPath;
- }
-
- public void setDropboxPath(Path dropboxPath)
- {
-  this.dropboxPath = dropboxPath;
  }
 
  public String getUpdateListenerURLPfx()

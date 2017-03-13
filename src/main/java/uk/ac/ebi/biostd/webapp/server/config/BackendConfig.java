@@ -363,17 +363,6 @@ public class BackendConfig
   return conf.getBaseDirectory();
  }
 
- public static Path getFtpRootPath()
- {
-  return conf.getFtpRootPath();
- }
-
- public static Path getDropboxPath()
- {
-  return conf.getDropboxPath();
- }
-
-
  public static TaskInfo getExportTask()
  {
   return conf.getExpTaskInfo();
