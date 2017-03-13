@@ -1,13 +1,12 @@
 package uk.ac.ebi.biostd.webapp.server.mng;
 
-import java.nio.file.Path;
 import java.util.UUID;
 
 import org.apache.commons.io.Charsets;
 
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.util.Resource;
 
 public class AccountActivation
 {
@@ -96,7 +95,7 @@ public class AccountActivation
  }
  
  
- public static boolean sendRequestEmail(User u, UUID key, String url, Path txtFile, Path htmlFile, String subj )
+ public static boolean sendRequestEmail(User u, UUID key, String url, Resource txtFile, Resource htmlFile, String subj )
  {
 
   String textBody = null;
@@ -109,7 +108,7 @@ public class AccountActivation
   {
    if( txtFile != null )
    {
-    textBody = FileUtil.readFile(txtFile.toFile(), Charsets.UTF_8);
+    textBody = txtFile.readToString(Charsets.UTF_8); //FileUtil.readFile(txtFile.toFile(), Charsets.UTF_8);
     
     if( url != null )
      textBody = textBody.replaceAll(BackendConfig.ActivateURLPlaceHolderRx, url);
@@ -124,7 +123,7 @@ public class AccountActivation
    
    if( htmlFile != null )
    {
-    htmlBody = FileUtil.readFile(htmlFile.toFile(), Charsets.UTF_8);
+    htmlBody = htmlFile.readToString(Charsets.UTF_8);//FileUtil.readFile(htmlFile.toFile(), Charsets.UTF_8);
 
     if( url != null )
      htmlBody = htmlBody.replaceAll(BackendConfig.ActivateURLPlaceHolderRx, url);

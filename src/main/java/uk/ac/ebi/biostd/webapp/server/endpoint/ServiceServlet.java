@@ -20,6 +20,12 @@ public abstract class ServiceServlet extends HttpServlet
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
  {
+  if( ! BackendConfig.isConfigValid() )
+  {
+   resp.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Web application is out of service");
+   return;
+  }
+  
   String sessID = null;
   
   sessID = req.getHeader(BackendConfig.getSessionTokenHeader());

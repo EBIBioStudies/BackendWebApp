@@ -19,6 +19,7 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
+import uk.ac.ebi.biostd.webapp.server.util.Resource;
 
 
 public class BackendConfig
@@ -90,101 +91,20 @@ public class BackendConfig
  
  private static ConfigBean conf= new ConfigBean();
  
+ private static boolean configValid=false;
  
- private static void initConfigBean( ConfigBean cfg )
+ 
+ 
+ public static boolean isConfigValid()
  {
-  cfg.setCreateFileStructure(true);
-  cfg.setDefaultSubmissionAccPrefix(DefaultSubmissionPrefix);
-  cfg.setDropboxPath(Paths.get("dropbox"));
-  
-  Map<String, Object> dbConf = new HashMap<String, Object>();
-
-  
-  dbConf.put("hibernate.connection.driver_class","com.mysql.jdbc.Driver");
-  dbConf.put("hibernate.connection.username","");
-  dbConf.put("hibernate.connection.password","");
-  dbConf.put("hibernate.cache.use_query_cache","false");
-  dbConf.put("hibernate.ejb.discard_pc_on_close","true");
-  dbConf.put("hibernate.connection.url","jdbc:mysql://mysql-fg-biostudy.ebi.ac.uk:4469/biostd_beta?autoReconnect=true&amp;useUnicode=yes&amp;characterEncoding=UTF-8");
-  dbConf.put("hibernate.dialect","org.hibernate.dialect.MySQLDialect");
-  dbConf.put("hibernate.hbm2ddl.auto","update");
-  dbConf.put("hibernate.c3p0.max_size","30");
-  dbConf.put("hibernate.c3p0.min_size","0");
-  dbConf.put("hibernate.c3p0.timeout","5000");
-  dbConf.put("hibernate.c3p0.max_statements","0");
-  dbConf.put("hibernate.c3p0.idle_test_period","300");
-  dbConf.put("hibernate.c3p0.acquire_increment","2");
-  dbConf.put("hibernate.c3p0.unreturnedConnectionTimeout","1800");
-  dbConf.put("hibernate.search.default.indexBase","index");
-  dbConf.put("hibernate.search.default.directory_provider","filesystem");
-  dbConf.put("hibernate.search.lucene_version","LUCENE_54");
-  
-  cfg.setDatabaseConfig(dbConf);
-  
-//  <Parameter name='biostd.createFileStructure' value='true'/>
-//
-//  <Parameter name='biostd.baseDir' value='/nfs/biostudies/.adm/databases/beta'/>
-//
-//  <Parameter name='biostd.workDir' value='work'/>
-//  <Parameter name='biostd.userGroupDir' value='/nfs/biostudies/ftp/pub/.dropbox/.beta'/>
-//  <Parameter name='biostd.userGroupIndexDir' value='usergroup'/>
-//  <Parameter name='biostd.publicDropboxes' value='true'/>
-//  <Parameter name='biostd.submissionDir' value='submission'/>
-//  <Parameter name='biostd.submissionHistoryDir' value='history'/>
-//  <Parameter name='biostd.submissionTransactionDir' value='transaction'/>
-//  <Parameter name='biostd.updateDir' value='updates'/>
-//  <Parameter name='biostd.updateListenerURL' value='http://wwwdev.ebi.ac.uk/biostudies/admin/reload-xml/{file}?delete=true'/>
-//
-//  <Parameter name='biostd.allowFileLinks' value='true'/>
-//
-//  <Parameter name='biostd.updateWaitPeriod' value='10'/>
-//  <Parameter name='biostd.maxUpdatesPerFile' value='50'/>
-//
-//  <Parameter name='biostd.mandatoryAccountActivation' value='true'/>
-//
-//  <Parameter name='biostd.publicFTPDir' value='/nfs/biostudies/ftp/pub/.beta'/>
-//
-//  <Parameter name='biostd.defaultSubmissionAccNoPrefix' value='S-BSMS'/>
-//
-//
-//  <Parameter name='export.invokeTime' value='02:20'/>
-//  <Parameter name='export.threadTTL' value='1000'/>
-//  <Parameter name='export.threads' value='8'/>
-//  <Parameter name='export.output[ui-xml].class' value='uk.ac.ebi.biostd.webapp.server.export.formatting.FormattingOutputModule'/>
-//  <Parameter name='export.output[ui-xml].outfile' value='updates/studies.xml'/>
-//  <Parameter name='export.output[ui-xml].format' value='uk.ac.ebi.biostd.out.pageml.PageMLFormatter'/>
-//  <Parameter name='export.output[ui-xml].tmpdir' value='tmp/xml'/>
-//  <Parameter name='export.output[ui-json].class' value='uk.ac.ebi.biostd.webapp.server.export.formatting.FormattingOutputModule'/>
-//  <Parameter name='export.output[ui-json].outfile' value='updates/studies.json'/>
-//  <Parameter name='export.output[ui-json].format' value='uk.ac.ebi.biostd.out.json.JSONFormatter'/>
-//  <Parameter name='export.output[ui-json].tmpdir' value='tmp/json'/>
-//
-//
-//
-//  <Parameter name='biostd.activationEmailSubject' value='Biostudy DB account activation (BETA instance)'/>
-//  <Parameter name='biostd.activationEmailPlainTextFile' value='/nfs/biostudies/.adm/misc/email/activationMail.txt'/>
-//  <Parameter name='biostd.activationEmailHtmlFile' value='/nfs/biostudies/.adm/misc/email/activationMail.html'/>
-//
-//  <Parameter name='biostd.passwordResetEmailSubject' value='Biostudy DB password reset (BETA instance)'/>
-//  <Parameter name='biostd.passwordResetEmailPlainTextFile' value='/nfs/biostudies/.adm/misc/email/passResetMail.txt'/>
-//  <Parameter name='biostd.passwordResetEmailHtmlFile' value='/nfs/biostudies/.adm/misc/email/passResetMail.html'/>
-//
-//  <Parameter name='biostd.subscriptionEmailSubject' value='Biostudy DB subscription notification'/>
-//  <Parameter name='biostd.subscriptionEmailPlainTextFile' value='/nfs/biostudies/.adm/misc/email/subscriptionMail-beta.txt'/>
-//  <Parameter name='biostd.subscriptionEmailHtmlFile' value='/nfs/biostudies/.adm/misc/email/subscriptionMail-beta.html'/>
-//
-//
-//  <Parameter name='email.SMTPHost' value='smtp.ebi.ac.uk'/>
-//  <Parameter name='email.to' value='gostev@ebi.ac.uk'/>
-//  <Parameter name='email.errorsTo' value='gostev@ebi.ac.uk'/>
-//  <Parameter name='email.from' value='BioStudy beta &lt;biostudies-dev@ebi.ac.uk&gt;'/>
-//
-//  <Parameter name='biostd.dataMountPath' value='/data'/>
-//  <Parameter name='biostd.recapcha_private_key' value='6Lcmlv0SAAAAANysy6M8YdozfJnOQxc2JB9WaOS1'/>
-
-  
+  return configValid;
  }
- 
+
+ public static void setConfigValid(boolean configValid)
+ {
+  BackendConfig.configValid = configValid;
+ }
+
  public static long getInstanceId()
  {
   return instanceId;
@@ -204,6 +124,11 @@ public class BackendConfig
  public static ConfigBean createConfig()
  {
   return new ConfigBean();
+ }
+ 
+ public static ConfigBean getConfig()
+ {
+  return conf;
  }
  
  public static void setConfig( ConfigBean cfg )
@@ -475,12 +400,12 @@ public class BackendConfig
   return conf.getActivationEmailSubject();
  }
 
- public static Path getActivationEmailPlainTextFile()
+ public static Resource getActivationEmailPlainTextFile()
  {
   return conf.getActivationEmailPlainTextFile();
  }
 
- public static Path getActivationEmailHtmlFile()
+ public static Resource getActivationEmailHtmlFile()
  {
   return conf.getActivationEmailHtmlFile();
  }
@@ -520,12 +445,12 @@ public class BackendConfig
   return conf.getPassResetTimeout();
  }
 
- public static Path getPassResetEmailHtmlFile()
+ public static Resource getPassResetEmailHtmlFile()
  {
   return conf.getPassResetEmailHtmlFile();
  }
 
- public static Path getPassResetEmailPlainTextFile()
+ public static Resource getPassResetEmailPlainTextFile()
  {
   return conf.getPassResetEmailPlainTextFile();
  }
@@ -546,12 +471,12 @@ public class BackendConfig
   return sessionTokenHeader;
  }
 
- public static Path getSubscriptionEmailHtmlFile()
+ public static Resource getSubscriptionEmailHtmlFile()
  {
   return conf.getSubscriptionEmailHtmlFile();
  }
 
- public static Path getSubscriptionEmailPlainTextFile()
+ public static Resource getSubscriptionEmailPlainTextFile()
  {
   return conf.getSubscriptionEmailPlainTextFile();
  }

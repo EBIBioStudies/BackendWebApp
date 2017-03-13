@@ -25,7 +25,6 @@ import uk.ac.ebi.biostd.authz.TagSubscription;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
-import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
 
@@ -125,7 +124,8 @@ public class SubscriptionNotifier implements Runnable
   
   try
   {
-   htmlBody = FileUtil.readFile(BackendConfig.getSubscriptionEmailHtmlFile().toFile(), Charsets.UTF_8);
+   if( BackendConfig.getSubscriptionEmailHtmlFile() != null )
+    htmlBody =  BackendConfig.getSubscriptionEmailHtmlFile().readToString(Charsets.UTF_8);
   }
   catch(IOException e1)
   {
@@ -137,7 +137,8 @@ public class SubscriptionNotifier implements Runnable
 
   try
   {
-   textBody = FileUtil.readFile(BackendConfig.getSubscriptionEmailPlainTextFile().toFile(), Charsets.UTF_8);
+   if( BackendConfig.getSubscriptionEmailPlainTextFile() != null )
+    textBody = BackendConfig.getSubscriptionEmailPlainTextFile().readToString(Charsets.UTF_8);
   }
   catch(IOException e1)
   {
