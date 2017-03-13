@@ -8,6 +8,7 @@ import javax.persistence.EntityManagerFactory;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
+import uk.ac.ebi.biostd.webapp.server.util.Resource;
 
 public class ConfigBean
 {
@@ -41,13 +42,13 @@ public class ConfigBean
  private String               passResetEmailSubject;
  private String               subscriptionEmailSubject;
 
- private Path                 activationEmailPlainTextFile;
- private Path                 activationEmailHtmlFile;
- private Path                 passResetEmailPlainTextFile;
- private Path                 passResetEmailHtmlFile;
+ private Resource             activationEmailPlainTextFile;
+ private Resource             activationEmailHtmlFile;
+ private Resource             passResetEmailPlainTextFile;
+ private Resource             passResetEmailHtmlFile;
 
- private Path                 subscriptionEmailHtmlFile;
- private Path                 subscriptionEmailPlainTextFile;
+ private Resource             subscriptionEmailHtmlFile;
+ private Resource             subscriptionEmailPlainTextFile;
 
  private String               defaultSubmissionAccPrefix = null;
  private String               defaultSubmissionAccSuffix = null;
@@ -312,62 +313,62 @@ public class ConfigBean
   this.subscriptionEmailSubject = subscriptionEmailSubject;
  }
 
- public Path getActivationEmailPlainTextFile()
+ public Resource getActivationEmailPlainTextFile()
  {
   return activationEmailPlainTextFile;
  }
 
- public void setActivationEmailPlainTextFile(Path activationEmailPlainTextFile)
+ public void setActivationEmailPlainTextFile(Resource activationEmailPlainTextFile)
  {
   this.activationEmailPlainTextFile = activationEmailPlainTextFile;
  }
 
- public Path getActivationEmailHtmlFile()
+ public Resource getActivationEmailHtmlFile()
  {
   return activationEmailHtmlFile;
  }
 
- public void setActivationEmailHtmlFile(Path activationEmailHtmlFile)
+ public void setActivationEmailHtmlFile(Resource activationEmailHtmlFile)
  {
   this.activationEmailHtmlFile = activationEmailHtmlFile;
  }
 
- public Path getPassResetEmailPlainTextFile()
+ public Resource getPassResetEmailPlainTextFile()
  {
   return passResetEmailPlainTextFile;
  }
 
- public void setPassResetEmailPlainTextFile(Path passResetEmailPlainTextFile)
+ public void setPassResetEmailPlainTextFile(Resource passResetEmailPlainTextFile)
  {
   this.passResetEmailPlainTextFile = passResetEmailPlainTextFile;
  }
 
- public Path getPassResetEmailHtmlFile()
+ public Resource getPassResetEmailHtmlFile()
  {
   return passResetEmailHtmlFile;
  }
 
- public void setPassResetEmailHtmlFile(Path passResetEmailHtmlFile)
+ public void setPassResetEmailHtmlFile(Resource passResetEmailHtmlFile)
  {
   this.passResetEmailHtmlFile = passResetEmailHtmlFile;
  }
 
- public Path getSubscriptionEmailHtmlFile()
+ public Resource getSubscriptionEmailHtmlFile()
  {
   return subscriptionEmailHtmlFile;
  }
 
- public void setSubscriptionEmailHtmlFile(Path subscriptionEmailHtmlFile)
+ public void setSubscriptionEmailHtmlFile(Resource subscriptionEmailHtmlFile)
  {
   this.subscriptionEmailHtmlFile = subscriptionEmailHtmlFile;
  }
 
- public Path getSubscriptionEmailPlainTextFile()
+ public Resource getSubscriptionEmailPlainTextFile()
  {
   return subscriptionEmailPlainTextFile;
  }
 
- public void setSubscriptionEmailPlainTextFile(Path subscriptionEmailPlainTextFile)
+ public void setSubscriptionEmailPlainTextFile(Resource subscriptionEmailPlainTextFile)
  {
   this.subscriptionEmailPlainTextFile = subscriptionEmailPlainTextFile;
  }

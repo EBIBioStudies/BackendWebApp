@@ -7,6 +7,7 @@ import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,8 +23,11 @@ import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
+import uk.ac.ebi.biostd.webapp.server.util.FileResource;
+import uk.ac.ebi.biostd.webapp.server.util.JavaResource;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.PreferencesParamPool;
+import uk.ac.ebi.biostd.webapp.server.util.Resource;
 import uk.ac.ebi.biostd.webapp.server.util.ResourceBundleParamPool;
 
 public class ConfigurationManager
@@ -143,8 +147,11 @@ public class ConfigurationManager
    }
   }
 
+  validateConfiguration(cfgBean);
   
+  ConfigBean oldConfig = BackendConfig.getConfig();
   
+  BackendConfig.setConfig(cfgBean);
  }
  
  boolean checkReset( String rst, String context ) throws ConfigurationException
@@ -184,6 +191,36 @@ public class ConfigurationManager
   dbConf.put("hibernate.search.default.indexBase","index");
   dbConf.put("hibernate.search.default.directory_provider","filesystem");
   dbConf.put("hibernate.search.lucene_version","LUCENE_54");
+
+  cfgBean.setCreateFileStructure(true);
+  cfgBean.setFileLinkAllowed(true);
+  
+  cfgBean.setWorkDirectory(Paths.get("work"));
+  cfgBean.setSubmissionsPath(Paths.get("submission"));
+  cfgBean.setSubmissionsHistoryPath(Paths.get("history"));
+  cfgBean.setSubmissionsTransactionPath(Paths.get("transaction"));
+  cfgBean.setSubmissionUpdatePath(Paths.get("updates"));
+  cfgBean.setUserGroupIndexPath(Paths.get("ug_index"));
+  cfgBean.setUserGroupDropboxPath(Paths.get("ug_data"));
+  
+  cfgBean.setUpdateWaitPeriod(10);
+  cfgBean.setMaxUpdatesPerFile(50);
+  
+  cfgBean.setMandatoryAccountActivation(false);
+  
+  cfgBean.setDefaultSubmissionAccPrefix("S-");
+  
+  cfgBean.setActivationEmailSubject("Account activation request");
+  cfgBean.setActivationEmailPlainTextFile( new JavaResource("/resources/mail/activationMail.txt"));
+  cfgBean.setActivationEmailHtmlFile( new JavaResource("/resources/mail/activationMail.html"));
+  
+  cfgBean.setPassResetEmailSubject("Password reset request");
+  cfgBean.setPassResetEmailPlainTextFile( new JavaResource("/resources/mail/passResetMail.txt"));
+  cfgBean.setPassResetEmailHtmlFile( new JavaResource("/resources/mail/passResetMail.html"));
+
+  cfgBean.setSubscriptionEmailSubject("Subscription notification");
+  cfgBean.setSubscriptionEmailPlainTextFile( new JavaResource("/resources/mail/subscriptionMail.txt"));
+  cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/mail/subscriptionMail.html"));
 
   
   cfgBean.setDatabaseConfig(dbConf);
@@ -298,7 +335,7 @@ public class ConfigurationManager
  }
  
  
- public static void validateConfiguration( ConfigBean cfg )
+ public static void validateConfiguration( ConfigBean cfg ) throws ConfigurationException
  {
   if( cfg.isCreateFileStructure() && cfg.getBaseDirectory() != null )
   {
@@ -313,7 +350,7 @@ public class ConfigurationManager
    }
    catch(IOException e)
    {
-    throw new RuntimeException("Directory access error: "+cfg.getBaseDirectory());
+    throw new ConfigurationException("Directory access error: "+cfg.getBaseDirectory());
    }
   }
   
@@ -322,22 +359,22 @@ public class ConfigurationManager
   if( dir == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+WorkdirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
   
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
+   throw new ConfigurationException("Directory access error: "+dir);
   
   dir = cfg.getUserGroupDropboxPath();
   
   if( dir == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+UserGroupDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
   
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
+   throw new ConfigurationException("Directory access error: "+dir);
 
   
   dir = cfg.getUserGroupIndexPath();
@@ -345,18 +382,18 @@ public class ConfigurationManager
   if( dir == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+UserGroupIndexDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
   if( ! checkDirectory( cfg.getUsersIndexPath() ) )
-   throw new RuntimeException("Directory access error: "+cfg.getUsersIndexPath() );
+   throw new ConfigurationException("Directory access error: "+cfg.getUsersIndexPath() );
 
   if( ! checkDirectory( cfg.getGroupsIndexPath() ) )
-   throw new RuntimeException("Directory access error: "+cfg.getGroupsIndexPath() );
+   throw new ConfigurationException("Directory access error: "+cfg.getGroupsIndexPath() );
 
   
   if( ! checkDirectory( cfg.getSubmissionUpdatePath() ) )
-   throw new RuntimeException("Directory access error: "+cfg.getSubmissionUpdatePath() );
+   throw new ConfigurationException("Directory access error: "+cfg.getSubmissionUpdatePath() );
  
 
   dir = cfg.getSubmissionsPath();
@@ -364,11 +401,11 @@ public class ConfigurationManager
   if( dir == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+SubmissionDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
   
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
+   throw new ConfigurationException("Directory access error: "+dir);
 
   
   dir = cfg.getSubmissionsHistoryPath();
@@ -376,11 +413,11 @@ public class ConfigurationManager
   if( dir == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+SubmissionHistoryDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
   
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
+   throw new ConfigurationException("Directory access error: "+dir);
 
   
   dir = cfg.getSubmissionsTransactionPath();
@@ -388,11 +425,11 @@ public class ConfigurationManager
   if( dir == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+SubmissionTransactionDirParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
   if( ! checkDirectory(dir) )
-   throw new RuntimeException("Directory access error: "+dir);
+   throw new ConfigurationException("Directory access error: "+dir);
 
 //  if( BackendConfig.getServiceManager().getEmailService() == null )
 //  {
@@ -403,60 +440,60 @@ public class ConfigurationManager
   if( cfg.isMandatoryAccountActivation() && cfg.getActivationEmailSubject() == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+ActivationEmailSubjectParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
   if( cfg.isMandatoryAccountActivation() && cfg.getActivationEmailPlainTextFile() == null && cfg.getActivationEmailHtmlFile() == null )
   {
    log.error("At least one of "+ServiceParamPrefix+ActivationEmailPlainTextParameter+" "+
      ServiceParamPrefix+ActivationEmailHtmlParameter+" parameters must be set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
-  Path emailFile = cfg.getActivationEmailPlainTextFile();
+  Resource emailFile = cfg.getActivationEmailPlainTextFile();
   
-  if( cfg.isMandatoryAccountActivation() && emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  if( cfg.isMandatoryAccountActivation() && emailFile != null && ( ! emailFile.isValid() ) )
   {
    log.error(ServiceParamPrefix+ActivationEmailPlainTextParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
   
   emailFile = cfg.getActivationEmailHtmlFile();
   
-  if( cfg.isMandatoryAccountActivation() && emailFile != null && ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  if( cfg.isMandatoryAccountActivation() && emailFile != null && ( ! emailFile.isValid() ) )
   {
    log.error(ServiceParamPrefix+ActivationEmailHtmlParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
   
   
   if( cfg.getPassResetEmailSubject() == null )
   {
    log.error("Mandatory "+ServiceParamPrefix+PassResetEmailSubjectParameter+" parameter is not set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
   if( cfg.getPassResetEmailPlainTextFile() == null && cfg.getPassResetEmailHtmlFile() == null )
   {
    log.error("At least one of "+ServiceParamPrefix+PassResetEmailPlainTextParameter+" "+
      ServiceParamPrefix+PassResetEmailHtmlParameter+" parameters must be set");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }  
   
   emailFile = cfg.getPassResetEmailPlainTextFile();
   
-  if( emailFile == null || ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  if( emailFile == null ||  ! emailFile.isValid() )
   {
    log.error(ServiceParamPrefix+PassResetEmailPlainTextParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
   emailFile = cfg.getPassResetEmailHtmlFile();
   
-  if( emailFile == null || ( ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) ) )
+  if( emailFile == null || ! emailFile.isValid() )
   {
    log.error(ServiceParamPrefix+PassResetEmailHtmlParameter+" should point to a regular readable file");
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
   
@@ -469,23 +506,23 @@ public class ConfigurationManager
      +", "+ServiceParamPrefix+SubscriptionEmailPlainTextParameter
      +", "+ServiceParamPrefix+SubscriptionEmailHtmlParameter
       );
-    throw new RuntimeException("Invalid configuration");
+    throw new ConfigurationException("Invalid configuration");
    }
    
    emailFile = cfg.getSubscriptionEmailPlainTextFile();
 
-   if(  ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile) )
+   if( emailFile != null && ! emailFile.isValid() )
    {
     log.error(ServiceParamPrefix+SubscriptionEmailPlainTextParameter+" should point to a regular readable file");
-    throw new RuntimeException("Invalid configuration");
+    throw new ConfigurationException("Invalid configuration");
    }
 
    emailFile = cfg.getSubscriptionEmailHtmlFile();
    
-   if(  ! Files.isReadable(emailFile) || ! Files.isRegularFile(emailFile)  )
+   if( emailFile != null && ! emailFile.isValid()  )
    {
     log.error(ServiceParamPrefix+SubscriptionEmailHtmlParameter+" should point to a regular readable file");
-    throw new RuntimeException("Invalid configuration");
+    throw new ConfigurationException("Invalid configuration");
    }
   }
   
@@ -513,7 +550,7 @@ public class ConfigurationManager
    log.error("Submission transaction directory: test oparation failed: "+e1.getMessage());
    log.error("Submission transaction directory should be on the same physical drive with submissions directory");
 
-   throw new RuntimeException("Invalid configuration");
+   throw new ConfigurationException("Invalid configuration");
   }
 
 
@@ -732,14 +769,14 @@ public class ConfigurationManager
   
   if( ActivationEmailPlainTextParameter.equals(param) )
   {
-   cfg.setActivationEmailPlainTextFile(createPath(ActivationEmailPlainTextParameter,val, cfg.getBaseDirectory()));
+   cfg.setActivationEmailPlainTextFile( new FileResource(createPath(ActivationEmailPlainTextParameter,val, cfg.getBaseDirectory())));
    
    return true;
   }
 
   if( ActivationEmailHtmlParameter.equals(param) )
   {
-   cfg.setActivationEmailHtmlFile(createPath(ActivationEmailHtmlParameter,val, cfg.getBaseDirectory()) );
+   cfg.setActivationEmailHtmlFile(new FileResource(createPath(ActivationEmailHtmlParameter,val, cfg.getBaseDirectory()) ));
    
    return true;
   }
@@ -770,14 +807,14 @@ public class ConfigurationManager
 
   if( SubscriptionEmailPlainTextParameter.equals(param) )
   {
-   cfg.setSubscriptionEmailPlainTextFile( createPath(SubscriptionEmailPlainTextParameter,val, cfg.getBaseDirectory()) );
+   cfg.setSubscriptionEmailPlainTextFile( new FileResource( createPath(SubscriptionEmailPlainTextParameter,val, cfg.getBaseDirectory()) ) );
    
    return true;
   }
 
   if( SubscriptionEmailHtmlParameter.equals(param) )
   {
-   cfg.setSubscriptionEmailHtmlFile( createPath(SubscriptionEmailHtmlParameter,val, cfg.getBaseDirectory()) );
+   cfg.setSubscriptionEmailHtmlFile( new FileResource( createPath(SubscriptionEmailHtmlParameter,val, cfg.getBaseDirectory()) ) );
    
    return true;
   }
@@ -785,14 +822,14 @@ public class ConfigurationManager
   
   if( PassResetEmailPlainTextParameter.equals(param) )
   {
-   cfg.setPassResetEmailPlainTextFile( createPath(PassResetEmailPlainTextParameter,val, cfg.getBaseDirectory()) );
+   cfg.setPassResetEmailPlainTextFile( new FileResource( createPath(PassResetEmailPlainTextParameter,val, cfg.getBaseDirectory())) );
    
    return true;
   }
 
   if( PassResetEmailHtmlParameter.equals(param) )
   {
-   cfg.setPassResetEmailHtmlFile( createPath(PassResetEmailHtmlParameter,val, cfg.getBaseDirectory()) );
+   cfg.setPassResetEmailHtmlFile( new FileResource( createPath(PassResetEmailHtmlParameter,val, cfg.getBaseDirectory())) );
    
    return true;
   }
