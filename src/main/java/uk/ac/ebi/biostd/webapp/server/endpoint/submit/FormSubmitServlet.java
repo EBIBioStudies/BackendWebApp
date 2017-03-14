@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.endpoint.submit;
 import java.io.IOException;
 
 import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
@@ -19,6 +20,7 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager.Operation;
 
+@MultipartConfig
 public class FormSubmitServlet extends ServiceServlet
 {
  private static final long serialVersionUID = 1L;
@@ -44,19 +46,23 @@ public class FormSubmitServlet extends ServiceServlet
    return;
   }  
   
-  if( req.getParts().size() != 1 )
+  Part filePart = null;
+  
+
+  if( req.getParts().size() < 1 )
   {
    respond(response, HttpServletResponse.SC_BAD_REQUEST, "FAIL Invalid number of file parts");
    return;
   }
+ 
   
-  Part filePart = req.getParts().iterator().next();
+  filePart = req.getPart("file");
   
   String fmtStr = req.getParameter(typeParameter);
   
   DataFormat fmt = null;
   
-  if( fmtStr != null )
+  if( fmtStr != null && fmtStr.trim().length() > 0 )
   {
 
    try
@@ -138,8 +144,8 @@ public class FormSubmitServlet extends ServiceServlet
   String vldPrm = req.getParameter(validateOnlyParameter);
   String ignPrm = req.getParameter(ignoreAbsentFilesParameter);
   
-  boolean validateOnly = vldPrm != null && ("true".equalsIgnoreCase(vldPrm) || "yes".equalsIgnoreCase(vldPrm) || "1".equals(vldPrm) );
-  boolean ignAbsFiles = ignPrm != null && ("true".equalsIgnoreCase(ignPrm) || "yes".equalsIgnoreCase(ignPrm) || "1".equals(ignPrm) );
+  boolean validateOnly = vldPrm != null && ("true".equalsIgnoreCase(vldPrm) || "yes".equalsIgnoreCase(vldPrm) || "on".equalsIgnoreCase(vldPrm) || "1".equals(vldPrm) );
+  boolean ignAbsFiles = ignPrm != null && ("true".equalsIgnoreCase(ignPrm) || "yes".equalsIgnoreCase(ignPrm) || "on".equalsIgnoreCase(ignPrm) || "1".equals(ignPrm) );
 
   SubmissionReport res = BackendConfig.getServiceManager().getSubmissionManager().createSubmission(data, fmt, "UTF-8", act, sess.getUser(), validateOnly, ignAbsFiles);
   

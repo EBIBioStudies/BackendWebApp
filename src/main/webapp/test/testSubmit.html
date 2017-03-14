@@ -1,0 +1,52 @@
+<HTML>
+<HEAD> 
+ <META charset="UTF-8">
+ <TITLE>Test submit form</TITLE>
+</HEAD> 
+
+<BODY>
+
+<FORM action="../formsubmit" enctype="multipart/form-data" method="POST" target="postIFrame">
+<TABLE><TBODY>
+
+<TR>
+<TD>Operation:</TD>
+<TD>
+<SELECT name="op">
+<OPTION>CREATE</OPTION>
+<OPTION>CREATEUPDATE</OPTION>   
+<OPTION>UPDATE</OPTION>
+<OPTION>OVERRIDE</OPTION>   
+<OPTION>CREATEOVERRIDE</OPTION> 
+</SELECT> 
+</TD></TR>
+<TR>
+<TD>Validate only:</TD>
+<TD><INPUT name="validateOnly" type="checkbox"> </TD></TR>
+<TR>
+<TD>Ignore absent files:</TD>
+<TD><INPUT name="ignoreAbsentFiles" type="checkbox"> </TD></TR>
+<TR>
+<TD>Type:</TD>
+<TD>
+<SELECT name="type">
+  <OPTION value="">-AUTO-</OPTION>
+  <OPTION>xlsx</OPTION> 
+  <OPTION>xls</OPTION>
+  <OPTION>json</OPTION>
+  <OPTION>csv</OPTION>   
+  <OPTION>tsv</OPTION>
+</SELECT>
+ </TD></TR>
+<TR>
+<TD>File:</TD>
+<TD><INPUT name="file" type="file"> </TD></TR>
+<TR>
+<TD></TD>
+<TD><INPUT name="Submit" type="submit" value="Submit Query"> 
+</TD></TR>
+</TBODY></TABLE>
+
+</FORM>
+<IFRAME name="postIFrame" style="width: 100%; height: 600px;"></IFRAME> 
+</BODY></HTML>
