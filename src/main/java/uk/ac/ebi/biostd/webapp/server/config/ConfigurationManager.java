@@ -66,7 +66,6 @@ public class ConfigurationManager
  public static final String             UpdateURLFilePlaceholder            = "{file}";
  public static final String             UpdateWaitPeriodParameter           = "updateWaitPeriod";
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
- public static final String             FTPRootPathParameter                = "FTPRootPath";
  
  public static final String             MandatoryAccountActivationParameter = "mandatoryAccountActivation";
  public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
@@ -176,11 +175,12 @@ public class ConfigurationManager
    adjustResource(cfgBean.getSubscriptionEmailHtmlFile(), baseP);
    adjustResource(cfgBean.getSubscriptionEmailPlainTextFile(), baseP);
    
-   cfgBean.getDatabaseConfig().put(HibernateSearchIndexDirParameter, adjustPath( cfgBean.getDatabaseConfig().get(HibernateSearchIndexDirParameter) ));
+   adjustSearchIndexPath(cfgBean,baseP);
+   adjustH2DBPath(cfgBean,baseP);
+//   cfgBean.getDatabaseConfig().put(HibernateSearchIndexDirParameter, adjustPath( cfgBean.getDatabaseConfig().get(HibernateSearchIndexDirParameter) ));
   }
   
-  
-  
+ 
   validateConfiguration(cfgBean);
   
   ConfigBean oldConfig = BackendConfig.getConfig();
@@ -188,6 +188,18 @@ public class ConfigurationManager
   BackendConfig.setConfig(cfgBean);
  }
  
+ private void adjustH2DBPath(ConfigBean cfgBean, Path baseP)
+ {
+  // TODO Auto-generated method stub
+  
+ }
+
+ private void adjustSearchIndexPath(ConfigBean cfgBean, Path baseP)
+ {
+  // TODO Auto-generated method stub
+  
+ }
+
  private void adjustResource(Resource activationEmailHtmlFile, Path baseP)
  {
   // TODO Auto-generated method stub
@@ -639,15 +651,7 @@ public class ConfigurationManager
    return true;
   }
   
-
-  if( FTPRootPathParameter.equals(param) )
-  {
-   cfg.setFtpRootPath(FileSystems.getDefault().getPath(val));
-   
-   return true;
-  }
-
-  
+ 
   if( SubmissionDirParameter.equals(param) )
   {
    cfg.setSubmissionsPath(createPath(SubmissionDirParameter,val, cfg.getBaseDirectory()));
