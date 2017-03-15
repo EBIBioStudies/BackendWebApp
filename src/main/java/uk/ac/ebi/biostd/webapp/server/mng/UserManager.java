@@ -17,6 +17,8 @@ public interface UserManager
  User getUserByLogin(String uName);
  User getUserByEmail(String email);
 
+ int getUsersNumber();
+ 
  void addUser(User u, List<String[]> aux,  boolean validateEmail, String actvURL)  throws UserMngException;
 
  UserData getUserData(User user, String key);

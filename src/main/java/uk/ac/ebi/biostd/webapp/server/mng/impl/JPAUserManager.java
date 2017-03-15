@@ -113,6 +113,12 @@ public class JPAUserManager implements UserManager, SessionListener
  }
  
  @Override
+ public int getUsersNumber()
+ {
+  return BackendConfig.getServiceManager().getSecurityManager().getUsersNumber();
+ }
+ 
+ @Override
  public synchronized void addUser(User u, List<String[]> aux, boolean validateEmail, String validateURL) throws UserMngException
  {
   

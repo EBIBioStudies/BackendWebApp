@@ -8,7 +8,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -207,7 +206,6 @@ public class ConfigurationManager
    
    adjustSearchIndexPath(cfgBean,baseP);
    adjustH2DBPath(cfgBean,baseP);
-//   cfgBean.getDatabaseConfig().put(HibernateSearchIndexDirParameter, adjustPath( cfgBean.getDatabaseConfig().get(HibernateSearchIndexDirParameter) ));
   }
   
  
@@ -218,7 +216,59 @@ public class ConfigurationManager
   BackendConfig.setConfig(cfgBean);
  }
  
- private void adjustH2DBPath(ConfigBean cfgBean, Path baseP)
+// public static void main( String[] arg )
+// {
+//  ConfigBean cb = new ConfigBean();
+//  
+//  cb.setBaseDirectory(Paths.get("/var/biostd"));
+//  
+//  cb.getDatabaseConfig().put(HibernateDBConnectionURLParameter, "jdbc:h2:2201/dbn;A=B");
+//  adjustH2DBPath(cb, cb.getBaseDirectory());
+//  System.out.println( cb.getDatabaseConfig().get(HibernateDBConnectionURLParameter) );
+// }
+ 
+ public Map<String, String> getPreferences()
+ {
+  Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
+  
+  Map<String, String> map  = new HashMap<String, String>();
+  
+  try
+  {
+   for( String key : prefs.keys() )
+    map.put(key, prefs.get(key, null));
+  }
+  catch(BackingStoreException e)
+  {
+   log.error("Can't read preferences: "+e.getMessage());
+   e.printStackTrace();
+  }
+  
+  return map;
+ }
+ 
+ public void setPreferences( Map<String, String> pfs )
+ {
+  try
+  {
+   Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
+   
+   prefs.clear();
+   
+   for( Map.Entry<String, String> me : pfs.entrySet() )
+    prefs.put(me.getKey(), me.getValue());
+   
+   prefs.flush();
+  }
+  catch(BackingStoreException e)
+  {
+   log.error("Can't write preferences: "+e.getMessage());
+   e.printStackTrace();
+  }
+
+ }
+ 
+ private static void adjustH2DBPath(ConfigBean cfgBean, Path baseP)
  {
   String dbURLStr = cfgBean.getDatabaseConfig().get(HibernateDBConnectionURLParameter).toString();
   
@@ -230,7 +280,7 @@ public class ConfigurationManager
   if( p1 < 0 )
    return;
   
-  int p2 = dbURLStr.indexOf(':',p1);
+  int p2 = dbURLStr.indexOf(':',p1+1);
   
   if( p2 < 0 )
    return;
@@ -238,37 +288,34 @@ public class ConfigurationManager
   if( !"h2".equalsIgnoreCase( dbURLStr.substring(p1+1,p2) ) )
    return;
   
-  String[] parts = dbURLStr.split(":");
+  int p3 = dbURLStr.indexOf(':',p2+1);
   
-  if( parts.length < 3 )
-   return;
   
-  if( ! "h2".equalsIgnoreCase( parts[1] ) )
-   return;
+  String proto = null;
+  String pathStr = null;
   
-  int pthind=2;
-  
-  if( "file".equals(parts[1]) )
-   pthind = 3;
-  else if( "tcp".equalsIgnoreCase(parts[1]) || "mem".equalsIgnoreCase(parts[1]) || "zip".equalsIgnoreCase(parts[1]) || "ssl".equalsIgnoreCase(parts[1]) )
-   return;
-  
-  String dbPath = parts[pthind];
-  
-  if( parts.length > pthind+1 )
+  if( p3 >= 0 )
   {
-   StringBuilder sb = new StringBuilder();
-   
-   for( int i= pthind+1; i < parts.length; i++)
-    sb.append(parts[i]).append(':');
-   
-   sb.setLength(sb.length()-1);
-   
-   dbPath = sb.toString();
+   proto = dbURLStr.substring(p2+1,p3);
+   pathStr = dbURLStr.substring(p3+1);
   }
+  else
+   pathStr = dbURLStr.substring(p2+1);
   
-  String dbPath = parts.length > pthind+1?Arrays.asList(parts,pthind):parts[pthind];
+  if( proto != null && ( "tcp".equalsIgnoreCase(proto) || "mem".equalsIgnoreCase(proto) || "zip".equalsIgnoreCase(proto) || "ssl".equalsIgnoreCase(proto) ) )
+   return;
   
+  if( ! "file".equalsIgnoreCase(proto) )
+   pathStr = dbURLStr.substring(p2+1);
+   
+  Path path = Paths.get(pathStr);
+  
+  if( path.isAbsolute() )
+   return;
+  
+  path = baseP.resolve(path);
+  
+  cfgBean.getDatabaseConfig().put(HibernateDBConnectionURLParameter,"jdbc:h2:file:"+FileNameUtil.toUnixPath(path));
  }
 
  private void adjustSearchIndexPath(ConfigBean cfgBean, Path baseP)
@@ -324,8 +371,7 @@ public class ConfigurationManager
 
  private void loadDefaults(ConfigBean cfgBean)
  {
-  Map<String, Object> dbConf = new HashMap<String, Object>();
-
+  Map<String, Object> dbConf = cfgBean.getDatabaseConfig();
   
   dbConf.put("hibernate.connection.driver_class","org.h2.Driver");
   dbConf.put("hibernate.connection.username","");
@@ -377,15 +423,13 @@ public class ConfigurationManager
   cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/mail/subscriptionMail.html"));
 
   
-  cfgBean.setDatabaseConfig(dbConf);
-
  }
 
  public static boolean readConfiguration( ParamPool config, ConfigBean cfgBean ) throws ConfigurationException
  {
 //  ConfigBean cfgBean = BackendConfig.createConfig(); 
   
-  Map<String, Object> dbConfig = new HashMap<String, Object>();
+  Map<String, Object> dbConfig = cfgBean.getDatabaseConfig();
   Map<String, Object> emailConfig = new HashMap<String, Object>();
   TaskConfig taskConfig = null;
   

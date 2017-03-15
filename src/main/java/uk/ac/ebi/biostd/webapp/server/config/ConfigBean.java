@@ -1,6 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.config;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.persistence.EntityManagerFactory;
@@ -468,6 +469,9 @@ public class ConfigBean
 
  public Map<String, Object> getDatabaseConfig()
  {
+  if( databaseConfig == null )
+   databaseConfig = new HashMap<String, Object>();
+  
   return databaseConfig;
  }
 
@@ -488,6 +492,9 @@ public class ConfigBean
 
  public Map<String, Object> getEmailConfig()
  {
+  if( emailConfig == null )
+   emailConfig = new HashMap<String, Object>();
+
   return emailConfig;
  }
 
