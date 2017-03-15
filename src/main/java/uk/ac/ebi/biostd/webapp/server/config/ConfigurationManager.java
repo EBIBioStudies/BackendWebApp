@@ -8,11 +8,13 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
+import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileResource;
 import uk.ac.ebi.biostd.webapp.server.util.JavaResource;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
@@ -45,6 +48,7 @@ public class ConfigurationManager
  
 
  public static final String             ConfigurationResetParameter         = "resetConfig";
+ public static final String             DisablePreferencesConfigParameter   = "disableOnlineConfig";
 
  
  public static final String             BaseDirParameter                    = "baseDir";
@@ -90,6 +94,7 @@ public class ConfigurationManager
  public static final String             RecapchaPrivateKeyParameter         = "recapcha_private_key";
  
  public static final String             HibernateSearchIndexDirParameter    = "hibernate.search.default.indexBase";
+ public static final String             HibernateDBConnectionURLParameter   = "hibernate.connection.url";
  
  private ParamPool contextParamPool;
  
@@ -108,17 +113,42 @@ public class ConfigurationManager
  {
   ConfigBean cfgBean = BackendConfig.createConfig(); 
   
-  Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
-
-  if( ! checkReset( prefs.get(ConfigurationResetParameter, null), "app preferences" ) )
+  String dsblVal = contextParamPool.getParameter(DisablePreferencesConfigParameter);
+  
+  boolean disPref = dsblVal != null && ( "yes".equalsIgnoreCase(dsblVal) || "true".equalsIgnoreCase(dsblVal) || "on".equalsIgnoreCase(dsblVal) || "1".equals(dsblVal) ); 
+  
+  boolean loaded = false;
+  try
+  {
+   if( ! disPref && Preferences.userRoot().nodeExists(ApplicationConfigNode) )
+   {
+    Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
+    
+    if( ! checkReset( prefs.get(ConfigurationResetParameter, null), "app preferences" ) )
+    {
+     if( ! checkReset( contextParamPool.getParameter(ConfigurationResetParameter), "webapp" ) )
+      loadDefaults( cfgBean );
+     
+     readConfiguration(contextParamPool, cfgBean);
+    }
+    
+    readConfiguration(new PreferencesParamPool(prefs), cfgBean);
+    
+    loaded = false;
+   }
+  }
+  catch(BackingStoreException e1)
+  {
+   log.warn("Error reading preferences: "+e1.getMessage());
+  }
+  
+  if( ! loaded )
   {
    if( ! checkReset( contextParamPool.getParameter(ConfigurationResetParameter), "webapp" ) )
     loadDefaults( cfgBean );
    
    readConfiguration(contextParamPool, cfgBean);
   }
-  
-  readConfiguration(new PreferencesParamPool(prefs), cfgBean);
   
   if( cfgBean.getBaseDirectory() != null )
   {
@@ -190,26 +220,92 @@ public class ConfigurationManager
  
  private void adjustH2DBPath(ConfigBean cfgBean, Path baseP)
  {
-  // TODO Auto-generated method stub
+  String dbURLStr = cfgBean.getDatabaseConfig().get(HibernateDBConnectionURLParameter).toString();
+  
+  if( dbURLStr == null )
+   return;
+  
+  int p1 = dbURLStr.indexOf(':');
+  
+  if( p1 < 0 )
+   return;
+  
+  int p2 = dbURLStr.indexOf(':',p1);
+  
+  if( p2 < 0 )
+   return;
+  
+  if( !"h2".equalsIgnoreCase( dbURLStr.substring(p1+1,p2) ) )
+   return;
+  
+  String[] parts = dbURLStr.split(":");
+  
+  if( parts.length < 3 )
+   return;
+  
+  if( ! "h2".equalsIgnoreCase( parts[1] ) )
+   return;
+  
+  int pthind=2;
+  
+  if( "file".equals(parts[1]) )
+   pthind = 3;
+  else if( "tcp".equalsIgnoreCase(parts[1]) || "mem".equalsIgnoreCase(parts[1]) || "zip".equalsIgnoreCase(parts[1]) || "ssl".equalsIgnoreCase(parts[1]) )
+   return;
+  
+  String dbPath = parts[pthind];
+  
+  if( parts.length > pthind+1 )
+  {
+   StringBuilder sb = new StringBuilder();
+   
+   for( int i= pthind+1; i < parts.length; i++)
+    sb.append(parts[i]).append(':');
+   
+   sb.setLength(sb.length()-1);
+   
+   dbPath = sb.toString();
+  }
+  
+  String dbPath = parts.length > pthind+1?Arrays.asList(parts,pthind):parts[pthind];
   
  }
 
  private void adjustSearchIndexPath(ConfigBean cfgBean, Path baseP)
  {
-  // TODO Auto-generated method stub
+  String iPathStr = cfgBean.getDatabaseConfig().get(HibernateSearchIndexDirParameter).toString();
   
+  if( iPathStr == null )
+   return;
+  
+  Path iPath = Paths.get(iPathStr);
+  
+  if( iPath.isAbsolute() )
+   return;
+  
+  iPath = baseP.resolve(iPath);
+  
+  cfgBean.getDatabaseConfig().put(HibernateSearchIndexDirParameter, FileNameUtil.toUnixPath(iPath) );
  }
 
- private void adjustResource(Resource activationEmailHtmlFile, Path baseP)
+ private void adjustResource(Resource res, Path baseP)
  {
-  // TODO Auto-generated method stub
-  
+  if( res instanceof FileResource )
+  {
+   FileResource fres = (FileResource)res;
+   Path rp = fres.getPath();
+   
+   if( ! rp.isAbsolute() )
+    fres.setPath(baseP.resolve(rp));
+  }
  }
 
  private Path adjustPath( Path pth, Path basePath )
  {
-  // TODO Auto-generated method stub
-  return null;
+  if( pth == null || pth.isAbsolute() )
+   return pth;
+  
+  return basePath.resolve(pth);
  }
 
  boolean checkReset( String rst, String context ) throws ConfigurationException
@@ -236,7 +332,7 @@ public class ConfigurationManager
   dbConf.put("hibernate.connection.password","");
   dbConf.put("hibernate.cache.use_query_cache","false");
   dbConf.put("hibernate.ejb.discard_pc_on_close","true");
-  dbConf.put("hibernate.connection.url","jdbc:h2:db");
+  dbConf.put(HibernateDBConnectionURLParameter,"jdbc:h2:db");
   dbConf.put("hibernate.dialect","org.hibernate.dialect.H2Dialect");
   dbConf.put("hibernate.hbm2ddl.auto","update");
   dbConf.put("hibernate.c3p0.max_size","30");
