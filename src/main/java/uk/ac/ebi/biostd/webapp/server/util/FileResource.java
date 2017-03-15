@@ -28,4 +28,14 @@ public class FileResource implements Resource
   return FileUtil.readFile(filePath.toFile(), cs);
  }
 
+ public Path getPath()
+ {
+  return filePath;
+ }
+
+ public void setPath(Path filePath)
+ {
+  this.filePath = filePath;
+ }
+
 }
