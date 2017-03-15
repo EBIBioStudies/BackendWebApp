@@ -60,5 +60,7 @@ public interface SecurityManager
 
  boolean mayUserControlExport(User usr);
  boolean mayUserLockExport(User usr);
+ 
+ int getUsersNumber();
 
 }
