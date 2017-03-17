@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Configuration editor</title>
+
+<style type="text/css">
+
+.buttons { padding-top: 20px }
+.buttons button { margin-left: 20px}
+#formTable input { width: 400px }
+
+</style>
+
+<script type="text/javascript">
+
+function savePrefs()
+{
+ var tbl = document.getElementById("formTable");
+ 
+ var rows = tbl.getElementsByTagName("tr");
+ 
+ var josno = {};
+ 
+ for( var i=0; i < rows.length-1; i++ )
+ {
+  var inps = rows[i].getElementsByTagName("input");
+  
+  if( inps.length != 2 )
+   continue;
+  
+  var nm = inps[0].value;
+  
+  if( nm.trim().length > 0 )
+   josno[ nm ]=inps[1].value;
+  
+ }
+ 
+ var xmlhttp = new XMLHttpRequest();
+
+ var out = document.getElementById("infoBox");
+ out.innerHTML = "";
+ 
+ 
+ xmlhttp.onreadystatechange = function() {
+
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+   {
+    out.innerHTML = "Error: "+xmlhttp.status+"<br/>"+xmlhttp.responseText;
+    return;
+   }
+  } 
+ }
+ 
+ xmlhttp.open("POST", "../prefs/set", true);
+ xmlhttp.setRequestHeader("Content-Type", "application/json; charset=UTF-8");
+ xmlhttp.send(JSON.stringify(josno));
+}
+
+function reloadConfig()
+{
+ var xmlhttp = new XMLHttpRequest();
+
+ var out = document.getElementById("infoBox");
+ out.innerHTML = "";
+ 
+ xmlhttp.onreadystatechange = function() {
+
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200 || xmlhttp.responseText.startsWith("OK") )
+    out.innerHTML = "OK";
+   else
+   {
+    out.innerHTML = "Error: "+xmlhttp.status+"<br/>"+xmlhttp.responseText;
+    return;
+   }
+  
+  } 
+ }
+ 
+ xmlhttp.open("GET", "../prefs/reloadConfig", true);
+ xmlhttp.send();
+}
+
+function loadPrefs()
+{
+ var xmlhttp = new XMLHttpRequest();
+
+ var out = document.getElementById("infoBox");
+ out.innerHTML = "";
+ 
+ 
+ xmlhttp.onreadystatechange = function() {
+
+  
+  if (xmlhttp.readyState == 4) {
+   if (xmlhttp.status == 200)
+    out.innerHTML = "OK";
+   else
+   {
+    out.innerHTML = "Error: "+xmlhttp.status+"<br/>"+xmlhttp.responseText;
+    return;
+   }
+   
+   var json = JSON.parse(xmlhttp.responseText);
+   
+   if( json.status == "FAIL")
+   {
+    out.innerHTML += "<br/>"+json.message;
+    return;
+   }
+   
+   renderConfig( json );
+   
+  } 
+ }
+ 
+ xmlhttp.open("GET", "../prefs/get", true);
+ xmlhttp.send();
+}
+ 
+function removeRow( n )
+{
+ var row = document.getElementById("ftRow"+n);
+ 
+ row.parentElement.removeChild(row);
+}
+ 
+function renderConfig( json )
+{
+ var tbl = document.getElementById("formTable");
+ 
+ tbl.innerHTML = "";
+ 
+ var i=0;
+ 
+ for( var k in json )
+ {
+  i++;
+  
+  appendRow(i, k, json[k]);
+ }
+ 
+ var tr = document.createElement("tr");
+ tr.id = "plusRow";
+
+ var td = document.createElement("td");
+ var bt = document.createElement("button");
+
+ bt.innerHTML="+";
+ bt.onclick=function() { appendRow(++i,"",""); };
+ 
+ td.appendChild(bt);
+ tr.appendChild(td);
+ 
+ tbl.appendChild(tr);
+}
+
+function appendRow( i, nm, val )
+{
+ var tbl = document.getElementById("formTable");
+
+ var tr = document.createElement("tr");
+ tr.id = "ftRow"+i;
+
+ var td = document.createElement("td");
+ var bt = document.createElement("button");
+
+ bt.innerHTML="X";
+ bt.onclick=function() { removeRow(i); };
+ 
+ td.appendChild(bt);
+ tr.appendChild(td);
+
+ 
+ td = document.createElement("td");
+ var inp = document.createElement("input");
+ 
+ inp.type="text";
+ inp.name="name"+i;
+ inp.value=nm;
+ 
+ td.appendChild(inp);
+ tr.appendChild(td);
+ 
+ td = document.createElement("td");
+ inp = document.createElement("input");
+ 
+ inp.type="text";
+ inp.name="value"+i;
+ inp.value=val;
+ 
+ td.appendChild(inp);
+ tr.appendChild(td);
+ 
+ tbl.insertBefore(tr,tbl.lastChild);
+}
+
+</script>
+
+</head>
+<div id="infoBox"></div>
+<body onload="loadPrefs()" >
+
+<table id="formTable">
+</table>
+<div class="buttons">
+<button onclick="loadPrefs()">Reload preferences</button> <button onclick="savePrefs()">Save preferences</button> <button onclick="reloadConfig()">Reload webapp configuration</button>
+</div>
+</body>
+</html>
