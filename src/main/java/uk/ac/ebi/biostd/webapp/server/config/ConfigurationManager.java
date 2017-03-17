@@ -170,49 +170,56 @@ public class ConfigurationManager
      throw new ConfigurationException("Can't read config file: "+cfgFile);
     }
     
-    if( checkReset( rb.getString(ConfigurationResetParameter), "config file" ) )
+    ParamPool rbpp = new ResourceBundleParamPool(rb);
+    
+    if( checkReset( rbpp.getParameter(ConfigurationResetParameter), "config file" ) )
      cfgBean = BackendConfig.createConfig(); 
     
-    readConfiguration(new ResourceBundleParamPool(rb), cfgBean);
+    readConfiguration( rbpp, cfgBean);
    }
   }
 
-  Path baseP = cfgBean.getBaseDirectory();
-  
-  if( baseP != null && baseP.isAbsolute() )
+  if( cfgBean.getUserGroupIndexPath() != null )
   {
-   cfgBean.setUserGroupDropboxPath(adjustPath(cfgBean.getUserGroupDropboxPath(),baseP));
-   
-   cfgBean.setUserGroupIndexPath(adjustPath(cfgBean.getUserGroupIndexPath(),baseP));
-   cfgBean.setUsersIndexPath(adjustPath(cfgBean.getUsersIndexPath(),baseP));
-   cfgBean.setGroupsIndexPath(adjustPath(cfgBean.getGroupsIndexPath(),baseP));
-   
-   cfgBean.setWorkDirectory(adjustPath(cfgBean.getWorkDirectory(),baseP));
-   cfgBean.setSubmissionsPath(adjustPath(cfgBean.getSubmissionsPath(),baseP));
-   cfgBean.setSubmissionsHistoryPath(adjustPath(cfgBean.getSubmissionsHistoryPath(),baseP));
-   cfgBean.setSubmissionsTransactionPath(adjustPath(cfgBean.getSubmissionsTransactionPath(),baseP));
-   cfgBean.setSubmissionUpdatePath(adjustPath(cfgBean.getSubmissionUpdatePath(),baseP));
-   
-   cfgBean.setPublicFTPPath(adjustPath(cfgBean.getPublicFTPPath(),baseP));
-   
-   adjustResource(cfgBean.getActivationEmailHtmlFile(), baseP);
-   adjustResource(cfgBean.getActivationEmailPlainTextFile(), baseP);
-
-   adjustResource(cfgBean.getPassResetEmailHtmlFile(), baseP);
-   adjustResource(cfgBean.getPassResetEmailPlainTextFile(), baseP);
-
-   adjustResource(cfgBean.getSubscriptionEmailHtmlFile(), baseP);
-   adjustResource(cfgBean.getSubscriptionEmailPlainTextFile(), baseP);
-   
-   adjustSearchIndexPath(cfgBean,baseP);
-   adjustH2DBPath(cfgBean,baseP);
+   cfgBean.setUsersIndexPath( cfgBean.getUserGroupIndexPath().resolve(BackendConfig.UsersDir) );
+   cfgBean.setGroupsIndexPath( cfgBean.getUserGroupIndexPath().resolve(BackendConfig.GroupsDir) );
   }
   
- 
+  Path baseP = cfgBean.getBaseDirectory();
+  
+  if( baseP != null && ! baseP.isAbsolute() )
+   throw new ConfigurationException(BaseDirParameter+" parameter should be absolute path");
+
+  cfgBean.setUserGroupDropboxPath(adjustPath(cfgBean.getUserGroupDropboxPath(), baseP));
+
+  cfgBean.setUserGroupIndexPath(adjustPath(cfgBean.getUserGroupIndexPath(), baseP));
+  cfgBean.setUsersIndexPath(adjustPath(cfgBean.getUsersIndexPath(), baseP));
+  cfgBean.setGroupsIndexPath(adjustPath(cfgBean.getGroupsIndexPath(), baseP));
+
+  cfgBean.setWorkDirectory(adjustPath(cfgBean.getWorkDirectory(), baseP));
+  cfgBean.setSubmissionsPath(adjustPath(cfgBean.getSubmissionsPath(), baseP));
+  cfgBean.setSubmissionsHistoryPath(adjustPath(cfgBean.getSubmissionsHistoryPath(), baseP));
+  cfgBean.setSubmissionsTransactionPath(adjustPath(cfgBean.getSubmissionsTransactionPath(), baseP));
+  cfgBean.setSubmissionUpdatePath(adjustPath(cfgBean.getSubmissionUpdatePath(), baseP));
+
+  cfgBean.setPublicFTPPath(adjustPath(cfgBean.getPublicFTPPath(), baseP));
+
+  adjustResource(cfgBean.getActivationEmailHtmlFile(), baseP);
+  adjustResource(cfgBean.getActivationEmailPlainTextFile(), baseP);
+
+  adjustResource(cfgBean.getPassResetEmailHtmlFile(), baseP);
+  adjustResource(cfgBean.getPassResetEmailPlainTextFile(), baseP);
+
+  adjustResource(cfgBean.getSubscriptionEmailHtmlFile(), baseP);
+  adjustResource(cfgBean.getSubscriptionEmailPlainTextFile(), baseP);
+
+  adjustSearchIndexPath(cfgBean, baseP);
+  adjustH2DBPath(cfgBean, baseP);
+
   validateConfiguration(cfgBean);
-  
+
   ConfigBean oldConfig = BackendConfig.getConfig();
-  
+
   BackendConfig.setConfig(cfgBean);
  }
  
@@ -268,7 +275,7 @@ public class ConfigurationManager
 
  }
  
- private static void adjustH2DBPath(ConfigBean cfgBean, Path baseP)
+ private static void adjustH2DBPath(ConfigBean cfgBean, Path baseP) throws ConfigurationException
  {
   String dbURLStr = cfgBean.getDatabaseConfig().get(HibernateDBConnectionURLParameter).toString();
   
@@ -313,12 +320,15 @@ public class ConfigurationManager
   if( path.isAbsolute() )
    return;
   
+  if( baseP == null || ! baseP.isAbsolute() )
+   throw new ConfigurationException("Can't resolve database relative path '"+path.toString()+"' "+BaseDirParameter+" is not set or not absolute");
+
   path = baseP.resolve(path);
   
   cfgBean.getDatabaseConfig().put(HibernateDBConnectionURLParameter,"jdbc:h2:file:"+FileNameUtil.toUnixPath(path));
  }
 
- private void adjustSearchIndexPath(ConfigBean cfgBean, Path baseP)
+ private void adjustSearchIndexPath(ConfigBean cfgBean, Path baseP) throws ConfigurationException
  {
   String iPathStr = cfgBean.getDatabaseConfig().get(HibernateSearchIndexDirParameter).toString();
   
@@ -330,27 +340,38 @@ public class ConfigurationManager
   if( iPath.isAbsolute() )
    return;
   
+  if( baseP == null || ! baseP.isAbsolute() )
+   throw new ConfigurationException("Can't resolve index relative path '"+iPath.toString()+"' "+BaseDirParameter+" is not set or not absolute");
+
   iPath = baseP.resolve(iPath);
   
   cfgBean.getDatabaseConfig().put(HibernateSearchIndexDirParameter, FileNameUtil.toUnixPath(iPath) );
  }
 
- private void adjustResource(Resource res, Path baseP)
+ private void adjustResource(Resource res, Path baseP) throws ConfigurationException
  {
   if( res instanceof FileResource )
   {
    FileResource fres = (FileResource)res;
    Path rp = fres.getPath();
    
-   if( ! rp.isAbsolute() )
-    fres.setPath(baseP.resolve(rp));
+   if( rp.isAbsolute() )
+    return;
+  
+   if( baseP == null || ! baseP.isAbsolute() )
+    throw new ConfigurationException("Can't resolve resource relative path '"+rp.toString()+"' "+BaseDirParameter+" is not set or not absolute");
+   
+   fres.setPath(baseP.resolve(rp));
   }
  }
 
- private Path adjustPath( Path pth, Path basePath )
+ private Path adjustPath( Path pth, Path basePath ) throws ConfigurationException
  {
   if( pth == null || pth.isAbsolute() )
    return pth;
+  
+  if( basePath == null || ! basePath.isAbsolute() )
+   throw new ConfigurationException("Can't resolve relative path'"+pth.toString()+"' "+BaseDirParameter+" is not set or not absolute");
   
   return basePath.resolve(pth);
  }
@@ -1058,6 +1079,9 @@ public class ConfigurationManager
 
  private static boolean checkDirectory(Path file)
  {
+  if( file == null )
+   return false;
+  
   if( Files.exists( file ) )
   {
    if( ! Files.isDirectory( file ) )

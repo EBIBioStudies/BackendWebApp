@@ -11,6 +11,7 @@
   <welcome-file-list>
     <welcome-file>BioStdWebApp.html</welcome-file>
   </welcome-file-list>
+
   <servlet>
     <description></description>
     <display-name>DumpServlet</display-name>
@@ -28,6 +29,7 @@
     <servlet-name>DumpServlet</servlet-name>
     <url-pattern>/biostdadm/upload</url-pattern>
   </servlet-mapping>
+
   <servlet>
     <description></description>
     <display-name>AuthServlet</display-name>
@@ -38,6 +40,18 @@
     <servlet-name>AuthServlet</servlet-name>
     <url-pattern>/auth/*</url-pattern>
   </servlet-mapping>
+  
+  <servlet>
+    <description></description>
+    <display-name>Preferences manager servlet</display-name>
+    <servlet-name>PrefsServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.prefs.PrefsServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>PrefsServlet</servlet-name>
+    <url-pattern>/prefs/*</url-pattern>
+  </servlet-mapping>
+  
   <servlet>
     <description></description>
     <display-name>DirServlet</display-name>

@@ -13,10 +13,12 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.config.ConfigurationException;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 
 public class PrefsServlet extends ServiceServlet
@@ -28,19 +30,26 @@ public class PrefsServlet extends ServiceServlet
  public enum Op
  {
   GET,
-  SET
+  SET,
+  RELOADCONFIG
  }
  
  public static final String opParameter = "op";
  public static final String nameParameterPrefix = "name";
  public static final String valueParameterPrefix = "value";
 
+ public PrefsServlet()
+ {
+  if( log == null )
+   log = LoggerFactory.getLogger(this.getClass());
+ }
+ 
  @Override
  protected void service(HttpServletRequest request, HttpServletResponse response, Session sess) throws ServletException, IOException
  {
   if( sess == null || sess.isAnonymouns() )
   {
-   if( BackendConfig.getServiceManager().getUserManager().getUsersNumber() != 0 )
+   if( BackendConfig.getServiceManager() != null && BackendConfig.getServiceManager().getUserManager() != null && BackendConfig.getServiceManager().getUserManager().getUsersNumber() != 0 )
    {
     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     response.setContentType("text/plain");
@@ -48,8 +57,7 @@ public class PrefsServlet extends ServiceServlet
     return;
    }
   }
-  
-  if( ! sess.getUser().isSuperuser() )
+  else if( ! sess.getUser().isSuperuser() )
   {
    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
    response.setContentType("text/plain");
@@ -104,6 +112,7 @@ public class PrefsServlet extends ServiceServlet
    catch(JSONException e)
    {
    }
+   
    
    response.setContentType("application/json");
    response.getWriter().append(jobj.toString());
@@ -182,6 +191,34 @@ public class PrefsServlet extends ServiceServlet
     return;
    }
   }
+  
+  if( op == Op.RELOADCONFIG )
+  {
+   try
+   {
+    BackendConfig.getConfigurationManager().loadConfiguration();
+
+    response.setStatus(HttpServletResponse.SC_OK);
+    response.setContentType("text/plain");
+    response.getWriter().print("OK configuration has been reloaded successfuly");
+    return;
+
+   }
+   catch(ConfigurationException e)
+   {
+    log.error( "Configuration reload failed: "+e.getMessage());
+    
+    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    response.setContentType("text/plain");
+    response.getWriter().print("FAIL configuration reload failed: "+e.getMessage());
+    return;
+   }
+  }
  }
  
+ @Override
+ protected boolean isIgnoreInvalidConfig()
+ {
+  return true;
+ }
 }

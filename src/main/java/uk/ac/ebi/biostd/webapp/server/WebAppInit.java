@@ -1,9 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server;
 
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.lang.reflect.Constructor;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -13,13 +10,10 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.PropertyResourceBundle;
-import java.util.ResourceBundle;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
-import java.util.prefs.Preferences;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -35,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.config.ConfigurationException;
 import uk.ac.ebi.biostd.webapp.server.config.ConfigurationManager;
 import uk.ac.ebi.biostd.webapp.server.email.EmailInitException;
 import uk.ac.ebi.biostd.webapp.server.email.EmailService;
@@ -47,8 +42,7 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
-import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
-import uk.ac.ebi.biostd.webapp.server.util.ResourceBundleParamPool;
+import uk.ac.ebi.biostd.webapp.server.util.MapParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ServletContextParamPool;
 
 
@@ -248,11 +242,12 @@ public class WebAppInit implements ServletContextListener
   }
   catch(Throwable e)
   {
-   e.printStackTrace();
+   log.error("Configuration is not ready: "+e.getMessage());
+   BackendConfig.setConfigValid(false);
   }
  }
  
- public void contextInitializedUnsafe(ServletContextEvent ctxEv)
+ public void contextInitializedUnsafe(ServletContextEvent ctxEv) throws ConfigurationException
  {
   ServletContext ctx = ctxEv.getServletContext();
   
@@ -261,47 +256,7 @@ public class WebAppInit implements ServletContextListener
   
   BackendConfig.getConfigurationManager().loadConfiguration();
   
-  ParamPool config = null;
-
-  config = new ServletContextParamPool(ctx);
-
-  String bPath = config.getParameter(ApplicationBasePathParameter);
-  
-  if( bPath == null )
-  {
-   Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
-   bPath = prefs.get(ApplicationBasePathParameter, null);
-  }
-
-  if(bPath == null)
-  {
-   readConfig(config);
-  }
-  else
-  {
-   ResourceBundle rb = null;
-   
-   File bPathFile = new File(bPath);
-   File cfgFile = new File(bPathFile,"config.properties");
-   
-   if( cfgFile.exists() )
-   {
-    try( Reader fr = new FileReader(cfgFile) )
-    {
-     rb = new PropertyResourceBundle(fr);
-    }
-    catch(Exception e)
-    {
-     log.error("Can't read config file: "+cfgFile);
-     throw new RuntimeException("Can't read config file: "+cfgFile);
-    }
-    
-    readConfig(new ResourceBundleParamPool(rb));
-   }
-   else if( ! bPathFile.exists() )
-    bPathFile.mkdirs();
- 
-  }
+  BackendConfig.setConfigValid(true);
 
   
   /*
@@ -379,7 +334,7 @@ public class WebAppInit implements ServletContextListener
   
   try
   {
-   BackendConfig.getServiceManager().setEmailService( new EmailService(config, EmailParamPrefix) );
+   BackendConfig.getServiceManager().setEmailService( new EmailService(new MapParamPool(BackendConfig.getEmailConfig()), EmailParamPrefix) );
   }
   catch(EmailInitException e)
   {

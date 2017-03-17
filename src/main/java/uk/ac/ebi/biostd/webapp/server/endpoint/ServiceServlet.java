@@ -20,82 +20,71 @@ public abstract class ServiceServlet extends HttpServlet
  @Override
  protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
  {
-  if( ! BackendConfig.isConfigValid() )
+  Session sess = null;
+  
+ 
+  if( BackendConfig.isConfigValid() )
   {
-   resp.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Web application is out of service");
-   return;
-  }
-  
-  String sessID = null;
-  
-  sessID = req.getHeader(BackendConfig.getSessionTokenHeader());
-  
-  if( sessID == null )
-  {
-   sessID = req.getParameter(BackendConfig.getSessionCookieName());
-
-   if(sessID == null && !"GET".equalsIgnoreCase(req.getMethod()))
+   String sessID = req.getHeader(BackendConfig.getSessionTokenHeader());
+   
+   if( sessID == null )
    {
+    sessID = req.getParameter(BackendConfig.getSessionCookieName());
 
-    String qryStr = req.getQueryString();
-
-    if(qryStr != null)
+    if(sessID == null && !"GET".equalsIgnoreCase(req.getMethod()))
     {
-     String[] parts = qryStr.split("&");
 
-     String pfx = BackendConfig.getSessionCookieName() + "=";
+     String qryStr = req.getQueryString();
 
-     for(String prm : parts)
+     if(qryStr != null)
      {
-      if(prm.startsWith(pfx))
+      String[] parts = qryStr.split("&");
+
+      String pfx = BackendConfig.getSessionCookieName() + "=";
+
+      for(String prm : parts)
       {
-       sessID = prm.substring(pfx.length());
+       if(prm.startsWith(pfx))
+       {
+        sessID = prm.substring(pfx.length());
+        break;
+       }
+      }
+     }
+
+    }
+   }
+   
+   if( sessID == null )
+   {
+    Cookie[] cuks = req.getCookies();
+    
+    if( cuks!= null && cuks.length != 0)
+    {
+     for (int i = cuks.length - 1; i >= 0; i--)
+     {
+      if (cuks[i].getName().equals(BackendConfig.getSessionCookieName()) )
+      {
+       sessID = cuks[i].getValue();
        break;
       }
      }
     }
-
    }
-  }
-  
-  if( sessID == null )
-  {
-   Cookie[] cuks = req.getCookies();
    
-   if( cuks!= null && cuks.length != 0)
-   {
-    for (int i = cuks.length - 1; i >= 0; i--)
-    {
-     if (cuks[i].getName().equals(BackendConfig.getSessionCookieName()) )
-     {
-      sessID = cuks[i].getValue();
-      break;
-     }
-    }
-   }
+   if( sessID != null )
+    sess = BackendConfig.getServiceManager().getSessionManager().checkin( sessID );
+   
+   if( sess == null )
+    sess = BackendConfig.getServiceManager().getSessionManager().createAnonymousSession();
+
   }
-  
-  Session sess = null;
-  
-  if( sessID != null )
-   sess = BackendConfig.getServiceManager().getSessionManager().checkin( sessID );
-  
-  if( sess == null )
-   sess = BackendConfig.getServiceManager().getSessionManager().createAnonymousSession();
-  
-//  if (sessID == null)
-//  {
-//   resp.sendError(HttpServletResponse.SC_FORBIDDEN);
-//   return;
-//  }
-//
-//  Session sess = Configuration.getDefaultConfiguration().getSessionManager().checkin( sessID );
-//  
-//  if (sess == null)
-//  {
-//   resp.sendError(HttpServletResponse.SC_FORBIDDEN);
-//   return;
-//  }
+  else if( ! isIgnoreInvalidConfig() )
+  {
+   resp.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Web application is out of service");
+   return;
+  }
+
 
   try
   {
@@ -114,6 +103,11 @@ public abstract class ServiceServlet extends HttpServlet
   }
  }
  
+ protected boolean isIgnoreInvalidConfig()
+ {
+  return false;
+ }
+
  abstract protected void service(HttpServletRequest req, HttpServletResponse resp, Session sess) throws ServletException, IOException;
 
 }
