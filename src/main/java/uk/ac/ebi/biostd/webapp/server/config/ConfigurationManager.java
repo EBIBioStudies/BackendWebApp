@@ -3,30 +3,53 @@ package uk.ac.ebi.biostd.webapp.server.config;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
+import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+
+import org.hibernate.search.cfg.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import uk.ac.ebi.biostd.webapp.server.email.EmailInitException;
+import uk.ac.ebi.biostd.webapp.server.email.EmailService;
+import uk.ac.ebi.biostd.webapp.server.export.ExportTask;
+import uk.ac.ebi.biostd.webapp.server.export.OutputModule;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfigException;
+import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
+import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
+import uk.ac.ebi.biostd.webapp.server.mng.IndexManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
+import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
+import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
+import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileResource;
 import uk.ac.ebi.biostd.webapp.server.util.JavaResource;
+import uk.ac.ebi.biostd.webapp.server.util.MapParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.PreferencesParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.Resource;
@@ -99,6 +122,8 @@ public class ConfigurationManager
  
  private static Logger log = LoggerFactory.getLogger(ConfigurationManager.class);
 
+ private static final long dayInMills = TimeUnit.DAYS.toMillis(1);
+ private static final long hourInMills = TimeUnit.HOURS.toMillis(1);
  
  public ConfigurationManager( ParamPool ctx )
  {
@@ -218,21 +243,131 @@ public class ConfigurationManager
 
   validateConfiguration(cfgBean);
 
+  stopServices();
+  
   ConfigBean oldConfig = BackendConfig.getConfig();
 
   BackendConfig.setConfig(cfgBean);
+  
+  startServices();
+
  }
  
-// public static void main( String[] arg )
-// {
-//  ConfigBean cb = new ConfigBean();
-//  
-//  cb.setBaseDirectory(Paths.get("/var/biostd"));
-//  
-//  cb.getDatabaseConfig().put(HibernateDBConnectionURLParameter, "jdbc:h2:2201/dbn;A=B");
-//  adjustH2DBPath(cb, cb.getBaseDirectory());
-//  System.out.println( cb.getDatabaseConfig().get(HibernateDBConnectionURLParameter) );
-// }
+
+ 
+ public void startServices()
+ {
+  Path idxPath = null;
+  boolean rebuildIndex = false;
+  
+  Map<String, Object> dbConfig = BackendConfig.getDatabaseConfig();
+  
+  Object indexBaseParam = dbConfig.get(HibernateSearchIndexDirParameter);
+  
+  if( indexBaseParam != null )
+  {
+   idxPath = FileSystems.getDefault().getPath(indexBaseParam.toString());
+   
+
+   rebuildIndex = ! Files.exists(idxPath);
+   
+   dbConfig.put(Environment.MODEL_MAPPING, SearchMapper.makeMapping() );
+   
+   BackendConfig.setSearchEnabled( true );
+  }
+  
+  BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig) );
+
+  if( rebuildIndex )
+  {
+   try
+   {
+    Files.createDirectories(idxPath);
+   }
+   catch(IOException e)
+   {
+    log.error("Can't create search index directory '"+idxPath+"' : "+e.getMessage());
+    throw new RuntimeException("BioStd webapp initialization failed");
+   }
+   
+   IndexManager.rebuildIndex( BackendConfig.getEntityManagerFactory() );
+ }
+  
+  BackendConfig.setServiceManager( ServiceFactory.createService( ) );
+  
+  
+  try
+  {
+   BackendConfig.getServiceManager().setEmailService( new EmailService(new MapParamPool(BackendConfig.getEmailConfig()), EmailParamPrefix) );
+  }
+  catch(EmailInitException e)
+  {
+   log.error("Can't initialize email service: "+e.getMessage());
+  }
+
+  
+  Timer timer = new Timer("Shared system timer", true);
+  
+  BackendConfig.setTimer(timer);
+  
+  long now = System.currentTimeMillis();
+  
+  timer.scheduleAtFixedRate( new TimerTask()
+  {
+   @Override
+   public void run()
+   {
+    BackendConfig.getServiceManager().getReleaseManager().doHourlyCheck();
+    BackendConfig.getServiceManager().getSecurityManager().removeExpiredUsers();
+   }
+  }, hourInMills-(now % hourInMills) , hourInMills);
+  
+  TaskInfo tinf = null;
+  
+  try
+  {
+   tinf = createTask(BackendConfig.getTaskConfig());
+   
+   BackendConfig.setExportTask(tinf);
+  }
+  catch( TaskConfigException e )
+  {
+   log.error("Configuration error : "+e.getMessage());
+   throw new RuntimeException("BioStd webapp initialization failed",e);
+  }
+
+  if(tinf.getTimeZero() >= 0)
+  {
+   timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), tinf.getPeriod()*60*1000);
+
+   log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically ("+tinf.getPeriod()+"m)");
+  }
+ }
+
+ public void stopServices()
+ {
+  
+  EntityManagerFactory emf = BackendConfig.getEntityManagerFactory();
+  
+  if( BackendConfig.getServiceManager().getSessionManager() != null )
+   BackendConfig.getServiceManager().getSessionManager().shutdown();
+  
+  if( BackendConfig.getServiceManager().getSubmissionManager() != null )
+   BackendConfig.getServiceManager().getSubmissionManager().shutdown();
+
+  if( BackendConfig.getExportTask() != null )
+   BackendConfig.getExportTask().getTask().interrupt();
+  
+  
+  if( BackendConfig.getTimer() != null )
+   BackendConfig.getTimer().cancel();
+  
+  if( emf != null )
+   emf.close();
+  
+ }
+
+ 
  
  public Map<String, String> getPreferences()
  {
@@ -581,7 +716,7 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
   
-  if( ! checkDirectory(dir) )
+  if( ! checkDirectory(dir,cfg.isCreateFileStructure()) )
    throw new ConfigurationException("Directory access error: "+dir);
   
   dir = cfg.getUserGroupDropboxPath();
@@ -592,7 +727,7 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
   
-  if( ! checkDirectory(dir) )
+  if( ! checkDirectory(dir,cfg.isCreateFileStructure()) )
    throw new ConfigurationException("Directory access error: "+dir);
 
   
@@ -604,14 +739,14 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
 
-  if( ! checkDirectory( cfg.getUsersIndexPath() ) )
+  if( ! checkDirectory( cfg.getUsersIndexPath(), cfg.isCreateFileStructure() ) )
    throw new ConfigurationException("Directory access error: "+cfg.getUsersIndexPath() );
 
-  if( ! checkDirectory( cfg.getGroupsIndexPath() ) )
+  if( ! checkDirectory( cfg.getGroupsIndexPath(), cfg.isCreateFileStructure() ) )
    throw new ConfigurationException("Directory access error: "+cfg.getGroupsIndexPath() );
 
   
-  if( ! checkDirectory( cfg.getSubmissionUpdatePath() ) )
+  if( ! checkDirectory( cfg.getSubmissionUpdatePath(), cfg.isCreateFileStructure() ) )
    throw new ConfigurationException("Directory access error: "+cfg.getSubmissionUpdatePath() );
  
 
@@ -623,7 +758,7 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
   
-  if( ! checkDirectory(dir) )
+  if( ! checkDirectory(dir,cfg.isCreateFileStructure()) )
    throw new ConfigurationException("Directory access error: "+dir);
 
   
@@ -635,7 +770,7 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
   
-  if( ! checkDirectory(dir) )
+  if( ! checkDirectory(dir,cfg.isCreateFileStructure()) )
    throw new ConfigurationException("Directory access error: "+dir);
 
   
@@ -647,7 +782,7 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
 
-  if( ! checkDirectory(dir) )
+  if( ! checkDirectory(dir,cfg.isCreateFileStructure()) )
    throw new ConfigurationException("Directory access error: "+dir);
 
 //  if( BackendConfig.getServiceManager().getEmailService() == null )
@@ -1077,7 +1212,7 @@ public class ConfigurationManager
   throw new ServiceConfigException(prm+": path should be either absolute or "+BaseDirParameter+" parameter should be defined before");
  }
 
- private static boolean checkDirectory(Path file)
+ private static boolean checkDirectory(Path file, boolean create)
  {
   if( file == null )
    return false;
@@ -1096,7 +1231,7 @@ public class ConfigurationManager
     return false;
    }
   }
-  else if( BackendConfig.isCreateFileStructure() )
+  else if( create )
   {
    try
    {
@@ -1114,6 +1249,122 @@ public class ConfigurationManager
   return true;
  }
 
+ private TaskInfo createTask(TaskConfig tc) throws TaskConfigException
+ {
+  Calendar cal = Calendar.getInstance(TimeZone.getDefault());
+  long ctime = System.currentTimeMillis();
+  
 
+   TaskInfo tinf = new TaskInfo();
+   
+   cal.setTimeInMillis( ctime );
+   
+   
+   EntityManagerFactory emf = BackendConfig.getEntityManagerFactory();
+   
+   if( tc.getInvokeMin() < 0 )
+    tinf.setTimeZero( tc.getInvokePeriodMins()*60*1000 );
+   else if( tc.getInvokeHour() >= 0 )
+    tinf.setTimeZero( getAdjustedDelay(tc.getInvokeHour(), tc.getInvokeMin() ) );
+   else
+    tinf.setTimeZero(-1);
+   
+   tinf.setPeriod( tc.getInvokePeriodMins() );
+   
+   List<OutputModule> mods = new ArrayList<>(tc.getOutputModulesConfig().size() );
+   
+   for( Map.Entry<String, Map<String,String>> me : tc.getOutputModulesConfig().entrySet() )
+   {
+    Map<String,String> cfg = me.getValue();
+    
+    String type = cfg.get(OutputClassParameter);
+    
+    if( type == null )
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': missed '"+OutputClassParameter+"' parameter");
+    
+    Class<?> outtaskCls = null;
+    
+    OutputModule outMod = null;
+    
+    try
+    {
+     outtaskCls = Class.forName(type);
+    }
+    catch( ClassNotFoundException e )
+    {
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': output module class '"+type+"' not found");
+    }
+    
+    if( ! OutputModule.class.isAssignableFrom(outtaskCls) )
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Class '"+outtaskCls+"' doesn't implement OutputModule interface");
+    
+    Constructor<?> ctor = null;
+    
+    try
+    {
+     try
+     {
+      ctor = outtaskCls.getConstructor(String.class, Map.class);
+      outMod = (OutputModule) ctor.newInstance(tc.getName()+":"+me.getKey(),cfg);
+     }
+     catch(NoSuchMethodException e)
+     {
+      try
+      {
+       ctor = outtaskCls.getConstructor(String.class);
+       outMod = (OutputModule) ctor.newInstance(tc.getName()+":"+me.getKey());
+      }
+      catch(NoSuchMethodException e1)
+      {
+       throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't fine appropriate constructor of class '" + outtaskCls + "'");
+      }
+     }
+     catch(SecurityException e)
+     {
+      throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't get constructor of class '" + outtaskCls + "' " + e.getMessage());
+     }
+    }
+    catch(Exception ex)
+    {
+     throw new TaskConfigException("Task '"+tc.getName()+"' output '"+me.getKey()+"': Can't create instance of class '" + outtaskCls + "' : "+ExceptionUtil.unroll(ex).getMessage());
+    }
+
+    mods.add( outMod );
+   }
+   
+   try
+   {
+    ExportTask tsk = new ExportTask(tc.getName(), emf, mods, tc);
+    
+    tinf.setTask(tsk);
+    
+    return tinf;
+   }
+   catch(TaskInitError e)
+   {
+    log.warn("Task '"+tc.getName()+"': Initialization error: "+e.getMessage() );
+   }
+   
+  return null;
+ }
+ 
+ private long getAdjustedDelay( int hour, int min )
+ {
+  if( hour < 0 )
+   return -1;
+  
+  
+  Calendar cr = Calendar.getInstance(TimeZone.getDefault());
+  cr.setTimeInMillis(System.currentTimeMillis());
+  
+  cr.set(Calendar.HOUR_OF_DAY, hour);
+  cr.set(Calendar.MINUTE, min);
+  
+  long delay = cr.getTimeInMillis() - System.currentTimeMillis();
+  
+  long adjustedDelay = (delay > 0 ? delay : dayInMills + delay);
+  
+  return adjustedDelay;
+ }
 
 }
