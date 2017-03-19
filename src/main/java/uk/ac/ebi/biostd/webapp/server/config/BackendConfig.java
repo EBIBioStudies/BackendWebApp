@@ -8,6 +8,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.persistence.EntityManagerFactory;
@@ -525,6 +526,15 @@ public class BackendConfig
   BackendConfig.configurationManager = configurationManager;
  }
 
+ public static Timer getTimer()
+ {
+  return conf.getTimer();
+ }
+
+ public static void setTimer(Timer timer)
+ {
+  conf.setTimer(timer);
+ }
 
 
 }

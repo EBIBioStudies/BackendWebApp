@@ -3,6 +3,7 @@ package uk.ac.ebi.biostd.webapp.server.config;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
 
 import javax.persistence.EntityManagerFactory;
 
@@ -75,7 +76,9 @@ public class ConfigBean
  private Map<String, Object> databaseConfig;
  private Map<String, Object> emailConfig;
  private TaskConfig taskConfig;
- 
+ private Timer timer;
+
+
  public String getDataMountPath()
  {
   return dataMountPath;
@@ -503,4 +506,13 @@ public class ConfigBean
   this.emailConfig = emailConfig;
  }
 
+ public Timer getTimer()
+ {
+  return timer;
+ }
+
+ public void setTimer(Timer timer)
+ {
+  this.timer = timer;
+ }
 }
