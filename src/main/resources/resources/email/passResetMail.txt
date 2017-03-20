@@ -1,0 +1,9 @@
+Dear {USERNAME} 
+
+You have received this email because you requested a password reset. Please
+click the following link {URL}
+
+If you experience any problems, please contact us at {MAILTO}
+
+Regards
+BioStudies Team

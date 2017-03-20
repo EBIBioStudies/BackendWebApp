@@ -235,4 +235,5 @@
   <listener>
     <listener-class>uk.ac.ebi.biostd.webapp.server.WebAppInit</listener-class>
   </listener>
+  
 </web-app>

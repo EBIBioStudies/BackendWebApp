@@ -31,7 +31,8 @@ public class PrefsServlet extends ServiceServlet
  {
   GET,
   SET,
-  RELOADCONFIG
+  RELOADCONFIG,
+  RECAPTCHA_KEY
  }
  
  public static final String opParameter = "op";
@@ -214,6 +215,22 @@ public class PrefsServlet extends ServiceServlet
     return;
    }
   }
+  
+  if( op == Op.RECAPTCHA_KEY)
+  {
+   response.setStatus(HttpServletResponse.SC_OK);
+   response.setContentType("text/plain");
+   
+   String keyPub = BackendConfig.getRecapchaPublicKey();
+   String keyPriv = BackendConfig.getRecapchaPrivateKey();
+   
+   if( keyPub == null || keyPub.length() == 0 || keyPriv == null || keyPriv.length() == 0 )
+    response.getWriter().print("FAIL recaptcha in not configured");
+   else
+    response.getWriter().print("OK "+keyPub);
+   return;
+  }
+  
  }
  
  @Override

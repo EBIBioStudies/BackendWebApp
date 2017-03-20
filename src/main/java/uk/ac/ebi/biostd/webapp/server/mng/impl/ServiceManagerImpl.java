@@ -149,6 +149,7 @@ public class ServiceManagerImpl implements ServiceManager
   this.accManager = accManager;
  }
 
+ @Override
  public TagManager getTagManager()
  {
   return tagManager;
@@ -157,6 +158,55 @@ public class ServiceManagerImpl implements ServiceManager
  public void setTagManager(TagManager tagManager)
  {
   this.tagManager = tagManager;
+ }
+
+ @Override
+ public void shutdown()
+ {
+//  if( userManager != null )
+//   userManager.shutdown();
+  userManager=null;
+  
+  if(sessionManager != null)
+   sessionManager.shutdown();
+
+  sessionManager=null;
+
+  if(submissionManager != null)
+   submissionManager.shutdown();
+
+  submissionManager=null;
+
+//  if(fileManager != null)
+//   fileManager.shutdown();
+
+  fileManager=null;
+
+//  if(authzManager != null)
+//   authzManager.shutdown();
+
+  authzManager=null;
+
+//  if(releaser != null)
+//   releaser.shutdown();
+
+  releaser=null;
+
+//  if(accManager != null)
+//   accManager.shutdown();
+
+  accManager=null;
+ 
+//  if(emailService != null)
+//   emailService.shutdown();
+
+  emailService=null;
+
+//  if(tagManager != null)
+//   tagManager.shutdown();
+
+  tagManager=null;
+  
  }
 
 

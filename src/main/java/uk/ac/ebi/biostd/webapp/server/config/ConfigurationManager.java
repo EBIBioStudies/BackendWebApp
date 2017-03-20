@@ -72,7 +72,8 @@ public class ConfigurationManager
  public static final String             ConfigurationResetParameter         = "resetConfig";
  public static final String             DisablePreferencesConfigParameter   = "disableOnlineConfig";
 
- 
+ public static final String             UIURLParameter                      = "UIURL";
+
  public static final String             BaseDirParameter                    = "baseDir";
  
  public static final String             CreateFileStructureParameter        = "createFileStructure";
@@ -113,10 +114,17 @@ public class ConfigurationManager
  public static final String             DefaultSubmissionAccSuffixParameter = "defaultSubmissionAccNoSuffix";
  
  public static final String             DataMountPathParameter              = "dataMountPath";
+ 
+ public static final String             RecapchaPublicKeyParameter          = "recapcha_public_key";
  public static final String             RecapchaPrivateKeyParameter         = "recapcha_private_key";
  
  public static final String             HibernateSearchIndexDirParameter    = "hibernate.search.default.indexBase";
  public static final String             HibernateDBConnectionURLParameter   = "hibernate.connection.url";
+
+ public static final String             IsEmbeddedH2Parameter               = "isEmbeddedH2";
+
+ 
+ public static final String             EmailInquiresParameter              = "inquiries";
  
  private ParamPool contextParamPool;
  
@@ -158,7 +166,7 @@ public class ConfigurationManager
     
     readConfiguration(new PreferencesParamPool(prefs), cfgBean);
     
-    loaded = false;
+    loaded = true;
    }
   }
   catch(BackingStoreException e1)
@@ -322,49 +330,50 @@ public class ConfigurationManager
    }
   }, hourInMills-(now % hourInMills) , hourInMills);
   
-  TaskInfo tinf = null;
-  
-  try
+  if( BackendConfig.getTaskConfig() != null )
   {
-   tinf = createTask(BackendConfig.getTaskConfig());
+   TaskInfo tinf = null;
    
-   BackendConfig.setExportTask(tinf);
+   try
+   {
+    tinf = createTask(BackendConfig.getTaskConfig());
+    
+    BackendConfig.setExportTask(tinf);
+   }
+   catch( TaskConfigException e )
+   {
+    log.error("Configuration error : "+e.getMessage());
+    throw new RuntimeException("Task configuration error"+e.getMessage());
+   }
+   
+   if(tinf.getTimeZero() >= 0)
+   {
+    timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), tinf.getPeriod()*60*1000);
+    
+    log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically ("+tinf.getPeriod()+"m)");
+   }
   }
-  catch( TaskConfigException e )
-  {
-   log.error("Configuration error : "+e.getMessage());
-   throw new RuntimeException("BioStd webapp initialization failed",e);
-  }
-
-  if(tinf.getTimeZero() >= 0)
-  {
-   timer.scheduleAtFixedRate(tinf, tinf.getTimeZero(), tinf.getPeriod()*60*1000);
-
-   log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically ("+tinf.getPeriod()+"m)");
-  }
+  
  }
 
  public void stopServices()
  {
-  
   EntityManagerFactory emf = BackendConfig.getEntityManagerFactory();
   
-  if( BackendConfig.getServiceManager().getSessionManager() != null )
-   BackendConfig.getServiceManager().getSessionManager().shutdown();
-  
-  if( BackendConfig.getServiceManager().getSubmissionManager() != null )
-   BackendConfig.getServiceManager().getSubmissionManager().shutdown();
-
   if( BackendConfig.getExportTask() != null )
    BackendConfig.getExportTask().getTask().interrupt();
-  
+
+  if( BackendConfig.getServiceManager() != null )
+   BackendConfig.getServiceManager().shutdown();
+
   
   if( BackendConfig.getTimer() != null )
    BackendConfig.getTimer().cancel();
   
+  BackendConfig.setTimer(null);
+  
   if( emf != null )
    emf.close();
-  
  }
 
  
@@ -414,6 +423,8 @@ public class ConfigurationManager
  {
   String dbURLStr = cfgBean.getDatabaseConfig().get(HibernateDBConnectionURLParameter).toString();
   
+  cfgBean.getDatabaseConfig().put(IsEmbeddedH2Parameter, "false");
+  
   if( dbURLStr == null )
    return;
   
@@ -450,6 +461,17 @@ public class ConfigurationManager
   if( ! "file".equalsIgnoreCase(proto) )
    pathStr = dbURLStr.substring(p2+1);
    
+  cfgBean.getDatabaseConfig().put(IsEmbeddedH2Parameter, "true");
+  
+  int p4 = pathStr.indexOf(';');
+  
+  String paramStr = "";
+  if( p4 > 0 )
+  {
+   paramStr = pathStr.substring(p4);
+   pathStr = pathStr.substring(0,p4);
+  }
+  
   Path path = Paths.get(pathStr);
   
   if( path.isAbsolute() )
@@ -460,7 +482,9 @@ public class ConfigurationManager
 
   path = baseP.resolve(path);
   
-  cfgBean.getDatabaseConfig().put(HibernateDBConnectionURLParameter,"jdbc:h2:file:"+FileNameUtil.toUnixPath(path));
+  pathStr = "jdbc:h2:file:"+path.toString()+paramStr;
+  
+  cfgBean.getDatabaseConfig().put(HibernateDBConnectionURLParameter,pathStr);
  }
 
  private void adjustSearchIndexPath(ConfigBean cfgBean, Path baseP) throws ConfigurationException
@@ -534,7 +558,7 @@ public class ConfigurationManager
   dbConf.put("hibernate.connection.password","");
   dbConf.put("hibernate.cache.use_query_cache","false");
   dbConf.put("hibernate.ejb.discard_pc_on_close","true");
-  dbConf.put(HibernateDBConnectionURLParameter,"jdbc:h2:db");
+  dbConf.put(HibernateDBConnectionURLParameter,"jdbc:h2:db/appdb;IFEXISTS=FALSE");
   dbConf.put("hibernate.dialect","org.hibernate.dialect.H2Dialect");
   dbConf.put("hibernate.hbm2ddl.auto","update");
   dbConf.put("hibernate.c3p0.max_size","30");
@@ -567,16 +591,16 @@ public class ConfigurationManager
   cfgBean.setDefaultSubmissionAccPrefix("S-");
   
   cfgBean.setActivationEmailSubject("Account activation request");
-  cfgBean.setActivationEmailPlainTextFile( new JavaResource("/resources/mail/activationMail.txt"));
-  cfgBean.setActivationEmailHtmlFile( new JavaResource("/resources/mail/activationMail.html"));
+  cfgBean.setActivationEmailPlainTextFile( new JavaResource("/resources/email/activationMail.txt"));
+  cfgBean.setActivationEmailHtmlFile( new JavaResource("/resources/email/activationMail.html"));
   
   cfgBean.setPassResetEmailSubject("Password reset request");
-  cfgBean.setPassResetEmailPlainTextFile( new JavaResource("/resources/mail/passResetMail.txt"));
-  cfgBean.setPassResetEmailHtmlFile( new JavaResource("/resources/mail/passResetMail.html"));
+  cfgBean.setPassResetEmailPlainTextFile( new JavaResource("/resources/email/passResetMail.txt"));
+  cfgBean.setPassResetEmailHtmlFile( new JavaResource("/resources/email/passResetMail.html"));
 
   cfgBean.setSubscriptionEmailSubject("Subscription notification");
-  cfgBean.setSubscriptionEmailPlainTextFile( new JavaResource("/resources/mail/subscriptionMail.txt"));
-  cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/mail/subscriptionMail.html"));
+  cfgBean.setSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/subscriptionMail.txt"));
+  cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/email/subscriptionMail.html"));
 
   
  }
@@ -962,6 +986,12 @@ public class ConfigurationManager
    return true;
   }
   
+  if( UIURLParameter.equals(param) )
+  {
+   cfg.setUIURL(val);
+   return true;
+  }
+  
   if( UpdateURLParameter.equals(param) )
   {
    int pos = val.indexOf(UpdateURLFilePlaceholder);
@@ -1065,6 +1095,12 @@ public class ConfigurationManager
    return true;
   }
   
+  if( RecapchaPublicKeyParameter.equals(param) )
+  {
+   cfg.setRecapchaPublicKey(val);
+   return true;
+  }
+
   if( RecapchaPrivateKeyParameter.equals(param) )
   {
    cfg.setRecapchaPrivateKey(val);

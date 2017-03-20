@@ -42,6 +42,8 @@ public class BackendConfig
  public static final String AccNoPlaceHolderRx= "\\{ACCNO\\}";
  public static final String TitlePlaceHolderRx= "\\{TITLE\\}";
  public static final String SbmTitlePlaceHolderRx= "\\{SBTITLE\\}";
+ public static final String MailToPlaceHolderRx= "\\{MAILTO\\}";
+ public static final String UIURLPlaceHolderRx= "\\{UIURL\\}";
  public static final String TypePlaceHolderRx= "\\{TYPE\\}";
  public static final String TagsPlaceHolderRx= "\\{TAGS(:[^}]*)?\\}";
  
@@ -298,6 +300,11 @@ public class BackendConfig
  }
 
 
+ public static String getRecapchaPublicKey()
+ {
+  return conf.getRecapchaPublicKey();
+ }
+ 
  public static String getRecapchaPrivateKey()
  {
   return conf.getRecapchaPrivateKey();
@@ -322,6 +329,11 @@ public class BackendConfig
  public static String getUpdateListenerURLPrefix()
  {
   return conf.getUpdateListenerURLPfx();
+ }
+ 
+ public static String getUIURL()
+ {
+  return conf.getUIURL();
  }
  
  public static String getUpdateListenerURLPostfix()
@@ -535,6 +547,7 @@ public class BackendConfig
  {
   conf.setTimer(timer);
  }
+
 
 
 }

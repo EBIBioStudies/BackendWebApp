@@ -12,6 +12,9 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.SessionAnonymous;
 import uk.ac.ebi.biostd.authz.SessionAuthenticated;
@@ -40,11 +43,12 @@ public class SessionManagerImpl implements SessionManager, Runnable
  
  private int anonSessCount=0;
  
+ private static Logger log = LoggerFactory.getLogger(SessionManagerImpl.class);
+ 
  public SessionManagerImpl( File sdr )
  {
   sessDirRoot=sdr;
   
-  controlThread.setName("Session GC");
   controlThread.setDaemon(true);
   
   controlThread.start();
@@ -133,6 +137,8 @@ public class SessionManagerImpl implements SessionManager, Runnable
  {
   shutdown = true;
   controlThread.interrupt();
+  
+  log.info("Shutting down session manager");
  }
  
  @Override
@@ -144,7 +150,7 @@ public class SessionManagerImpl implements SessionManager, Runnable
  @Override
  public void run()
  {
-  Thread.currentThread().setName("Session manager watchdog");
+  Thread.currentThread().setName("Session manager cleanup");
   
   while( ! shutdown )
   {
@@ -202,6 +208,9 @@ public class SessionManagerImpl implements SessionManager, Runnable
    }
 
   }
+  
+  log.info("Terminating session manager cleanup thread");
+
  }
 
  final static String algorithm="SHA1";
@@ -317,10 +326,12 @@ public class SessionManagerImpl implements SessionManager, Runnable
    Session sess = threadMap.remove(Thread.currentThread());
    
    if( sess != null )
+   {
     sess.setCheckedIn( false );
    
-   if( sess.isAnonymouns() )
-    sess.destroy();
+    if( sess.isAnonymouns() )
+     sess.destroy();
+   }
    
    return sess;
   }

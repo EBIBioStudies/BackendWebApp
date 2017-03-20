@@ -31,4 +31,6 @@ public interface ServiceManager
  void setEmailService(EmailService emailService);
 
  TagManager getTagManager();
+
+ void shutdown();
 }

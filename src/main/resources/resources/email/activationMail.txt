@@ -1,0 +1,11 @@
+Dear {USERNAME} 
+
+You have received this email because you have signed up for a BioStudies
+database account. To activate your account please click on the following link
+{URL}
+
+If you experience any problems, please contact us at {MAILTO}
+
+Regards
+BioStudies Team
+

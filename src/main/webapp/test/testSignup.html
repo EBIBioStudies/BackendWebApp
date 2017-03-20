@@ -5,8 +5,9 @@
 <title>Insert title here</title>
 
 <!--  <script type="text/javascript" src="http://www.google.com/recaptcha/api/js/recaptcha_ajax.js"></script>  -->
-<script src='https://www.google.com/recaptcha/api.js'></script>
 
+<script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+    
 <script type="text/javascript">
 
 	String.prototype.escapeSpecialChars = function() {
@@ -20,19 +21,40 @@
 	            .replace(/\\f/g, "\\f");
 	};
 
-<!--	 
+	 
  function showRecaptcha(element)
  {
-  Recaptcha.create("6Lcmlv0SAAAAAHofnIcb29l1LMZsnGFcSlH8Reve", element,
+  console.log('showRecaptcha call: '+element);
+  
+  var xmlhttp = new XMLHttpRequest();
+  
+  xmlhttp.onreadystatechange = function()
   {
-   theme : "red",
-   callback : Recaptcha.focus_response_field
-  });
- }
--->
+   if (xmlhttp.readyState != 4)
+    return;
 
- function signup()
- {
+   //console.log('Server reply: '+xmlhttp.responseText+" state: "+xmlhttp.readyState);
+   
+   if( xmlhttp.responseText.startsWith("OK") )
+   {
+    var rkey = xmlhttp.responseText.substring(3);
+    console.log("R-Key("+rkey.length+")='"+rkey+"'")
+    
+    grecaptcha.render(element, {
+     'sitekey' : rkey,
+     'theme' : 'dark'
+    });
+
+   }
+  }
+  
+  xmlhttp.open("GET", "../prefs/recaptcha_key", true);
+  xmlhttp.send();
+
+
+ }
+
+ function signup() {
   var login = document.getElementById("login").value;
   var pass1 = document.getElementById("pass1").value;
   var pass2 = document.getElementById("pass2").value;
@@ -42,128 +64,108 @@
   var aux1 = document.getElementById("aux1").value.trim();
   var aux2 = document.getElementById("aux2").value.trim();
   var aux3 = document.getElementById("aux3").value.trim();
-  
-  if( email.length == 0 )
-  {
+
+  if (email.length == 0) {
    msg("Email can't be empty");
    return;
   }
-  
-  if( pass1 != pass2 )
-  {
+
+  if (pass1 != pass2) {
    msg("Password doesn't match");
    return;
-  }   
-  
+  }
+
   var xmlhttp = new XMLHttpRequest();
-  
-  xmlhttp.onreadystatechange = function()
-  {
+
+  xmlhttp.onreadystatechange = function() {
    if (xmlhttp.readyState != 4)
     return;
-   
-//   Recaptcha.reload();
-   grecaptcha.reset() 
- 
+
+   //   Recaptcha.reload();
+   grecaptcha.reset()
+
    var ctype = xmlhttp.getResponseHeader("Content-type");
-   
-   if( ctype != null )
-   {
+
+   if (ctype != null) {
     var pos = ctype.indexOf(';');
-    
-    if( pos != -1 )
-     ctype = ctype.substring(0,pos);
-    
+
+    if (pos != -1)
+     ctype = ctype.substring(0, pos);
+
     ctype = ctype.trim();
    }
-   
-   var jsonObj;
-   
-   if( ctype == "application/json")
-    jsonObj = JSON.parse(xmlhttp.responseText);
-   
-   var msg="";
-   
-   if( xmlhttp.status == 200 )
-   {
-    msg +="Request succeeded Status: 200";
-    
-    if( jsonObj != null )
-    {
-     msg+="\nHello "+jsonObj.username+"\nSession key: "+jsonObj.sessid;
 
-     msg+="\n\nParameters:"
-     
-      for ( var k in jsonObj) 
-      {
-       if (Array.isArray(jsonObj[k])) 
-       {
-        for (var j = 0; j < jsonObj[k].length; j++)
-         msg += "\n" + k + "[" + j + "]=" + jsonObj[k][j];
-       } 
-       else
-        msg += "\n"+ k + "=" + jsonObj[k];
-      }
+   var jsonObj;
+
+   if (ctype == "application/json")
+    jsonObj = JSON.parse(xmlhttp.responseText);
+
+   var msg = "";
+
+   if (xmlhttp.status == 200) {
+    msg += "Request succeeded Status: 200";
+
+    if (jsonObj != null) {
+     msg += "\nHello " + jsonObj.username + "\nSession key: " + jsonObj.sessid;
+
+     msg += "\n\nParameters:"
+
+     for ( var k in jsonObj) {
+      if (Array.isArray(jsonObj[k])) {
+       for (var j = 0; j < jsonObj[k].length; j++)
+        msg += "\n" + k + "[" + j + "]=" + jsonObj[k][j];
+      } else
+       msg += "\n" + k + "=" + jsonObj[k];
+     }
     }
-    
+
+   } else {
+    msg += "Request failed. Status: " + xmlhttp.status;
+
+    if (jsonObj != null)
+     msg += "\nError message: " + jsonObj.message;
    }
-   else
-   {
-    msg +="Request failed. Status: "+xmlhttp.status;
-    
-    if( jsonObj != null )
-     msg+="\nError message: "+jsonObj.message;
-   }
-   
-   
-   
+
    document.getElementById("response").innerHTML = msg;
   }
-  
-  var auxp = "";
-  
-  if( aux1.length > 0 )
-   auxp += "\""+aux1.escapeSpecialChars()+"\",\n";
 
-  if( aux2.length > 0 )
-   auxp += "\""+aux2.escapeSpecialChars()+"\",\n";
-  
-  if( aux3.length > 0 )
-   auxp += "\""+aux3.escapeSpecialChars()+"\",\n";
-  
-  if( auxp.length > 0 )
-   auxp = ",\n\"aux\": ["+auxp.substring(0, auxp.length-2)+"\n]\n"
-  
+  var auxp = "";
+
+  if (aux1.length > 0)
+   auxp += "\"" + aux1.escapeSpecialChars() + "\",\n";
+
+  if (aux2.length > 0)
+   auxp += "\"" + aux2.escapeSpecialChars() + "\",\n";
+
+  if (aux3.length > 0)
+   auxp += "\"" + aux3.escapeSpecialChars() + "\",\n";
+
+  if (auxp.length > 0)
+   auxp = ",\n\"aux\": [" + auxp.substring(0, auxp.length - 2) + "\n]\n"
+
   xmlhttp.open("POST", "../auth/signup", true);
   xmlhttp.setRequestHeader("Content-type", "application/json");
 
   xmlhttp.send("{ login: \"" + login.escapeSpecialChars() + "\","
-   +"password: \"" + pass1.escapeSpecialChars()  +  "\","
-   +"username: \"" + uname.escapeSpecialChars()  +  "\","
-   +"email: \"" + email.escapeSpecialChars()  +  "\","
-   +"activationURL: \"" + activationURL.escapeSpecialChars()  +  "\","
-   +"recaptcha2-response: \"" + grecaptcha.getResponse().escapeSpecialChars()  +  "\""
-   +auxp
-   + "}");
-//   +"recaptcha_challenge: \"" + Recaptcha.get_challenge().escapeSpecialChars()  +  "\","
-//   +"recaptcha_response: \"" + Recaptcha.get_response().escapeSpecialChars()  +  "\","
-//   + "}");
+    + "password: \"" + pass1.escapeSpecialChars() + "\"," + "username: \""
+    + uname.escapeSpecialChars() + "\"," + "email: \""
+    + email.escapeSpecialChars() + "\"," + "activationURL: \""
+    + activationURL.escapeSpecialChars() + "\"," + "recaptcha2-response: \""
+    + grecaptcha.getResponse().escapeSpecialChars() + "\"" + auxp + "}");
+  //   +"recaptcha_challenge: \"" + Recaptcha.get_challenge().escapeSpecialChars()  +  "\","
+  //   +"recaptcha_response: \"" + Recaptcha.get_response().escapeSpecialChars()  +  "\","
+  //   + "}");
 
-  
-  
  }
- 
- function msg( txt )
- {
-  document.getElementById("response").innerHTML=txt;
+
+ function msg(txt) {
+  document.getElementById("response").innerHTML = txt;
  }
- 
- 
- </script>
+</script>
 
 
 </head>
-<body > <!--  onLoadXXX="showRecaptcha('captcha')"  -->
+<body onload="showRecaptcha('captcha')"> <!--  onLoadXXX="showRecaptcha('captcha')"  -->
 
 <div style="margin: 50px">
 
@@ -182,8 +184,8 @@
 </table>
 <br/>
 <form>
-<!--  <div id="captcha"></div>  -->
-<div class="g-recaptcha" data-sitekey="6Lcmlv0SAAAAAHofnIcb29l1LMZsnGFcSlH8Reve"></div>
+<div id="captcha"></div>
+<!-- <div class="g-recaptcha" data-sitekey="6Lcmlv0SAAAAAHofnIcb29l1LMZsnGFcSlH8Reve"></div>  -->
 </form>
 <br/>
 <button onClick="signup()"> Signup </button>

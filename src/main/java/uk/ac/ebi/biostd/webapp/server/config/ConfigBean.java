@@ -15,6 +15,7 @@ import uk.ac.ebi.biostd.webapp.server.util.Resource;
 public class ConfigBean
 {
  private String               dataMountPath;
+ private String               recapchaPublicKey;
  private String               recapchaPrivateKey;
 
  private ServiceManager       defaultServiceManager;
@@ -77,6 +78,7 @@ public class ConfigBean
  private Map<String, Object> emailConfig;
  private TaskConfig taskConfig;
  private Timer timer;
+ private String uiURL;
 
 
  public String getDataMountPath()
@@ -88,7 +90,18 @@ public class ConfigBean
  {
   this.dataMountPath = dataMountPath;
  }
+ 
 
+ public String getRecapchaPublicKey()
+ {
+  return recapchaPublicKey;
+ }
+
+ public void setRecapchaPublicKey(String key)
+ {
+  this.recapchaPublicKey = key;
+ }
+ 
  public String getRecapchaPrivateKey()
  {
   return recapchaPrivateKey;
@@ -515,4 +528,15 @@ public class ConfigBean
  {
   this.timer = timer;
  }
+
+ public void setUIURL(String val)
+ {
+  uiURL=val;
+ }
+ 
+ public String getUIURL()
+ {
+  return uiURL;
+ }
+
 }

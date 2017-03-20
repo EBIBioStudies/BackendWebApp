@@ -1,5 +1,11 @@
 package uk.ac.ebi.biostd.webapp.server;
 
+import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
@@ -55,8 +61,40 @@ public class WebAppInit implements ServletContextListener
  @Override
  public void contextDestroyed(ServletContextEvent arg0)
  {
-  if( BackendConfig.isConfigValid() )
+  
+  if(BackendConfig.isConfigValid())
    BackendConfig.getConfigurationManager().stopServices();
+  
+  if( "true".equals(BackendConfig.getDatabaseConfig().get(ConfigurationManager.IsEmbeddedH2Parameter).toString()) )
+  {
+
+   Connection conn;
+   try
+   {
+    conn = DriverManager.getConnection(BackendConfig.getDatabaseConfig().get(ConfigurationManager.HibernateDBConnectionURLParameter).toString(), "", "");
+
+    Statement stat = conn.createStatement();
+    stat.execute("SHUTDOWN");
+    stat.close();
+    conn.close();
+   }
+   catch(SQLException e)
+   {
+    // TODO Auto-generated catch block
+    e.printStackTrace();
+   }
+
+  }
+  
+  try
+  {
+   Driver h2Drv = DriverManager.getDriver("jdbc:h2:xxx");
+   if(h2Drv != null)
+    DriverManager.deregisterDriver(h2Drv);
+  }
+  catch(SQLException e)
+  {
+  }
  }
 
  
@@ -67,9 +105,14 @@ public class WebAppInit implements ServletContextListener
   {
    contextInitializedUnsafe(ctxEv);
   }
+  catch( ConfigurationException ec )
+  {
+   log.error("Configuration is not valid: "+ec.getMessage());
+   BackendConfig.setConfigValid(false);
+  }
   catch(Throwable e)
   {
-   log.error("Configuration is not ready: "+e.getMessage());
+   log.error("Configuration is not valid: "+e.getMessage(),e);
    BackendConfig.setConfigValid(false);
   }
  }
@@ -85,8 +128,6 @@ public class WebAppInit implements ServletContextListener
   
   BackendConfig.setConfigValid(true);
 
-  
-  BackendConfig.getConfigurationManager().startServices();
 
   
 /*
