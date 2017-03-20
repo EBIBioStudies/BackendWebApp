@@ -230,7 +230,7 @@ public class PrefsServlet extends ServiceServlet
     response.getWriter().print("OK "+keyPub);
    return;
   }
-  
+
  }
  
  @Override

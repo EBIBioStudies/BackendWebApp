@@ -538,5 +538,4 @@ public class ConfigBean
  {
   return uiURL;
  }
-
 }

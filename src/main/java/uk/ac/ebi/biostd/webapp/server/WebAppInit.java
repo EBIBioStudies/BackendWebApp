@@ -61,7 +61,6 @@ public class WebAppInit implements ServletContextListener
  @Override
  public void contextDestroyed(ServletContextEvent arg0)
  {
-  
   if(BackendConfig.isConfigValid())
    BackendConfig.getConfigurationManager().stopServices();
   
@@ -95,6 +94,7 @@ public class WebAppInit implements ServletContextListener
   catch(SQLException e)
   {
   }
+
  }
 
  
@@ -127,7 +127,6 @@ public class WebAppInit implements ServletContextListener
   BackendConfig.getConfigurationManager().loadConfiguration();
   
   BackendConfig.setConfigValid(true);
-
 
   
 /*

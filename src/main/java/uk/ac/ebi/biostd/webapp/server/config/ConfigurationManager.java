@@ -299,7 +299,7 @@ public class ConfigurationManager
    }
    
    IndexManager.rebuildIndex( BackendConfig.getEntityManagerFactory() );
- }
+  }
   
   BackendConfig.setServiceManager( ServiceFactory.createService( ) );
   
@@ -354,7 +354,26 @@ public class ConfigurationManager
    }
   }
   
+  EntityManagerFactory emf = BackendConfig.getEntityManagerFactory();
+  
+  if( BackendConfig.getServiceManager().getSessionManager() != null )
+   BackendConfig.getServiceManager().getSessionManager().shutdown();
+  
+  if( BackendConfig.getServiceManager().getSubmissionManager() != null )
+   BackendConfig.getServiceManager().getSubmissionManager().shutdown();
+
+  if( BackendConfig.getExportTask() != null )
+   BackendConfig.getExportTask().getTask().interrupt();
+  
+  
+  if( BackendConfig.getTimer() != null )
+   BackendConfig.getTimer().cancel();
+  
+  if( emf != null )
+   emf.close();
+  
  }
+
 
  public void stopServices()
  {
@@ -601,7 +620,6 @@ public class ConfigurationManager
   cfgBean.setSubscriptionEmailSubject("Subscription notification");
   cfgBean.setSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/subscriptionMail.txt"));
   cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/email/subscriptionMail.html"));
-
   
  }
 
