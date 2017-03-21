@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Insert title here</title>
 
-<script src='https://www.google.com/recaptcha/api.js'></script>
+<script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
 
 <script type="text/javascript">
 
@@ -19,6 +19,34 @@ String.prototype.escapeSpecialChars = function() {
                .replace(/\\f/g, "\\f");
 };
 
+
+function showRecaptcha(element)
+{
+ 
+ var xmlhttp = new XMLHttpRequest();
+ 
+ xmlhttp.onreadystatechange = function()
+ {
+  if (xmlhttp.readyState != 4)
+   return;
+
+  if( xmlhttp.responseText.startsWith("OK") )
+  {
+   var rkey = xmlhttp.responseText.substring(3);
+
+   grecaptcha.render(element, {
+    'sitekey' : rkey,
+    'theme' : 'dark'
+   });
+
+  }
+ }
+ 
+ xmlhttp.open("GET", "../prefs/recaptcha_key", true);
+ xmlhttp.send();
+
+
+}
 
  function getParameter(name) 
  {
@@ -107,7 +135,7 @@ String.prototype.escapeSpecialChars = function() {
 </script>
 
 </head>
-<body>
+<body onload="showRecaptcha('captcha')">
 
 <br/>
 <script type="text/javascript">
@@ -135,8 +163,8 @@ showMessage();
 </table>
 
 <form>
-<!--  <div id="captcha"></div>  -->
-<div class="g-recaptcha" data-sitekey="6Lcmlv0SAAAAAHofnIcb29l1LMZsnGFcSlH8Reve"></div>
+<div id="captcha"></div>
+<!-- <div class="g-recaptcha" data-sitekey="6Lcmlv0SAAAAAHofnIcb29l1LMZsnGFcSlH8Reve"></div>   -->
 </form>
 
 <pre id="report">

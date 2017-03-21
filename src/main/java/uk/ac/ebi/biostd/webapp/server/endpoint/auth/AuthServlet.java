@@ -16,10 +16,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import net.tanesha.recaptcha.ReCaptcha;
-import net.tanesha.recaptcha.ReCaptchaFactory;
-import net.tanesha.recaptcha.ReCaptchaResponse;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.json.JSONException;
@@ -27,6 +23,9 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.tanesha.recaptcha.ReCaptcha;
+import net.tanesha.recaptcha.ReCaptchaFactory;
+import net.tanesha.recaptcha.ReCaptchaResponse;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
@@ -702,6 +701,12 @@ public class AuthServlet extends ServiceServlet
  
  private boolean checkRecaptchas(ReqResp rqrs, String failURL) throws IOException
  {
+  String pubK = BackendConfig.getRecapchaPublicKey();
+  String privK = BackendConfig.getRecapchaPrivateKey();
+  
+  if( pubK == null || pubK.length() == 0 || privK == null || privK.length() == 0 )
+   return true;
+  
   ParameterPool prms = rqrs.getParameterPool();
   Response resp = rqrs.getResponse();
 
@@ -740,7 +745,7 @@ public class AuthServlet extends ServiceServlet
    
    
    
-   ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", BackendConfig.getRecapchaPrivateKey(), false);
+   ReCaptcha reCaptcha = ReCaptchaFactory.newReCaptcha("", privK, false);
    
    ReCaptchaResponse reCaptchaResponse = reCaptcha.checkAnswer(prms.getClientAddress(), cptChal, cptResp);
    

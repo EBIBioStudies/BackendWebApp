@@ -48,7 +48,6 @@ import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileResource;
-import uk.ac.ebi.biostd.webapp.server.util.JavaResource;
 import uk.ac.ebi.biostd.webapp.server.util.MapParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.ParamPool;
 import uk.ac.ebi.biostd.webapp.server.util.PreferencesParamPool;
@@ -159,7 +158,7 @@ public class ConfigurationManager
     if( ! checkReset( prefs.get(ConfigurationResetParameter, null), "app preferences" ) )
     {
      if( ! checkReset( contextParamPool.getParameter(ConfigurationResetParameter), "webapp" ) )
-      loadDefaults( cfgBean );
+      DefaultConfiguration.loadDefaults( cfgBean );
      
      readConfiguration(contextParamPool, cfgBean);
     }
@@ -177,7 +176,7 @@ public class ConfigurationManager
   if( ! loaded )
   {
    if( ! checkReset( contextParamPool.getParameter(ConfigurationResetParameter), "webapp" ) )
-    loadDefaults( cfgBean );
+    DefaultConfiguration.loadDefaults( cfgBean );
    
    readConfiguration(contextParamPool, cfgBean);
   }
@@ -568,60 +567,6 @@ public class ConfigurationManager
   return false;
  }
 
- private void loadDefaults(ConfigBean cfgBean)
- {
-  Map<String, Object> dbConf = cfgBean.getDatabaseConfig();
-  
-  dbConf.put("hibernate.connection.driver_class","org.h2.Driver");
-  dbConf.put("hibernate.connection.username","");
-  dbConf.put("hibernate.connection.password","");
-  dbConf.put("hibernate.cache.use_query_cache","false");
-  dbConf.put("hibernate.ejb.discard_pc_on_close","true");
-  dbConf.put(HibernateDBConnectionURLParameter,"jdbc:h2:db/appdb;IFEXISTS=FALSE");
-  dbConf.put("hibernate.dialect","org.hibernate.dialect.H2Dialect");
-  dbConf.put("hibernate.hbm2ddl.auto","update");
-  dbConf.put("hibernate.c3p0.max_size","30");
-  dbConf.put("hibernate.c3p0.min_size","0");
-  dbConf.put("hibernate.c3p0.timeout","5000");
-  dbConf.put("hibernate.c3p0.max_statements","0");
-  dbConf.put("hibernate.c3p0.idle_test_period","300");
-  dbConf.put("hibernate.c3p0.acquire_increment","2");
-  dbConf.put("hibernate.c3p0.unreturnedConnectionTimeout","18000");
-  dbConf.put(HibernateSearchIndexDirParameter,"index");
-  dbConf.put("hibernate.search.default.directory_provider","filesystem");
-  dbConf.put("hibernate.search.lucene_version","LUCENE_54");
-
-  cfgBean.setCreateFileStructure(true);
-  cfgBean.setFileLinkAllowed(true);
-  
-  cfgBean.setWorkDirectory(Paths.get("work"));
-  cfgBean.setSubmissionsPath(Paths.get("submission"));
-  cfgBean.setSubmissionsHistoryPath(Paths.get("history"));
-  cfgBean.setSubmissionsTransactionPath(Paths.get("transaction"));
-  cfgBean.setSubmissionUpdatePath(Paths.get("updates"));
-  cfgBean.setUserGroupIndexPath(Paths.get("ug_index"));
-  cfgBean.setUserGroupDropboxPath(Paths.get("ug_data"));
-  
-  cfgBean.setUpdateWaitPeriod(10);
-  cfgBean.setMaxUpdatesPerFile(50);
-  
-  cfgBean.setMandatoryAccountActivation(false);
-  
-  cfgBean.setDefaultSubmissionAccPrefix("S-");
-  
-  cfgBean.setActivationEmailSubject("Account activation request");
-  cfgBean.setActivationEmailPlainTextFile( new JavaResource("/resources/email/activationMail.txt"));
-  cfgBean.setActivationEmailHtmlFile( new JavaResource("/resources/email/activationMail.html"));
-  
-  cfgBean.setPassResetEmailSubject("Password reset request");
-  cfgBean.setPassResetEmailPlainTextFile( new JavaResource("/resources/email/passResetMail.txt"));
-  cfgBean.setPassResetEmailHtmlFile( new JavaResource("/resources/email/passResetMail.html"));
-
-  cfgBean.setSubscriptionEmailSubject("Subscription notification");
-  cfgBean.setSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/subscriptionMail.txt"));
-  cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/email/subscriptionMail.html"));
-  
- }
 
  public static boolean readConfiguration( ParamPool config, ConfigBean cfgBean ) throws ConfigurationException
  {
@@ -714,7 +659,7 @@ public class ConfigurationManager
     if( emailConfig == null )
      emailConfig = new HashMap<String, Object>();
     
-    dbConfig.put(key.substring(EmailParamPrefix.length()), val);
+    emailConfig.put(key.substring(EmailParamPrefix.length()), val);
    }
    else
     log.warn("Invalid parameter {} will be ignored.", key);
@@ -949,6 +894,13 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
 
+  String pubK = BackendConfig.getRecapchaPublicKey();
+  String privK = BackendConfig.getRecapchaPrivateKey();
+  
+  if( pubK == null || pubK.length() == 0 )
+   log.warn(RecapchaPublicKeyParameter+" parameter is not set. Recaptcha will be disabled!");
+  else if( privK == null || privK.length() == 0 )
+   log.warn(RecapchaPrivateKeyParameter+" parameter is not set. Recaptcha will be disabled!");
 
  }
  

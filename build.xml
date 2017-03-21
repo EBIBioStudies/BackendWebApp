@@ -4,6 +4,7 @@
 	<property name="build" location="build"/>
 	<property name="dist" location="dist"/>
 	<property name="webapp" location="src/main/webapp"/>
+	<property name="res" location="src/main/resources"/>
 	<property name="src" location="src/main/java"/>
 
 	
@@ -54,6 +55,9 @@
 			</fileset>
 		</copy>
 		
+		<copy todir="${build}/WEB-INF/classes">
+			<fileset dir="${res}" />
+		</copy>
 
 		  <java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
 		    <classpath>
