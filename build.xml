@@ -4,6 +4,7 @@
 	<property name="build" location="build"/>
 	<property name="dist" location="dist"/>
 	<property name="webapp" location="src/main/webapp"/>
+	<property name="res" location="src/main/resources"/>
 	<property name="src" location="src/main/java"/>
 
 	
@@ -54,6 +55,9 @@
 			</fileset>
 		</copy>
 		
+		<copy todir="${build}/WEB-INF/classes">
+			<fileset dir="${res}" />
+		</copy>
 
 		  <java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
 		    <classpath>
@@ -63,7 +67,7 @@
 			 <file file="${gwt.home}/validation-api-1.0.0.GA.jar"/>
 			 <file file="${gwt.home}/validation-api-1.0.0.GA-sources.jar"/>
 		   </classpath>
-		   <jvmarg value="-Xmx2G" />
+		   <jvmarg value="-Xmx1200M" />
 		   <arg value="-war" />
 		   <arg value="${build}" />
 		   <arg value="uk.ac.ebi.biostd.BioStdWebApp" />
