@@ -283,7 +283,7 @@ public class ConfigurationManager
    BackendConfig.setSearchEnabled( true );
   }
   
-  BackendConfig.setEntityManagerFactory( Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig) );
+  BackendConfig.setEntityManagerFactory(  Persistence.createEntityManagerFactory("BioStdCoreModel", dbConfig) );
 
   if( rebuildIndex )
   {
@@ -352,25 +352,7 @@ public class ConfigurationManager
     log.info("Task '" + tinf.getTask().getName() + "' is scheduled to run periodically ("+tinf.getPeriod()+"m)");
    }
   }
-  
-  EntityManagerFactory emf = BackendConfig.getEntityManagerFactory();
-  
-  if( BackendConfig.getServiceManager().getSessionManager() != null )
-   BackendConfig.getServiceManager().getSessionManager().shutdown();
-  
-  if( BackendConfig.getServiceManager().getSubmissionManager() != null )
-   BackendConfig.getServiceManager().getSubmissionManager().shutdown();
 
-  if( BackendConfig.getExportTask() != null )
-   BackendConfig.getExportTask().getTask().interrupt();
-  
-  
-  if( BackendConfig.getTimer() != null )
-   BackendConfig.getTimer().cancel();
-  
-  if( emf != null )
-   emf.close();
-  
  }
 
 

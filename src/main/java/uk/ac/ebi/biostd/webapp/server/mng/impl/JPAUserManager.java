@@ -10,6 +10,8 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 
+import com.pri.log.Log;
+
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserData;
@@ -31,8 +33,6 @@ import uk.ac.ebi.biostd.webapp.server.mng.exception.UserAlreadyActiveException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserMngException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotActiveException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotFoundException;
-
-import com.pri.log.Log;
 
 
 public class JPAUserManager implements UserManager, SessionListener
@@ -480,7 +480,7 @@ public class JPAUserManager implements UserManager, SessionListener
    }
    catch(Exception e2)
    {
-    Log.error("Can't set directory permissions: " + e2.getMessage());
+    Log.warn("Can't set directory permissions: " + e2.getMessage());
    }
   }
 
@@ -500,7 +500,7 @@ public class JPAUserManager implements UserManager, SessionListener
   }
   catch(Exception e2)
   {
-   Log.error("System can't create symbolic links: " + e2.getMessage());
+   Log.warn("System can't create symbolic links: " + e2.getMessage());
   }
 
  }

@@ -59,7 +59,11 @@ public class IndexManager implements Runnable
    log.error("Can't initialize Hibernate search: "+e.getMessage());
   }
   
-  fullTextEntityManager.close();
+  if( fullTextEntityManager.isOpen() )
+   fullTextEntityManager.close();
+  
+  if( entityManager.isOpen() )
+   entityManager.close();
  }
 
  static class IndexingMonitor implements MassIndexerProgressMonitor

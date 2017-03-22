@@ -21,7 +21,9 @@
 	            .replace(/\\f/g, "\\f");
 	};
 
-	 
+
+ recatcha_ok=false;	
+	
  function showRecaptcha(element)
  {
   console.log('showRecaptcha call: '+element);
@@ -45,6 +47,7 @@
      'theme' : 'dark'
     });
 
+    recatcha_ok=true;
    }
   }
   
@@ -82,7 +85,8 @@
     return;
 
    //   Recaptcha.reload();
-   grecaptcha.reset()
+   if( recatcha_ok )
+    grecaptcha.reset()
 
    var ctype = xmlhttp.getResponseHeader("Content-type");
 
@@ -146,12 +150,19 @@
   xmlhttp.open("POST", "../auth/signup", true);
   xmlhttp.setRequestHeader("Content-type", "application/json");
 
-  xmlhttp.send("{ login: \"" + login.escapeSpecialChars() + "\","
-    + "password: \"" + pass1.escapeSpecialChars() + "\"," + "username: \""
-    + uname.escapeSpecialChars() + "\"," + "email: \""
-    + email.escapeSpecialChars() + "\"," + "activationURL: \""
-    + activationURL.escapeSpecialChars() + "\"," + "recaptcha2-response: \""
-    + grecaptcha.getResponse().escapeSpecialChars() + "\"" + auxp + "}");
+  var req = "{ login: \"" + login.escapeSpecialChars() + "\","
+  + "password: \"" + pass1.escapeSpecialChars() + "\"," + "username: \""
+  + uname.escapeSpecialChars() + "\"," + "email: \""
+  + email.escapeSpecialChars() + "\"," + "activationURL: \""
+  + activationURL.escapeSpecialChars();
+  
+  if( recatcha_ok )
+   req += "\"," + "recaptcha2-response: \""
+   + grecaptcha.getResponse().escapeSpecialChars();
+  
+  req +=  "\"" + auxp + "}";
+  
+  xmlhttp.send(req);
   //   +"recaptcha_challenge: \"" + Recaptcha.get_challenge().escapeSpecialChars()  +  "\","
   //   +"recaptcha_response: \"" + Recaptcha.get_response().escapeSpecialChars()  +  "\","
   //   + "}");

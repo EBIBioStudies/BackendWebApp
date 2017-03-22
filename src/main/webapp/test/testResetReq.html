@@ -19,6 +19,8 @@ String.prototype.escapeSpecialChars = function() {
                .replace(/\\f/g, "\\f");
 };
 
+recatcha_ok=false;	
+
 
 function showRecaptcha(element)
 {
@@ -39,6 +41,7 @@ function showRecaptcha(element)
     'theme' : 'dark'
    });
 
+   recatcha_ok=true;
   }
  }
  
@@ -64,8 +67,13 @@ function showRecaptcha(element)
 
   xmlhttp.onreadystatechange = function() {
    if (xmlhttp.readyState == 4) {
-    var ctype = xmlhttp.getResponseHeader("Content-type");
+    
+	var ctype = xmlhttp.getResponseHeader("Content-type");
 
+	if( recatcha_ok )
+	 grecaptcha.reset()
+
+	
     if (ctype != null) {
      var pos = ctype.indexOf(';');
 
@@ -103,11 +111,12 @@ function showRecaptcha(element)
   xmlhttp.open("POST", "../auth/passrstreq", true);
   xmlhttp.setRequestHeader("Content-type", "application/json");
 
-  var req = "{\"email\": \"" + email.escapeSpecialChars()  +  "\",\n"
-   +"\"recaptcha2-response\": \"" + grecaptcha.getResponse().escapeSpecialChars()  +  "\"";
-  
-  resetURL
-  
+  var req = "{\"email\": \"" + email.escapeSpecialChars()  +  "\"";
+	  
+  if( recatcha_ok )
+	   req += ",\nrecaptcha2-response: \""
+	   + grecaptcha.getResponse().escapeSpecialChars()+  "\"";
+	  
   if( resetURL.length > 0 )
    req+= ",\n\"resetURL\": \""+resetURL.escapeSpecialChars()  +  "\"";
 

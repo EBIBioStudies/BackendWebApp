@@ -67,7 +67,7 @@
 			 <file file="${gwt.home}/validation-api-1.0.0.GA.jar"/>
 			 <file file="${gwt.home}/validation-api-1.0.0.GA-sources.jar"/>
 		   </classpath>
-		   <jvmarg value="-Xmx2G" />
+		   <jvmarg value="-Xmx1200M" />
 		   <arg value="-war" />
 		   <arg value="${build}" />
 		   <arg value="uk.ac.ebi.biostd.BioStdWebApp" />
