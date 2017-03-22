@@ -77,18 +77,19 @@ public class ConfigurationManager
  public static final String             BaseDirParameter                    = "baseDir";
  
  public static final String             CreateFileStructureParameter        = "createFileStructure";
- public static final String             WorkdirParameter                    = "workDir";
 
- public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
+ public static final String             WorkdirParameter                    = "workDir";
  public static final String             UserGroupDirParameter               = "userGroupDir";
  public static final String             UserGroupIndexDirParameter          = "userGroupIndexDir";
- public static final String             PublicDropboxesParameter            = "publicDropboxes";
  public static final String             SubmissionDirParameter              = "submissionDir";
- public static final String             SubmissionTransactionDirParameter   = "submissionTransactionDir";
  public static final String             SubmissionHistoryDirParameter       = "submissionHistoryDir";
- public static final String             AllowFileLinksParameter             = "allowFileLinks";
+ public static final String             SubmissionTransactionDirParameter   = "submissionTransactionDir";
  public static final String             PublicFTPDirParameter               = "publicFTPDir";
  public static final String             SubmissionUpdateParameter           = "updateDir";
+ public static final String             PublicDropboxesParameter            = "publicDropboxes";
+
+ public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
+ public static final String             AllowFileLinksParameter             = "allowFileLinks";
  public static final String             UpdateURLParameter                  = "updateListenerURL";
  public static final String             UpdateURLFilePlaceholder            = "{file}";
  public static final String             UpdateWaitPeriodParameter           = "updateWaitPeriod";

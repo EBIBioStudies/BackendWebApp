@@ -25,10 +25,13 @@ public class FormSubmitServlet extends ServiceServlet
 {
  private static final long serialVersionUID = 1L;
 
+ public static final String convertOperation = "convert";
+ 
  public static final String typeParameter = "type";
  public static final String validateOnlyParameter = "validateOnly";
  public static final String ignoreAbsentFilesParameter = "ignoreAbsentFiles";
  public static final String opParameter = "op";
+ public static final String outFormat = "outFormat";
 
 
  @Override
@@ -121,6 +124,11 @@ public class FormSubmitServlet extends ServiceServlet
    }
   }
   
+  if( act == null && convertOperation.equalsIgnoreCase(pi) )
+  {
+   Converter.convert( IOUtils.toByteArray(filePart.getInputStream()), fmt, req.getParameter(outFormat), response );
+   return;
+  }
   if( Operation.DELETE == act || Operation.CHOWN == act || Operation.REMOVE == act || Operation.SETMETA == act || Operation.TRANKLUCATE == act )
    act=null;
   

@@ -5,10 +5,8 @@ import static uk.ac.ebi.biostd.in.pageml.PageMLAttributes.ID;
 import static uk.ac.ebi.biostd.in.pageml.PageMLElements.SUBMISSION;
 import static uk.ac.ebi.biostd.util.StringUtils.xmlEscaped;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
@@ -45,12 +43,9 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.WildcardQuery;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.hibernate.search.jpa.FullTextEntityManager;
 import org.hibernate.search.jpa.FullTextQuery;
 import org.hibernate.search.jpa.Search;
-import org.odftoolkit.simple.SpreadsheetDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,24 +54,16 @@ import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.db.TagResolver;
 import uk.ac.ebi.biostd.idgen.Counter;
 import uk.ac.ebi.biostd.idgen.IdGen;
 import uk.ac.ebi.biostd.in.AccessionMapping;
 import uk.ac.ebi.biostd.in.ElementPointer;
 import uk.ac.ebi.biostd.in.PMDoc;
 import uk.ac.ebi.biostd.in.ParserConfig;
-import uk.ac.ebi.biostd.in.ParserException;
 import uk.ac.ebi.biostd.in.SubmissionMapping;
-import uk.ac.ebi.biostd.in.json.JSONReader;
 import uk.ac.ebi.biostd.in.pagetab.FileOccurrence;
-import uk.ac.ebi.biostd.in.pagetab.PageTabSyntaxParser;
 import uk.ac.ebi.biostd.in.pagetab.SectionOccurrence;
 import uk.ac.ebi.biostd.in.pagetab.SubmissionInfo;
-import uk.ac.ebi.biostd.model.AbstractAttribute;
-import uk.ac.ebi.biostd.model.Annotated;
-import uk.ac.ebi.biostd.model.FileRef;
-import uk.ac.ebi.biostd.model.Link;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionAttributeException;
@@ -101,11 +88,7 @@ import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 import uk.ac.ebi.biostd.webapp.shared.tags.TagRef;
-import uk.ac.ebi.mg.spreadsheet.SpreadsheetReader;
 import uk.ac.ebi.mg.spreadsheet.cell.XSVCellStream;
-import uk.ac.ebi.mg.spreadsheet.readers.CSVTSVSpreadsheetReader;
-import uk.ac.ebi.mg.spreadsheet.readers.ODSpreadsheetReader;
-import uk.ac.ebi.mg.spreadsheet.readers.XLSpreadsheetReader;
 
 public class JPASubmissionManager implements SubmissionManager
 {
@@ -159,11 +142,11 @@ public class JPASubmissionManager implements SubmissionManager
  
  private boolean shutDownManager = false;
  
- private ParserConfig parserCfg;
  private UpdateQueueProcessor queueProc = null;
  private boolean shutdown;
  private EntityManagerFactory emf;
  
+ private PTDocumentParser parser;
  
 // private Map<String, Integer> __accVerMap = new HashMap<String, Integer>();
  
@@ -174,10 +157,12 @@ public class JPASubmissionManager implements SubmissionManager
 
   shutdown=false;
 
-  parserCfg = new ParserConfig();
+  ParserConfig parserCfg = new ParserConfig();
   
   parserCfg.setMultipleSubmissions(true);
   parserCfg.setPreserveId(false);
+  
+  parser = new PTDocumentParser(parserCfg);
   
   if( BackendConfig.getSubmissionUpdatePath() != null )
   {
@@ -669,152 +654,10 @@ public class JPASubmissionManager implements SubmissionManager
   }
  }
  
- private PMDoc parseDocument(byte[] data, DataFormat type, String charset, TagResolver tagRslv, LogNode gln)
- {
-  PMDoc doc = null;
-  SpreadsheetReader reader = null;
-
-  switch(type)
-  {
-   case xml:
-
-    gln.log(Level.ERROR, "XML submission are not supported yet");
-
-    return null;
-
-   case json:
-
-    String txt = convertToText(data, charset, gln);
-
-    if(txt != null)
-     doc = new JSONReader(tagRslv, parserCfg).parse(txt, gln);
-
-    break;
-
-   case xlsx:
-   case xls:
-
-    try
-    {
-     Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(data));
-     reader = new XLSpreadsheetReader(wb);
-    }
-    catch(Exception e)
-    {
-     gln.log(Level.ERROR, "Can't read Excel file: " + e.getMessage());
-    }
-
-    break;
-
-   case ods:
-
-    try
-    {
-     SpreadsheetDocument odsdoc = SpreadsheetDocument.loadDocument(new ByteArrayInputStream(data));
-     reader = new ODSpreadsheetReader(odsdoc);
-    }
-    catch(Exception e)
-    {
-     gln.log(Level.ERROR, "Can't read ODS file: " + e.getMessage());
-    }
-
-    break;
-
-   case csv:
-   case tsv:
-   case csvtsv:
-
-    txt = convertToText(data, charset, gln);
-
-    if(txt != null)
-     reader = new CSVTSVSpreadsheetReader(txt, type == DataFormat.csv ? ',' : (type == DataFormat.tsv ? '\t' : '\0'));
-
-    break;
-
-   default:
-
-    gln.log(Level.ERROR, "Unsupported file type: " + type.name());
-    SimpleLogNode.setLevels(gln);
-    return null;
-
-  }
-
-  SimpleLogNode.setLevels(gln);
-
-  if(gln.getLevel() == Level.ERROR)
-   return null;
-
-  if(reader != null)
-  {
-   PageTabSyntaxParser prs = new PageTabSyntaxParser(tagRslv, parserCfg);
-
-   try
-   {
-    doc = prs.parse(reader, gln);
-   }
-   catch(ParserException e)
-   {
-    gln.log(Level.ERROR, "Parser exception: " + e.getMessage());
-    SimpleLogNode.setLevels(gln);
-    return null;
-   }
-  }
-  
-  for( SubmissionInfo si : doc.getSubmissions() )
-  {
-   Submission s = si.getSubmission();
-   
-   s.setId(0);
-   
-   cleanId( s.getRootSection() );
-  }
-  
-  return doc;
-
- }
  
- private void cleanId( Section sc )
- {
-  sc.setId(0);
-  
-  
-  cleanAnnotationId(sc);
-  
-  if( sc.getSections() != null )
-  {
-   for( Section ssc : sc.getSections() )
-    cleanId(ssc);
-  }
-  
-  if( sc.getFileRefs() != null )
-  {
-   for( FileRef fr : sc.getFileRefs() )
-   {
-    fr.setId(0);
-    cleanAnnotationId(fr);
-   }
-  }
-  
-  if( sc.getLinks() != null )
-  {
-   for( Link ln : sc.getLinks() )
-   {
-    ln.setId(0);
-    cleanAnnotationId(ln);
-   }
-  }
- }
+
  
- private void cleanAnnotationId( Annotated ent )
- {
-  if( ent.getAttributes() != null )
-  {
-   for( AbstractAttribute aa: ent.getAttributes() )
-   {
-    aa.setId(0);
-   }
-  }
- }
+
  
  private boolean checkAccNoPfxSfx( SubmissionInfo si )
  {
@@ -908,9 +751,8 @@ public class JPASubmissionManager implements SubmissionManager
   
   try
   {
-   doc = parseDocument(data, type, charset, new TagResolverImpl(em), gln);
+   doc = parser.parseDocument(data, type, charset, new TagResolverImpl(em), gln);
    
-
    if( doc == null )
    {
     em=null;
@@ -2030,30 +1872,7 @@ public class JPASubmissionManager implements SubmissionManager
   return true;
  }
 
- private String convertToText( byte[] data, String charset, LogNode ln )
- {
-  Charset cs = null;
-  
-  if( charset == null )
-  {
-   cs = Charset.forName("utf-8");
-   ln.log(Level.WARN, "Charset isn't specified. Assuming default 'utf-8'");
-  }
-  else
-  {
-   try
-   {
-    cs = Charset.forName(charset);
-   }
-   catch(Exception e)
-   {
-    ln.log(Level.ERROR, "System doen't support charser: '"+charset+"'");
-    return null;
-   }
-  }
-  
-  return new String(data,cs);
- }
+
 
  
 /*
