@@ -81,7 +81,7 @@ public class JSONSourceFixOutputModule implements OutputModule, TextStreamFormat
  @Override
  public void format(Submission sbm, Appendable arg1) throws IOException
  {
-  Path filesP = BackendConfig.getSubmissionFilesPath(sbm);
+  Path filesP = BackendConfig.getSubmissionPath(sbm);
   
   try( PrintStream out = new PrintStream( filesP.resolve(sbm.getAccNo()+".json").toFile() ) )
   {
