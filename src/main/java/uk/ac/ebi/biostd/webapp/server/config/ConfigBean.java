@@ -15,8 +15,8 @@ import uk.ac.ebi.biostd.webapp.server.util.Resource;
 public class ConfigBean
 {
  private String               dataMountPath;
- private String               recapchaPublicKey;
- private String               recapchaPrivateKey;
+ private String               recaptchaPublicKey;
+ private String               recaptchaPrivateKey;
 
  private ServiceManager       defaultServiceManager;
  private EntityManagerFactory emf;
@@ -96,24 +96,24 @@ public class ConfigBean
  }
  
 
- public String getRecapchaPublicKey()
+ public String getRecaptchaPublicKey()
  {
-  return recapchaPublicKey;
+  return recaptchaPublicKey;
  }
 
- public void setRecapchaPublicKey(String key)
+ public void setRecaptchaPublicKey(String key)
  {
-  this.recapchaPublicKey = key;
+  this.recaptchaPublicKey = key;
  }
  
- public String getRecapchaPrivateKey()
+ public String getRecaptchaPrivateKey()
  {
-  return recapchaPrivateKey;
+  return recaptchaPrivateKey;
  }
 
- public void setRecapchaPrivateKey(String recapchaPrivateKey)
+ public void setRecaptchaPrivateKey(String recapchaPrivateKey)
  {
-  this.recapchaPrivateKey = recapchaPrivateKey;
+  this.recaptchaPrivateKey = recapchaPrivateKey;
  }
 
 

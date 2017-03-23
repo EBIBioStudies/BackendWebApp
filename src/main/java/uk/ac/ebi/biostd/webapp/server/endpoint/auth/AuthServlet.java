@@ -701,8 +701,8 @@ public class AuthServlet extends ServiceServlet
  
  private boolean checkRecaptchas(ReqResp rqrs, String failURL) throws IOException
  {
-  String pubK = BackendConfig.getRecapchaPublicKey();
-  String privK = BackendConfig.getRecapchaPrivateKey();
+  String pubK = BackendConfig.getRecaptchaPublicKey();
+  String privK = BackendConfig.getRecaptchaPrivateKey();
   
   if( pubK == null || pubK.length() == 0 || privK == null || privK.length() == 0 )
    return true;
@@ -856,7 +856,7 @@ public class AuthServlet extends ServiceServlet
 
    postData.append(URLEncoder.encode(BackendConfig.googleSecretParam, "UTF-8"));
    postData.append('=');
-   postData.append(URLEncoder.encode(BackendConfig.getRecapchaPrivateKey(), "UTF-8"));
+   postData.append(URLEncoder.encode(BackendConfig.getRecaptchaPrivateKey(), "UTF-8"));
 
    postData.append('&');
    postData.append(URLEncoder.encode(BackendConfig.googleResponseParam, "UTF-8"));

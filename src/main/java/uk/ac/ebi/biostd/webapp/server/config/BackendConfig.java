@@ -305,14 +305,14 @@ public class BackendConfig
  }
 
 
- public static String getRecapchaPublicKey()
+ public static String getRecaptchaPublicKey()
  {
-  return conf.getRecapchaPublicKey();
+  return conf.getRecaptchaPublicKey();
  }
  
- public static String getRecapchaPrivateKey()
+ public static String getRecaptchaPrivateKey()
  {
-  return conf.getRecapchaPrivateKey();
+  return conf.getRecaptchaPrivateKey();
  }
 
 

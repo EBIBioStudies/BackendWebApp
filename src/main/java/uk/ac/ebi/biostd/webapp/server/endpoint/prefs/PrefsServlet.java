@@ -55,8 +55,8 @@ public class PrefsServlet extends ServiceServlet
    response.setStatus(HttpServletResponse.SC_OK);
    response.setContentType("text/plain");
    
-   String keyPub = BackendConfig.getRecapchaPublicKey();
-   String keyPriv = BackendConfig.getRecapchaPrivateKey();
+   String keyPub = BackendConfig.getRecaptchaPublicKey();
+   String keyPriv = BackendConfig.getRecaptchaPrivateKey();
    
    if( keyPub == null || keyPub.length() == 0 || keyPriv == null || keyPriv.length() == 0 )
     response.getWriter().print("FAIL recaptcha in not configured");

@@ -881,8 +881,8 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
 
-  String pubK = BackendConfig.getRecapchaPublicKey();
-  String privK = BackendConfig.getRecapchaPrivateKey();
+  String pubK = cfg.getRecaptchaPublicKey();
+  String privK = cfg.getRecaptchaPrivateKey();
   
   if( pubK == null || pubK.length() == 0 )
    log.warn(ServiceParamPrefix+RecaptchaPublicKeyParameter+" parameter is not set. Recaptcha will be disabled!");
@@ -1054,13 +1054,13 @@ public class ConfigurationManager
   
   if( RecaptchaPublicKeyParameter.equals(param) )
   {
-   cfg.setRecapchaPublicKey(val);
+   cfg.setRecaptchaPublicKey(val);
    return true;
   }
 
   if( RecaptchaPrivateKeyParameter.equals(param) )
   {
-   cfg.setRecapchaPrivateKey(val);
+   cfg.setRecaptchaPrivateKey(val);
    return true;
   }
 
