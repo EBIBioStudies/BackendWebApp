@@ -71,6 +71,10 @@ public class ConfigBean
 
  private boolean              searchEnabled              = false;
 
+ private boolean              webConfigEnabled           = true;
+
+
+
  private long                 activationTimeout;
  private long                 passResetTimeout;
 
@@ -537,5 +541,16 @@ public class ConfigBean
  public String getUIURL()
  {
   return uiURL;
+ }
+ 
+
+ public boolean isWebConfigEnabled()
+ {
+  return webConfigEnabled;
+ }
+
+ public void setWebConfigEnabled(boolean webConfigEnabled)
+ {
+  this.webConfigEnabled = webConfigEnabled;
  }
 }

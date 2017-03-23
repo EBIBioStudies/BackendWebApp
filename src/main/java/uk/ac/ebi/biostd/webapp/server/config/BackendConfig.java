@@ -102,6 +102,11 @@ public class BackendConfig
  {
   return configValid;
  }
+ 
+ public static boolean isWebConfigEnabled()
+ {
+  return conf.isWebConfigEnabled();
+ }
 
  public static void setConfigValid(boolean configValid)
  {

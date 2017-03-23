@@ -30,6 +30,8 @@ public class DefaultConfiguration
   dbConf.put("hibernate.search.default.directory_provider","filesystem");
   dbConf.put("hibernate.search.lucene_version","LUCENE_54");
 
+  cfgBean.setWebConfigEnabled(true);
+  
   cfgBean.setCreateFileStructure(true);
   cfgBean.setFileLinkAllowed(true);
   

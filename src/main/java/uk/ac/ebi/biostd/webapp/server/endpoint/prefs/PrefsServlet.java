@@ -48,6 +48,14 @@ public class PrefsServlet extends ServiceServlet
  @Override
  protected void service(HttpServletRequest request, HttpServletResponse response, Session sess) throws ServletException, IOException
  {
+  if( ! BackendConfig.isWebConfigEnabled() )
+  {
+   response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+   response.setContentType("text/plain");
+   response.getWriter().print("FAIL web based configuration is disabled");
+   return;
+  }
+
   if( sess == null || sess.isAnonymouns() )
   {
    if( BackendConfig.getServiceManager() != null && BackendConfig.getServiceManager().getUserManager() != null && BackendConfig.getServiceManager().getUserManager().getUsersNumber() != 0 )

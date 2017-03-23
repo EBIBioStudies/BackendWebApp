@@ -147,12 +147,13 @@ public class ConfigurationManager
   
   String dsblVal = contextParamPool.getParameter(DisablePreferencesConfigParameter);
   
-  boolean disPref = dsblVal != null && ( "yes".equalsIgnoreCase(dsblVal) || "true".equalsIgnoreCase(dsblVal) || "on".equalsIgnoreCase(dsblVal) || "1".equals(dsblVal) ); 
+  if( dsblVal != null )
+   cfgBean.setWebConfigEnabled("yes".equalsIgnoreCase(dsblVal) || "true".equalsIgnoreCase(dsblVal) || "on".equalsIgnoreCase(dsblVal) || "1".equals(dsblVal));
   
   boolean loaded = false;
   try
   {
-   if( ! disPref && Preferences.userRoot().nodeExists(ApplicationConfigNode) )
+   if( cfgBean.isWebConfigEnabled() && Preferences.userRoot().nodeExists(ApplicationConfigNode) )
    {
     Preferences prefs = Preferences.userRoot().node(ApplicationConfigNode);
     
