@@ -558,7 +558,7 @@ public class ConfigurationManager
   
   Map<String, Object> dbConfig = cfgBean.getDatabaseConfig();
   Map<String, Object> emailConfig = cfgBean.getEmailConfig();
-  TaskConfig taskConfig = null;
+  TaskConfig taskConfig = cfgBean.getTaskConfig();
   
   Matcher outMtch = Pattern.compile("^"+OutputParamPrefix+"(?:\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
 
@@ -607,7 +607,10 @@ public class ConfigurationManager
    else if(key.startsWith(TaskParamPrefix))
    {
     if(taskConfig == null)
+    {
      taskConfig = new TaskConfig("export");
+     cfgBean.setTaskConfig(taskConfig);
+    }
 
     String param = key.substring(TaskParamPrefix.length());
 
@@ -641,7 +644,10 @@ public class ConfigurationManager
    else if(key.startsWith(EmailParamPrefix))
    {
     if( emailConfig == null )
+    {
      emailConfig = new HashMap<String, Object>();
+     cfgBean.setEmailConfig(emailConfig);
+    }
     
     emailConfig.put(key, val);
    }
@@ -651,9 +657,6 @@ public class ConfigurationManager
    
   }
 
-  
-  cfgBean.setEmailConfig(emailConfig);
-  cfgBean.setTaskConfig(taskConfig);
   
   return confOk;
   
