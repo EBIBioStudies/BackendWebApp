@@ -124,7 +124,7 @@ public class ConfigurationManager
  public static final String             IsEmbeddedH2Parameter               = "isEmbeddedH2";
 
  
- public static final String             EmailInquiresParameter              = "inquiries";
+ public static final String             EmailInquiresParameter              = "email.inquiries";
  
  private ParamPool contextParamPool;
  
@@ -209,7 +209,7 @@ public class ConfigurationManager
     if( checkReset( rbpp.getParameter(ConfigurationResetParameter), "config file" ) )
      cfgBean = BackendConfig.createConfig(); 
     
-    readConfiguration( rbpp, cfgBean);
+    readConfiguration( rbpp, cfgBean );
    }
   }
 
@@ -643,7 +643,7 @@ public class ConfigurationManager
     if( emailConfig == null )
      emailConfig = new HashMap<String, Object>();
     
-    emailConfig.put(key.substring(EmailParamPrefix.length()), val);
+    emailConfig.put(key, val);
    }
    else
     log.warn("Invalid parameter {} will be ignored.", key);
