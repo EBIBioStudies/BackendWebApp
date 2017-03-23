@@ -71,14 +71,20 @@ public class ExporterMTControl
    {
     req.start();
     
-    BlockingQueue<Object> outQueue = new ArrayBlockingQueue<>(100);
-
-    StringBuilder sb = new StringBuilder();
-    req.getFormatter().separator(sb);
+    BlockingQueue<Object> outQueue = null;
     
-    String sep = sb.length()==0?null:sb.toString();
+    if( req.getOut() != null )
+    {
+     outQueue = new ArrayBlockingQueue<>(100);
+     
+     StringBuilder sb = new StringBuilder();
+     req.getFormatter().separator(sb);
+     
+     String sep = sb.length()==0?null:sb.toString();
+     
+     outputs.add(new OutputTask(req.getName()+"",req.getOut(), sep,  outQueue, controlMsgQueue));
+    }
     
-    outputs.add(new OutputTask(req.getName()+"",req.getOut(), sep,  outQueue, controlMsgQueue));
 
     formatters.add(new FormattingModule(req.getFormatter(), outQueue, limit));
    }

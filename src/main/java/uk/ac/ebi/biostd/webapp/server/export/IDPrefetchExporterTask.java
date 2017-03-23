@@ -87,9 +87,6 @@ public class IDPrefetchExporterTask implements MTExportTask
 
    needMoreData = true;
    
-   if(ft.getOutQueue() == null)
-    continue;
-   
    int restart = 0;
 
    while(true)
@@ -113,7 +110,7 @@ public class IDPrefetchExporterTask implements MTExportTask
    }
    
    
-   if( sb.length() > 0 )
+   if( sb.length() > 0 && ft.getOutQueue() != null )
     putIntoQueue(ft.getOutQueue(), sb.toString());
   }
   
@@ -157,7 +154,7 @@ public class IDPrefetchExporterTask implements MTExportTask
 
   objectCount = 0;
   
-  try( PrintWriter out = new NullPrintWriter(BackendConfig.getBaseDirectory().resolve("dump").resolve(procThread.getName()).toFile()) )
+  try( PrintWriter out = new NullPrintWriter(BackendConfig.getBaseDirectory().resolve("dump").resolve(procThread.getName()).toFile()) ) //Replace with real writer for debugging
   {
    StringBuilder sb = new StringBuilder();
 

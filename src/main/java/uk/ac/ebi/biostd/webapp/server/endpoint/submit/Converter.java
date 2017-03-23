@@ -54,7 +54,7 @@ public class Converter
   
    out.append(",\ndocument: ");
 
-   new JSONFormatter(response.getWriter(),false).format(doc);
+   new JSONFormatter(response.getWriter(), true).format(doc);
    
    out.append("\n}");
 
