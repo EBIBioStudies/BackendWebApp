@@ -115,8 +115,8 @@ public class ConfigurationManager
  
  public static final String             DataMountPathParameter              = "dataMountPath";
  
- public static final String             RecapchaPublicKeyParameter          = "recapcha_public_key";
- public static final String             RecapchaPrivateKeyParameter         = "recapcha_private_key";
+ public static final String             RecaptchaPublicKeyParameter          = "recaptcha_public_key";
+ public static final String             RecaptchaPrivateKeyParameter         = "recaptcha_private_key";
  
  public static final String             HibernateSearchIndexDirParameter    = "hibernate.search.default.indexBase";
  public static final String             HibernateDBConnectionURLParameter   = "hibernate.connection.url";
@@ -885,9 +885,9 @@ public class ConfigurationManager
   String privK = BackendConfig.getRecapchaPrivateKey();
   
   if( pubK == null || pubK.length() == 0 )
-   log.warn(RecapchaPublicKeyParameter+" parameter is not set. Recaptcha will be disabled!");
+   log.warn(ServiceParamPrefix+RecaptchaPublicKeyParameter+" parameter is not set. Recaptcha will be disabled!");
   else if( privK == null || privK.length() == 0 )
-   log.warn(RecapchaPrivateKeyParameter+" parameter is not set. Recaptcha will be disabled!");
+   log.warn(ServiceParamPrefix+RecaptchaPrivateKeyParameter+" parameter is not set. Recaptcha will be disabled!");
 
  }
  
@@ -1052,13 +1052,13 @@ public class ConfigurationManager
    return true;
   }
   
-  if( RecapchaPublicKeyParameter.equals(param) )
+  if( RecaptchaPublicKeyParameter.equals(param) )
   {
    cfg.setRecapchaPublicKey(val);
    return true;
   }
 
-  if( RecapchaPrivateKeyParameter.equals(param) )
+  if( RecaptchaPrivateKeyParameter.equals(param) )
   {
    cfg.setRecapchaPrivateKey(val);
    return true;
