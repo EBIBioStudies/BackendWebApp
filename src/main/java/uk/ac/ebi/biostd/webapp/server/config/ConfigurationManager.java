@@ -557,7 +557,7 @@ public class ConfigurationManager
 //  ConfigBean cfgBean = BackendConfig.createConfig(); 
   
   Map<String, Object> dbConfig = cfgBean.getDatabaseConfig();
-  Map<String, Object> emailConfig = new HashMap<String, Object>();
+  Map<String, Object> emailConfig = cfgBean.getEmailConfig();
   TaskConfig taskConfig = null;
   
   Matcher outMtch = Pattern.compile("^"+OutputParamPrefix+"(?:\\[\\s*(\\S+?)\\s*\\])?\\.(\\S+)$").matcher("");
