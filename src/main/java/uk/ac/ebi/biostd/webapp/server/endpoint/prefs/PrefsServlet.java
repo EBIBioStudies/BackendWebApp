@@ -48,6 +48,23 @@ public class PrefsServlet extends ServiceServlet
  @Override
  protected void service(HttpServletRequest request, HttpServletResponse response, Session sess) throws ServletException, IOException
  {
+  String opstr = request.getParameter(opParameter);
+
+  if( Op.RECAPTCHA_KEY.name().equalsIgnoreCase(opstr) )
+  {
+   response.setStatus(HttpServletResponse.SC_OK);
+   response.setContentType("text/plain");
+   
+   String keyPub = BackendConfig.getRecapchaPublicKey();
+   String keyPriv = BackendConfig.getRecapchaPrivateKey();
+   
+   if( keyPub == null || keyPub.length() == 0 || keyPriv == null || keyPriv.length() == 0 )
+    response.getWriter().print("FAIL recaptcha in not configured");
+   else
+    response.getWriter().print("OK "+keyPub);
+   return;
+  }
+  
   if( ! BackendConfig.isWebConfigEnabled() )
   {
    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -75,8 +92,7 @@ public class PrefsServlet extends ServiceServlet
   }
   
   
-  String opstr = request.getParameter(opParameter);
-  
+ 
   Op op = null;
   
   if( opstr == null )
@@ -224,20 +240,7 @@ public class PrefsServlet extends ServiceServlet
    }
   }
   
-  if( op == Op.RECAPTCHA_KEY)
-  {
-   response.setStatus(HttpServletResponse.SC_OK);
-   response.setContentType("text/plain");
-   
-   String keyPub = BackendConfig.getRecapchaPublicKey();
-   String keyPriv = BackendConfig.getRecapchaPrivateKey();
-   
-   if( keyPub == null || keyPub.length() == 0 || keyPriv == null || keyPriv.length() == 0 )
-    response.getWriter().print("FAIL recaptcha in not configured");
-   else
-    response.getWriter().print("OK "+keyPub);
-   return;
-  }
+
 
  }
  
