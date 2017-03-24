@@ -148,7 +148,7 @@ public class ConfigurationManager
   String dsblVal = contextParamPool.getParameter(DisablePreferencesConfigParameter);
   
   if( dsblVal != null )
-   cfgBean.setWebConfigEnabled("yes".equalsIgnoreCase(dsblVal) || "true".equalsIgnoreCase(dsblVal) || "on".equalsIgnoreCase(dsblVal) || "1".equals(dsblVal));
+   cfgBean.setWebConfigEnabled( ! ("yes".equalsIgnoreCase(dsblVal) || "true".equalsIgnoreCase(dsblVal) || "on".equalsIgnoreCase(dsblVal) || "1".equals(dsblVal) ) );
   
   boolean loaded = false;
   try
@@ -896,6 +896,9 @@ public class ConfigurationManager
  {
   val = val.trim();
   param = param.trim();
+  
+  if( ConfigurationResetParameter.equals(param) || DisablePreferencesConfigParameter.equals(param) )
+   return true;
   
   if( DefaultSubmissionAccPrefixParameter.equals(param) )
   {
