@@ -50,6 +50,14 @@ public class PrefsServlet extends ServiceServlet
  {
   String opstr = request.getParameter(opParameter);
 
+  if( opstr == null )
+  {
+   String pi = request.getPathInfo();
+
+   if(pi != null && pi.length() > 1)
+    opstr=pi.substring(1);
+  }
+  
   if( Op.RECAPTCHA_KEY.name().equalsIgnoreCase(opstr) )
   {
    response.setStatus(HttpServletResponse.SC_OK);
@@ -94,15 +102,7 @@ public class PrefsServlet extends ServiceServlet
   
  
   Op op = null;
-  
-  if( opstr == null )
-  {
-   String pi = request.getPathInfo();
-
-   if(pi != null && pi.length() > 1)
-    opstr=pi.substring(1);
-  }
-  
+   
   if( opstr != null )
   {
    for( Op o : Op.values() )
