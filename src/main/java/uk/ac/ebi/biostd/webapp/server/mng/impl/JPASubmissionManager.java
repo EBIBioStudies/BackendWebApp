@@ -1848,7 +1848,7 @@ public class JPASubmissionManager implements SubmissionManager
 
    try (PrintStream out = new PrintStream(trnSbmPath.resolve(si.getSubmission().getAccNo() + ".json").toFile()))
    {
-    new JSONFormatter(out, true).format(doc);
+    new JSONFormatter(out, true).format(si.getSubmission(),out);
    }
    catch(Exception e)
    {
@@ -3000,7 +3000,7 @@ public class JPASubmissionManager implements SubmissionManager
    
    try( PrintStream out = new PrintStream( trnSbmPath.resolve(sbm.getAccNo()+".json").toFile() ) )
    {
-    new JSONFormatter(out, true).format(doc);
+    new JSONFormatter(out, true).format(sbm,out);
    }
    catch (Exception e) 
    {

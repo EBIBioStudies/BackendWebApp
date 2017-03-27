@@ -71,7 +71,8 @@ public class ConfigurationManager
  public static final String             ConfigurationResetParameter         = "resetConfig";
  public static final String             DisablePreferencesConfigParameter   = "disableOnlineConfig";
 
- public static final String             UIURLParameter                      = "UIURL";
+ public static final String             UpdateURLFilePlaceholder            = "{file}";
+
 
  public static final String             BaseDirParameter                    = "baseDir";
  
@@ -89,11 +90,12 @@ public class ConfigurationManager
 
  public static final String             EnableUnsafeRequestsParameter       = "enableUnsafeRequests";
  public static final String             AllowFileLinksParameter             = "allowFileLinks";
+ 
  public static final String             UpdateURLParameter                  = "updateListenerURL";
- public static final String             UpdateURLFilePlaceholder            = "{file}";
  public static final String             UpdateWaitPeriodParameter           = "updateWaitPeriod";
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
  
+ public static final String             UIURLParameter                      = "UIURL";
  public static final String             MandatoryAccountActivationParameter = "mandatoryAccountActivation";
  public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
  public static final String             ActivationEmailPlainTextParameter   = "activationEmailPlainTextFile";

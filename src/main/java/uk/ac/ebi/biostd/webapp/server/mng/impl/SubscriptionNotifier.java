@@ -345,6 +345,28 @@ public class SubscriptionNotifier implements Runnable
     tBody = tBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
     hBody = hBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
 
+    
+    String from = BackendConfig.getEmailConfig().get(ConfigurationManager.EmailInquiresParameter).toString();
+
+    if(from == null)
+     from = BackendConfig.getEmailConfig().get("from").toString();
+
+    if(from == null)
+     from = "";
+
+    tBody = tBody.replaceAll(BackendConfig.MailToPlaceHolderRx, from);
+    hBody = hBody.replaceAll(BackendConfig.MailToPlaceHolderRx, from);
+
+    
+    String uiURL = BackendConfig.getUIURL();
+    
+    if(uiURL == null)
+     uiURL = "";
+
+    tBody = tBody.replaceAll(BackendConfig.UIURLPlaceHolderRx, uiURL);
+    hBody = hBody.replaceAll(BackendConfig.UIURLPlaceHolderRx, uiURL);
+
+    
     String[] body = new String[] { tBody, hBody };
 
     for(int i = 0; i < body.length; i++)

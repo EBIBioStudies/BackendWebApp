@@ -49,10 +49,17 @@ public class Converter
 
    SimpleLogNode.setLevels(gln);
 
-   out.append("{\nlog: ");
+   out.append("{\n\"status\": ");
+   
+   if( gln.getLevel().getPriority() < Level.ERROR.getPriority() )
+    out.append("\"OK\"");
+   else
+    out.append("\"FAIL\"");
+   
+   out.append(",\n\"log\": ");
    JSON4Log.convert(gln, out);
   
-   out.append(",\ndocument: ");
+   out.append(",\n\"document\": ");
 
    new JSONFormatter(response.getWriter(), true).format(doc);
    

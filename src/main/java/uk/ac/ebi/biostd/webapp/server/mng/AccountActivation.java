@@ -6,6 +6,7 @@ import org.apache.commons.io.Charsets;
 
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.config.ConfigurationManager;
 import uk.ac.ebi.biostd.webapp.server.util.Resource;
 
 public class AccountActivation
@@ -119,6 +120,24 @@ public class AccountActivation
      textBody = textBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
     else
      textBody = textBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, "");
+    
+    String from = BackendConfig.getEmailConfig().get(ConfigurationManager.EmailInquiresParameter).toString();
+
+    if(from == null)
+     from = BackendConfig.getEmailConfig().get("from").toString();
+
+    if(from == null)
+     from = "";
+
+    textBody = textBody.replaceAll(BackendConfig.MailToPlaceHolderRx, from);
+
+    
+    String uiURL = BackendConfig.getUIURL();
+    
+    if(uiURL == null)
+     uiURL = "";
+
+    textBody = textBody.replaceAll(BackendConfig.UIURLPlaceHolderRx, uiURL);
    }
    
    if( htmlFile != null )
@@ -135,6 +154,24 @@ public class AccountActivation
     else
      htmlBody = htmlBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, "");
 
+    String from = BackendConfig.getEmailConfig().get(ConfigurationManager.EmailInquiresParameter).toString();
+
+    if(from == null)
+     from = BackendConfig.getEmailConfig().get("from").toString();
+
+    if(from == null)
+     from = "";
+
+    htmlBody = htmlBody.replaceAll(BackendConfig.MailToPlaceHolderRx, from);
+
+    
+    String uiURL = BackendConfig.getUIURL();
+    
+    if(uiURL == null)
+     uiURL = "";
+
+    htmlBody = htmlBody.replaceAll(BackendConfig.UIURLPlaceHolderRx, uiURL);
+    
    }
   }
   catch(Exception e)

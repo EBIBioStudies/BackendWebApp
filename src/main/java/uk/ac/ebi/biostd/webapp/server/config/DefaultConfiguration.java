@@ -43,6 +43,10 @@ public class DefaultConfiguration
   cfgBean.setUserGroupIndexPath(Paths.get("ug_index"));
   cfgBean.setUserGroupDropboxPath(Paths.get("ug_data"));
   
+  cfgBean.setPublicDropboxes(false);
+  
+  cfgBean.setEnableUnsafeRequests(false);
+  
   cfgBean.setUpdateWaitPeriod(10);
   cfgBean.setMaxUpdatesPerFile(50);
   
