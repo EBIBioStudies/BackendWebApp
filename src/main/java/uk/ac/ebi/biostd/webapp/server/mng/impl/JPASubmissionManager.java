@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -54,8 +55,6 @@ import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.idgen.Counter;
-import uk.ac.ebi.biostd.idgen.IdGen;
 import uk.ac.ebi.biostd.in.AccessionMapping;
 import uk.ac.ebi.biostd.in.ElementPointer;
 import uk.ac.ebi.biostd.in.PMDoc;
@@ -83,6 +82,7 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionSearchRequest;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.AccNoMatcher.Match;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
@@ -974,11 +974,37 @@ public class JPASubmissionManager implements SubmissionManager
      }
     }
 
+    String accNoPat = Submission.getNodeAccNoPattern(si.getSubmission());
+    
+    if( accNoPat != null )
+    {
+     accNoPat = accNoPat.trim();
+     
+     if( accNoPat.length() == 0 )
+      accNoPat=null;
+     else
+     {
+      try
+      {
+       Pattern.compile(accNoPat);
+      }
+      catch(Exception e)
+      {
+       accNoPat=null;
+      }
+     }
+      
+     if( accNoPat == null )
+      si.getLogNode().log(Level.ERROR, "Invalid value of '" + Submission.canonicAccNoPattern + "' attribute. Must be valid regular expression");
+    }
 
     List<String> pAccL = Submission.getNodeAttachTo(si.getSubmission());
 
     if(pAccL != null && pAccL.size() != 0)
     {
+     List<Submission> notMatched = new ArrayList<Submission>();
+     boolean matched = false;
+     
      for(String pAcc : pAccL)
      {
       Submission s = getSubmissionByAcc(pAcc, em);
@@ -997,6 +1023,21 @@ public class JPASubmissionManager implements SubmissionManager
        submOk = false;
        continue;
       }
+      
+      AccNoMatcher.Match mtch = AccNoMatcher.match(si, s);
+      
+      if( mtch == Match.NO )
+       notMatched.add(s);
+      else if( mtch == Match.YES )
+       matched=true;
+     }
+     
+     if( !matched && notMatched.size() > 0 )
+     {
+      for( Submission nms : notMatched )
+       si.getLogNode().log(Level.ERROR, "AccNo doesn't match to host submission ("+nms.getAccNo()+") requirements: " + Submission.getNodeAccNoPattern(nms) );
+
+      submOk = false;
      }
     }
     
@@ -2232,7 +2273,7 @@ public class JPASubmissionManager implements SubmissionManager
   return gln;
 
  }
-*/
+
 
  private String getNextAccNo(String prefix, String suffix, EntityManager em)
  {
@@ -2294,7 +2335,7 @@ public class JPASubmissionManager implements SubmissionManager
 
   return sb.toString();
  }
-
+*/
 
  private void collectGlobalSecIds(Section sec, Set<String> globSecId)
  {
@@ -2635,6 +2676,7 @@ public class JPASubmissionManager implements SubmissionManager
  }
 
 
+ @SuppressWarnings("unchecked")
  @Override
  public Collection<Submission> searchSubmissions( User u, SubmissionSearchRequest ssr) throws ParseException
  {

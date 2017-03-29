@@ -102,7 +102,7 @@ public class FormattingOutputModule implements OutputModule
     }
     catch(NoSuchMethodException e1)
     {
-     throw new TaskConfigException("Output module '" + name + "': Can't fine appropriate constructor of class '" + fmtCls + "'");
+     throw new TaskConfigException("Output module '" + name + "': Can't find appropriate constructor of class '" + fmtCls + "'");
     }
    }
    catch(SecurityException e)
