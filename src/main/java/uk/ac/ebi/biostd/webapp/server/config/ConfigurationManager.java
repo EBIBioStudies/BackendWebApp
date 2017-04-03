@@ -1,3 +1,23 @@
+/**
+
+Copyright 2014-2017 Functional Genomics Development Team, European Bioinformatics Institute 
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+@author Mikhail Gostev <gostev@gmail.com>
+
+**/
+
 package uk.ac.ebi.biostd.webapp.server.config;
 
 import java.io.FileReader;
@@ -313,7 +333,13 @@ public class ConfigurationManager
   }
   catch(EmailInitException e)
   {
-   log.error("Can't initialize email service: "+e.getMessage());
+   if( BackendConfig.isMandatoryAccountActivation() )
+   {
+    log.error("Can't initialize email service: "+e.getMessage());
+    throw new RuntimeException("BioStd webapp initialization failed: mandatory activation with no email service");
+   }
+   else
+    log.warn("Can't initialize email service: "+e.getMessage());
   }
 
   
@@ -504,7 +530,7 @@ public class ConfigurationManager
    return;
   
   if( baseP == null || ! baseP.isAbsolute() )
-   throw new ConfigurationException("Can't resolve index relative path '"+iPath.toString()+"' "+BaseDirParameter+" is not set or not absolute");
+   throw new ConfigurationException("Can't resolve index relative path '"+iPath.toString()+"' "+BaseDirParameter+" is not set or not absolute: "+baseP);
 
   iPath = baseP.resolve(iPath);
   
@@ -522,7 +548,7 @@ public class ConfigurationManager
     return;
   
    if( baseP == null || ! baseP.isAbsolute() )
-    throw new ConfigurationException("Can't resolve resource relative path '"+rp.toString()+"' "+BaseDirParameter+" is not set or not absolute");
+    throw new ConfigurationException("Can't resolve resource relative path '"+rp.toString()+"' "+BaseDirParameter+" is not set or not absolute: "+baseP);
    
    fres.setPath(baseP.resolve(rp));
   }
@@ -534,7 +560,7 @@ public class ConfigurationManager
    return pth;
   
   if( basePath == null || ! basePath.isAbsolute() )
-   throw new ConfigurationException("Can't resolve relative path'"+pth.toString()+"' "+BaseDirParameter+" is not set or not absolute");
+   throw new ConfigurationException("Can't resolve relative path' "+pth.toString()+"' "+BaseDirParameter+" is not set or not absolute: "+basePath);
   
   return basePath.resolve(pth);
  }
