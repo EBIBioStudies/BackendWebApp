@@ -130,12 +130,12 @@ public class JPASubmissionManager implements SubmissionManager
   SubmissionDirState state;
  }
 
- private static final String GetHostSubByTypeQuery = "select sb from Submission sb join sb.rootSection rs where rs.type=:type";
+ private static final String GetHostSubByTypeQuery = "select sb from Submission sb join sb.rootSection rs where rs.type=:type and sb.version > 0";
 
- private static final String GetHostSubByTypeOwnerQuery = "select sb from Submission sb join sb.rootSection rs where rs.type=:type and sb.owner.id=:owner";
+ private static final String GetHostSubByTypeOwnerQuery = "select sb from Submission sb join sb.rootSection rs where rs.type=:type and sb.owner.id=:owner and sb.version > 0";
 
  private static final String GetHostSubByTypeOwnerAllowQuery = "select distinct sb from Submission sb join sb.rootSection rs join sb.accessTags at where rs.type=:type "
-   + "and (sb.owner.id=:owner OR at.id in :allow)";
+   + "and (sb.owner.id=:owner OR at.id in :allow) and sb.version > 0";
 
 // private static final String GetHostSubByTypeOwnerDenyQuery = null;
 //
