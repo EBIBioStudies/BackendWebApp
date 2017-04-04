@@ -64,6 +64,7 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
 import uk.ac.ebi.biostd.webapp.server.mng.IndexManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.SubscriptionProcessor;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
@@ -154,7 +155,7 @@ public class ConfigurationManager
 
  private static final long dayInMills = TimeUnit.DAYS.toMillis(1);
  private static final long hourInMills = TimeUnit.HOURS.toMillis(1);
- 
+
  public ConfigurationManager( ParamPool ctx )
  {
   if( log == null )
@@ -359,6 +360,16 @@ public class ConfigurationManager
    }
   }, hourInMills-(now % hourInMills) , hourInMills);
   
+
+  timer.scheduleAtFixedRate( new TimerTask()
+  {
+   @Override
+   public void run()
+   {
+    SubscriptionProcessor.proceccEvents();
+   }
+  }, dayInMills-(now % dayInMills) , dayInMills);
+
   if( BackendConfig.getTaskConfig() != null )
   {
    TaskInfo tinf = null;
