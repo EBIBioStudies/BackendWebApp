@@ -62,13 +62,19 @@ import uk.ac.ebi.biostd.authz.acr.TemplatePermGrpACR;
 import uk.ac.ebi.biostd.authz.acr.TemplatePermUsrACR;
 import uk.ac.ebi.biostd.authz.acr.TemplateProfGrpACR;
 import uk.ac.ebi.biostd.authz.acr.TemplateProfUsrACR;
+import uk.ac.ebi.biostd.idgen.Counter;
+import uk.ac.ebi.biostd.idgen.Domain;
+import uk.ac.ebi.biostd.idgen.IdGen;
 import uk.ac.ebi.biostd.model.SecurityObject;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.webapp.server.DBInitializer;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.ObjectClass;
+import uk.ac.ebi.biostd.webapp.server.mng.security.PermissionClass;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityManager;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SubjectClass;
 
 import com.pri.util.StringUtils;
 
@@ -1150,6 +1156,142 @@ public class SecurityManagerImpl implements SecurityManager
   return res;
  }
 
+ @Override
+ public void setPermission(PermissionClass pClass, String pID, SubjectClass sClass, String sID, ObjectClass oClass,
+   String oID, User user) throws SecurityException
+ {
+  mngPermProfile(pClass, pID, sClass, sID, oClass, oID, user, true);  
+ }
+
+ @Override
+ public void clearPermission(PermissionClass pClass, String pID, SubjectClass sClass, String sID, ObjectClass oClass,
+   String oID, User user) throws SecurityException
+ {
+  mngPermProfile(pClass, pID, sClass, sID, oClass, oID, user, false);  
+ }
+
+ private void mngPermProfile(PermissionClass pClass, String pID, SubjectClass sClass, String sID, ObjectClass oClass,
+   String oID, User user, boolean set) throws SecurityException
+ {
+  if( pClass == PermissionClass.Permission )
+  {
+   SystemAction act = null;
+   
+   for( SystemAction ac : SystemAction.values() )
+   {
+    if( ac.name().equalsIgnoreCase(pID) )
+    {
+     act = ac;
+     break;
+    }
+   }
+   
+   if( act == null )
+    throw new SecurityException("Invalid system action/permission: "+pID);
+   
+   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+   
+   if( oClass == ObjectClass.System )
+   {
+    if( ! user.isSuperuser() && ! checkSystemPermission(SystemAction.CHANGEACCESS, user) )
+     throw new SecurityException("Access denied");
+    
+    for( ACR acr : systemACR )
+    {
+//     if( (acr.getSubject() instanceof User && sClass==SubjectClass.User && ((User)acr.getSubject()).get.equals(sID)) )
+    }
+   }
+   
+   AuthzObject aObj = findAuthzObject(em,oClass,oID);
+  
+  }
+  
+ }
+
+ private AuthzObject findAuthzObject(EntityManager em, ObjectClass oClass, String oID)
+ {
+  Query q = null;
+  
+  switch(oClass)
+  {
+   case AccessTag:
+   case AccessTagDelegate:
+  
+    q = em.createQuery("select at from "+AccessTag.class.getName()+" ac where ac.name=:id");
+    
+    break;
+
+   case AuthzTemplate: 
+    
+    q = em.createQuery("select at from "+AuthorizationTemplate.class.getName()+" ac where ac.className=:id");
+    
+    break;
+    
+   case Counter:
+    
+    q = em.createQuery("select at from "+Counter.class.getName()+" ac where ac.name=:id");
+    
+    break;
+    
+   case Domain:
+    
+    q = em.createQuery("select at from "+Domain.class.getName()+" ac where ac.id=:id");
+    
+    break;
+
+   case UserGroup:
+
+    q = em.createQuery("select at from "+UserGroup.class.getName()+" ac where ac.name=:id");
+    
+    break;
+
+   
+   default:
+    break;
+  }
+  
+  if( q != null )
+  {
+   q.setParameter("id", oID);
+  }
+  else if( oClass == ObjectClass.IdGen )
+  {
+   String pfx=null;
+   String sfx=null;
+   
+   int pos = oID.indexOf(',');
+   
+   if( pos < 0 )
+    pfx = oID;
+   else
+   {
+    pfx = oID.substring(0,pos);
+    sfx = oID.substring(pos+1);
+   }
+   
+   if( pfx != null && pfx.length() == 0 )
+    pfx=null;
+
+   if( sfx != null && sfx.length() == 0 )
+    sfx=null;
+
+   q = em.createQuery("select g from "+IdGen.class.getName()+" g where ( (:prefix is null AND g.prefix is null ) OR g.prefix=:prefix) "
+     + "AND ( (:suffix is null AND g.suffix is null ) OR g.suffix=:suffix)");
+   
+   q.setParameter("prefix", pfx);
+   q.setParameter("suffix", sfx);
+  }
+
+  if( q == null )
+   return null;
+  
+  List<AuthzObject> res = q.getResultList();
+  
+  if( res.size() != 1 )
+   return null;
+  
+  return res.get(0);
+ }
 
 
 

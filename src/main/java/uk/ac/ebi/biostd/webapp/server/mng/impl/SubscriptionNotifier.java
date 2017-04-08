@@ -47,7 +47,7 @@ import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.config.ConfigurationManager;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityManager;
 
 public class SubscriptionNotifier implements Runnable
 {

@@ -18,7 +18,7 @@ limitations under the License.
 
 **/
 
-package uk.ac.ebi.biostd.webapp.server.mng;
+package uk.ac.ebi.biostd.webapp.server.mng.security;
 
 import java.util.Collection;
 
@@ -82,5 +82,8 @@ public interface SecurityManager
  boolean mayUserLockExport(User usr);
  
  int getUsersNumber();
+ 
+ void setPermission(PermissionClass pClass, String pID, SubjectClass sClass, String sID, ObjectClass oClass, String oID, User user)  throws SecurityException;
+ void clearPermission(PermissionClass pClass, String pID, SubjectClass sClass, String sID, ObjectClass oClass, String oID, User user)  throws SecurityException;
 
 }

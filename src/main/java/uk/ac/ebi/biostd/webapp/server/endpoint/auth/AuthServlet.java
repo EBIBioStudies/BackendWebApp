@@ -55,10 +55,10 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.Response;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.UserAuxXMLFormatter;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.KeyExpiredException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.SystemUserMngException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
 /**

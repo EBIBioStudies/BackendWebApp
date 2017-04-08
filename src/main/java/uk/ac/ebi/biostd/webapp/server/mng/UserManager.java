@@ -28,6 +28,7 @@ import uk.ac.ebi.biostd.authz.UserData;
 import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserMngException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
 
 public interface UserManager
 {

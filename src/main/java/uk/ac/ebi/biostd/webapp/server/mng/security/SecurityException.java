@@ -18,7 +18,7 @@ limitations under the License.
 
 **/
 
-package uk.ac.ebi.biostd.webapp.server.mng;
+package uk.ac.ebi.biostd.webapp.server.mng.security;
 
 public class SecurityException extends Exception
 {

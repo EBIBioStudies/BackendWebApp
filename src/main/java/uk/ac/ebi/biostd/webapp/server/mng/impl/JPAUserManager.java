@@ -40,7 +40,6 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation;
 import uk.ac.ebi.biostd.webapp.server.mng.AccountActivation.ActivationInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionListener;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.UserAuxXMLFormatter;
@@ -53,6 +52,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.exception.UserAlreadyActiveException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserMngException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotActiveException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.UserNotFoundException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
 
 
 public class JPAUserManager implements UserManager, SessionListener

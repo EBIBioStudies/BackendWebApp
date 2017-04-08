@@ -41,7 +41,7 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ReqResp;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ReqResp.Format;
 import uk.ac.ebi.biostd.webapp.server.endpoint.Response;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityManager;
 import uk.ac.ebi.biostd.webapp.shared.util.KV;
 
 import com.pri.util.collection.Collections;
