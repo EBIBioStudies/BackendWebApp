@@ -1368,17 +1368,17 @@ public class JPASubmissionManager implements SubmissionManager
   }
   
   
-  if( BackendConfig.getSubscriptionEmailSubject() != null )
-  {
-   for(SubmissionInfo si : doc.getSubmissions())
-   {
+  if( BackendConfig.getSubscriptionEmailSubject() != null ) {
+   for(SubmissionInfo si : doc.getSubmissions()) {
     Submission s = si.getSubmission();
 
-    if(s.getTagRefs() != null && s.getTagRefs().size() > 0 )
+    if(s.getTagRefs() != null && s.getTagRefs().size() > 0 ) {
      SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+    }
+    SubscriptionProcessor.processAsync(s);
    }
   }
-  
+
   return res;
  }
 
@@ -3082,9 +3082,13 @@ public class JPASubmissionManager implements SubmissionManager
     e.printStackTrace();
    }
   
-   if( BackendConfig.getSubscriptionEmailSubject() != null && nowPublic && ! wasPublic )
+   if( BackendConfig.getSubscriptionEmailSubject() != null && nowPublic && ! wasPublic ) {
     SubscriptionNotifier.notifyByTags(sbm.getTagRefs(), sbm);
-  
+    SubscriptionProcessor.processAsync(sbm);
+   }
+
+
+
   }
   
   return gln;

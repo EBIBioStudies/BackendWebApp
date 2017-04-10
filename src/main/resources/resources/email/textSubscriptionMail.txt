@@ -1,0 +1,12 @@
+Dear {USERNAME},
+Please note the following updates have become available in the BioStudies database that match your criteria:
+{SUBSCRIPTIONS}
+{ATTRIBUTE} matches {PATTERN}:
+{RESULTS}
+{TITLE}> (https://www.ebi.ac.uk/biostudies/studies/{ACCNO})
+{/RESULTS}
+{/SUBSCRIPTIONS}
+
+
+Regards,
+BioStudies team

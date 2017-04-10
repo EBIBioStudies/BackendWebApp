@@ -508,6 +508,16 @@ public class BackendConfig
   return conf.getSubscriptionEmailPlainTextFile();
  }
  
+ public static Resource getTextSubscriptionEmailHtmlFile()
+  {
+   return conf.getTextSubscriptionEmailHtmlFile();
+  }
+
+  public static Resource getTextSubscriptionEmailPlainTextFile()
+  {
+   return conf.getTextSubscriptionEmailPlainTextFile();
+  }
+
  public static String getSubscriptionEmailSubject()
  {
   return conf.getSubscriptionEmailSubject();

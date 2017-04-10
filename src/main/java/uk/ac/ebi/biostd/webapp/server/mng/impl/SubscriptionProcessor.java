@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-@author Andrew Tikhonov <andrew@gmail.com>
+@author Andrew Tikhonov <andrew.tikhonov@gmail.com>
 
 **/
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
@@ -27,9 +27,11 @@ import uk.ac.ebi.biostd.model.*;
 import uk.ac.ebi.biostd.util.FileUtil;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
+import uk.ac.ebi.biostd.webapp.server.util.Resource;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
+import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 import java.io.IOException;
 import java.util.*;
@@ -59,6 +61,10 @@ public class SubscriptionProcessor implements Runnable {
     static class AttributeContainer {
         Map<String, String> map;
         Set<String> nameset;
+        AttributeContainer() {
+            map = new HashMap<>();
+            nameset = new HashSet<>();
+        }
     }
 
     private static Logger log = null;
@@ -92,7 +98,6 @@ public class SubscriptionProcessor implements Runnable {
     private static synchronized BlockingQueue<ProcessorRequest> getQueue() {
         if (queue == null) {
             queue = new LinkedBlockingQueue<ProcessorRequest>();
-
             new Thread(new SubscriptionProcessor(), "SubscriptionProcessor").start();
         }
 
@@ -133,7 +138,7 @@ public class SubscriptionProcessor implements Runnable {
             List<Submission> submissions = query.getResultList();
 
             if (submissions.size() != 1) {
-                logger().warn("SubscriptionNotifier: submission not found or multiple results id=" + request.sbmId);
+                logger().warn("SubscriptionProcessor: submission not found or multiple results id=" + request.sbmId);
                 continue;
             }
 
@@ -146,76 +151,122 @@ public class SubscriptionProcessor implements Runnable {
 
     }
 
-    private AttributeContainer transformAttributes(List<? extends AbstractAttribute> submissionAttributes,
-                                                   List<? extends AbstractAttribute> sectionAttributes) {
-        AttributeContainer container = new AttributeContainer();
-        container.map = new HashMap<>();
-        container.nameset = new HashSet<>();
-
-        for(AbstractAttribute a : submissionAttributes) {
-            container.map.put(a.getName(), a.getValue());
-            container.nameset.add(a.getName());
+    private AttributeContainer collectAttributes(AttributeContainer container, String accession,
+                                                 String sectionName, List<? extends AbstractAttribute> attributes) {
+        container.nameset.add(sectionName);
+        if (accession != null) {
+            container.map.put(sectionName, accession);
         }
 
-        if (sectionAttributes != null) {
-            for(AbstractAttribute a : sectionAttributes) {
-                container.map.put(a.getName(), a.getValue());
-                container.nameset.add(a.getName());
-            }
+        for(AbstractAttribute a : attributes) {
+            String name = a.getName();
+            String key = sectionName + "." + name;
+
+            String value0 = container.map.get(key);
+            container.map.put(key,
+                    value0 == null ? a.getValue():
+                    value0 + "," + a.getValue());
+            container.nameset.add(name);
         }
 
         return container;
     }
 
+    private void traverseSections(AttributeContainer container, Section section) {
+
+        collectAttributes(container, section.getAccNo(), section.getType(), section.getAttributes());
+
+        for (FileRef ref : section.getFileRefs()) {
+            collectAttributes(container, ref.getName(), "File", ref.getAttributes());
+        }
+
+        for (Link l : section.getLinks()) {
+            collectAttributes(container, l.getUrl(), "Links", l.getAttributes());
+        }
+
+        for (Section s : section.getSections()) {
+            traverseSections(container, s);
+        }
+    }
+
     private void processOneSubmission(EntityManager entityMan, Submission submission) {
 
-        AttributeContainer container = transformAttributes(submission.getAttributes(),
-                submission.getRootSection() != null ?
-                        submission.getRootSection().getAttributes() :  null);
+        try {
+            AttributeContainer container = new AttributeContainer();
 
-        // get defined subscriptions
-        //
-        TypedQuery<TextSubscription> subscriptionQuery = entityMan.createNamedQuery(
-                TextSubscription.GetAllByAttributeQuery, TextSubscription.class);
-        subscriptionQuery.setParameter(TextSubscription.AttributeQueryParameter, container.nameset);
-        List<TextSubscription> subscriptionList = subscriptionQuery.getResultList();
-
-        String value0;
-
-        for (TextSubscription subscription : subscriptionList) {
-
-            // check map contains our attribute
+            // collect submission acttributes
             //
-            value0 = container.map.get(subscription.getAttribute());
-            if (value0 != null) {
+            collectAttributes(container, submission.getAccNo(),
+                    "Submission", submission.getAttributes());
 
-                // check value matches the pattern
+            // traverse sections and collect attributes
+            //
+            Section rootSection = submission.getRootSection();
+            if (rootSection != null) {
+                traverseSections(container, rootSection);
+            }
+
+            // get defined subscriptions
+            //
+            TypedQuery<TextSubscription> subscriptionQuery = entityMan.createNamedQuery(
+                    TextSubscription.GetAllByAttributeQuery, TextSubscription.class);
+            subscriptionQuery.setParameter(TextSubscription.AttributeQueryParameter, container.nameset);
+            List<TextSubscription> subscriptionList = subscriptionQuery.getResultList();
+
+            Set<Map.Entry<String, String>> set = container.map.entrySet();
+
+            for (TextSubscription subscription : subscriptionList) {
+
+                // check map contains our attribute
                 //
-                if (value0.contains(subscription.getPattern())) {
+                for (Map.Entry<String, String> entry : set) {
+                    if ( !entry.getKey().contains(subscription.getAttribute()) )
+                        continue;
 
-                    EntityTransaction transaction = entityMan.getTransaction();
+                    // check value matches the pattern
+                    //
+                    if (entry.getValue().contains(subscription.getPattern())) {
 
-                    transaction.begin();
 
-                    SubscriptionMatchEvent event = new SubscriptionMatchEvent();
-                    event.setSubmission(submission);
-                    event.setSubscription(subscription);
-                    event.setUser(subscription.getUser());
+                        // create event
+                        //
+                        EntityTransaction transaction = entityMan.getTransaction();
 
-                    entityMan.persist(event);
+                        SubscriptionMatchEvent event = new SubscriptionMatchEvent();
+                        event.setSubmission(submission);
+                        event.setSubscription(subscription);
+                        event.setUser(subscription.getUser());
 
-                    transaction.commit();
+                        transaction.begin();
+
+                        entityMan.persist(event);
+
+                        transaction.commit();
+
+                        // subscription matched
+                        break;
+                    }
                 }
             }
+        } catch (Exception ex) {
+            log.error("Error!", ex);
         }
 
         /*
-        new Thread(new Runnable() {
+        new Thread( new Runnable() {
             public void run() {
-                proceccEvents();
+                processEvents();
             }
         }).start();
         */
+
+
+        /*
+        new Thread( () -> processEvents() ).start();
+        new Thread( SubscriptionProcessor::processEvents ).start();
+        */
+
+
     }
 
     public static class EmailTemplates {
@@ -273,83 +324,79 @@ public class SubscriptionProcessor implements Runnable {
         return parts;
     }
 
-    public static void proceccEvents() {
+    public static void processEvents() {
 
         EmailTemplates htmlTemplates;
         EmailTemplates textTemplates;
 
         try {
-            //htmlTemplates = parseMessage(FileUtil.readFile(BackendConfig.getSubscriptionEmailHtmlFile().toFile(),
-            htmlTemplates = parseMessage(FileUtil.readFile(
-                    new java.io.File("/Users/andrew/project/EBIBioStudies/biostd/misc/textSubscriptionMail.html"),
-                    Charsets.UTF_8));
+            htmlTemplates = parseMessage(BackendConfig.getTextSubscriptionEmailHtmlFile().
+                    readToString(Charsets.UTF_8));
         } catch (IOException e1) {
             log.error("Error!", e1);
             return;
         }
 
         try {
-            //textTemplates = parseMessage(FileUtil.readFile(BackendConfig.getSubscriptionEmailPlainTextFile().toFile(),
-            textTemplates = parseMessage(FileUtil.readFile(
-                    new java.io.File("/Users/andrew/project/EBIBioStudies/biostd/misc/textSubscriptionMail.txt"),
-                    Charsets.UTF_8));
+            textTemplates = parseMessage(BackendConfig.getTextSubscriptionEmailPlainTextFile().
+                    readToString(Charsets.UTF_8));
         } catch (IOException e1) {
             log.error("Error!", e1);
             return;
         }
 
-        SecurityManager secMan = BackendConfig.getServiceManager().getSecurityManager();
+        try {
+            SecurityManager secMan = BackendConfig.getServiceManager().getSecurityManager();
 
-        EntityManager entityMan = BackendConfig.getEntityManagerFactory().createEntityManager();
+            EntityManager entityMan = BackendConfig.getEntityManagerFactory().createEntityManager();
 
-        // get all users with events
-        //
-        TypedQuery<User> userQuery = entityMan.createNamedQuery(
-                SubscriptionMatchEvent.GetAllUsersWithEventsQuery, User.class);
-        List<User> users = userQuery.getResultList();
-
-        for (User u : users) {
-
-            // check user is activated and has valid email
+            // get all users with events
             //
-            if (!u.isActive() || u.getEmail() == null || u.getEmail().length() < 6)
-                continue;
+            TypedQuery<User> userQuery = entityMan.createNamedQuery(
+                    SubscriptionMatchEvent.GetAllUsersWithEventsQuery, User.class);
+            List<User> users = userQuery.getResultList();
 
-            HashMap<Long, SubscriptionBatch> subscriptionResultMap = new HashMap<>();
+            for (User u : users) {
 
-            // get all subscriptions events
-            //
-            TypedQuery<SubscriptionMatchEvent> eventQquery = entityMan.createNamedQuery(
-                    SubscriptionMatchEvent.GetEventsByUserIdQuery, SubscriptionMatchEvent.class);
-
-            eventQquery.setParameter(SubscriptionMatchEvent.UserIdQueryParameter, u.getId());
-
-            List<SubscriptionMatchEvent> events = eventQquery.getResultList();
-
-            for (SubscriptionMatchEvent event : events) {
-                // skip submission if user may not "see" it
+                // check user is activated and has valid email
                 //
-                if (!secMan.mayUserReadSubmission(event.getSubmission(), u))
+                if (!u.isActive() || u.getEmail() == null || u.getEmail().length() < 6)
                     continue;
 
-                long id = event.getSubscription().getId();
+                HashMap<Long, SubscriptionBatch> subscriptionResultMap = new HashMap<>();
 
-                // batch results for each subscription
+                // get all subscriptions events
                 //
-                SubscriptionBatch batchData = subscriptionResultMap.get(id);
-                if (batchData == null) {
+                TypedQuery<SubscriptionMatchEvent> eventQuery = entityMan.createNamedQuery(
+                        SubscriptionMatchEvent.GetEventsByUserIdQuery, SubscriptionMatchEvent.class);
 
-                    // init stuffs
+                eventQuery.setParameter(SubscriptionMatchEvent.UserIdQueryParameter, u.getId());
+
+                List<SubscriptionMatchEvent> events = eventQuery.getResultList();
+
+                for (SubscriptionMatchEvent event : events) {
+                    // skip submission if user may not "see" it
                     //
-                    batchData = new SubscriptionBatch();
+                    if (!secMan.mayUserReadSubmission(event.getSubmission(), u))
+                        continue;
 
-                    String attribute = event.getSubscription().getAttribute();
-                    String pattern = event.getSubscription().getPattern();
+                    long id = event.getSubscription().getId();
 
-                    batchData.htmlSummary = htmlTemplates.subscription;
-                    batchData.textSummary = textTemplates.subscription;
+                    // batch results for each subscription
+                    //
+                    SubscriptionBatch batchData = subscriptionResultMap.get(id);
+                    if (batchData == null) {
 
-                    try {
+                        // init stuffs
+                        //
+                        batchData = new SubscriptionBatch();
+
+                        String attribute = event.getSubscription().getAttribute();
+                        String pattern = event.getSubscription().getPattern();
+
+                        batchData.htmlSummary = htmlTemplates.subscription;
+                        batchData.textSummary = textTemplates.subscription;
+
                         // <h4>{ATTRIBUTE} matches {PATTERN}:</h4>
                         batchData.htmlSummary = batchData.htmlSummary.replaceAll(AttributePlaceHolderRx,
                                 attribute);
@@ -361,265 +408,85 @@ public class SubscriptionProcessor implements Runnable {
                                 pattern);
                         batchData.textSummary = batchData.textSummary.replaceAll(PatternPlaceHolderRx,
                                 pattern);
-                    } catch (Exception ex) {
+
+                        batchData.htmlList = new StringBuilder();
+                        batchData.textList = new StringBuilder();
+                        subscriptionResultMap.put(id, batchData);
                     }
 
-                    batchData.htmlList = new StringBuilder();
-                    batchData.textList = new StringBuilder();
-                    subscriptionResultMap.put(id, batchData);
+                    // <b>{TITLE}</b> (<a href="https://www.ebi.ac.uk/biostudies/studies/{ACCNO}">https://www.ebi.ac.uk/biostudies/studies/{ACCNO}</a>)<br/>
+                    String accession = event.getSubmission().getAccNo();
+                    String title = event.getSubmission().getTitle();
+
+                    String htmlTesultLine = htmlTemplates.result;
+                    String textTesultLine = textTemplates.result;
+
+                    htmlTesultLine = htmlTesultLine.replaceAll(BackendConfig.AccNoPlaceHolderRx, accession);
+                    htmlTesultLine = htmlTesultLine.replaceAll(BackendConfig.TitlePlaceHolderRx, title);
+
+                    textTesultLine = textTesultLine.replaceAll(BackendConfig.AccNoPlaceHolderRx, accession);
+                    textTesultLine = textTesultLine.replaceAll(BackendConfig.TitlePlaceHolderRx, title);
+
+                    batchData.htmlList.append(htmlTesultLine);
+                    batchData.textList.append(textTesultLine);
                 }
 
-                // <b>{TITLE}</b> (<a href="https://www.ebi.ac.uk/biostudies/studies/{ACCNO}">https://www.ebi.ac.uk/biostudies/studies/{ACCNO}</a>)<br/>
-                String accession = event.getSubmission().getAccNo();
-                String title = event.getSubmission().getTitle();
+                Collection<SubscriptionBatch> resultSet = subscriptionResultMap.values();
 
-                String htmlTesultLine = htmlTemplates.result;
-                String textTesultLine = textTemplates.result;
+                // check user has got any matches
+                //
+                if (resultSet.size() == 0)
+                    continue;
 
-                htmlTesultLine = htmlTesultLine.replaceAll(BackendConfig.AccNoPlaceHolderRx, accession);
-                htmlTesultLine = htmlTesultLine.replaceAll(BackendConfig.TitlePlaceHolderRx, title);
+                String htmlMessage = htmlTemplates.mainBody;
+                String textMessage = textTemplates.mainBody;
 
-                textTesultLine = textTesultLine.replaceAll(BackendConfig.AccNoPlaceHolderRx, accession);
-                textTesultLine = textTesultLine.replaceAll(BackendConfig.TitlePlaceHolderRx, title);
+                // assemble everything together
+                //
+                if (u.getFullName() != null) {
+                    htmlMessage = htmlMessage.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
+                    textMessage = textMessage.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
+                }
 
-                batchData.htmlList.append(htmlTesultLine);
-                batchData.textList.append(textTesultLine);
+                String htmlTotalBatch = "";
+                String textTotalBatch = "";
+
+                for (SubscriptionBatch batch : subscriptionResultMap.values()) {
+
+                    batch.htmlSummary = batch.htmlSummary.replaceAll(ResultsPlaceHolderRx,
+                            batch.htmlList.toString());
+                    batch.textSummary = batch.textSummary.replaceAll(ResultsPlaceHolderRx,
+                            batch.textList.toString());
+
+                    htmlTotalBatch = htmlTotalBatch + batch.htmlSummary;
+                    textTotalBatch = textTotalBatch + batch.textSummary;
+                }
+
+                htmlMessage = htmlMessage.replaceAll(SubscriptionPlaceHolderRx, htmlTotalBatch);
+                textMessage = textMessage.replaceAll(SubscriptionPlaceHolderRx, textTotalBatch);
+
+                BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(),
+                        BackendConfig.getSubscriptionEmailSubject(), textMessage, htmlMessage);
+
+                // remove events
+                //
+                Query deleteQuery = entityMan.createNamedQuery(
+                        SubscriptionMatchEvent.DeleteEventsByUserIdQuery);
+
+                deleteQuery.setParameter(SubscriptionMatchEvent.UserIdQueryParameter, u.getId());
+
+                EntityTransaction transation = entityMan.getTransaction();
+
+                transation.begin();
+
+                deleteQuery.executeUpdate();
+
+                transation.commit();
             }
 
-            Collection<SubscriptionBatch> resultSet = subscriptionResultMap.values();
-
-            // check user has got any matches
-            //
-            if (resultSet.size() == 0)
-                continue;
-
-            String htmlMessage = htmlTemplates.mainBody;
-            String textMessage = textTemplates.mainBody;
-
-            // assemble everything together
-            //
-            if (u.getFullName() != null) {
-                htmlMessage = htmlMessage.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-                textMessage = textMessage.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-            }
-
-            String htmlTotalBatch = "";
-            String textTotalBatch = "";
-
-            for (SubscriptionBatch batch : subscriptionResultMap.values()) {
-
-                batch.htmlSummary = batch.htmlSummary.replaceAll(ResultsPlaceHolderRx,
-                        batch.htmlList.toString());
-                batch.textSummary = batch.textSummary.replaceAll(ResultsPlaceHolderRx,
-                        batch.textList.toString());
-
-                htmlTotalBatch = htmlTotalBatch + batch.htmlSummary;
-                textTotalBatch = textTotalBatch + batch.textSummary;
-            }
-
-            htmlMessage = htmlMessage.replaceAll(SubscriptionPlaceHolderRx, htmlTotalBatch);
-            textMessage = textMessage.replaceAll(SubscriptionPlaceHolderRx, textTotalBatch);
-
-            BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(),
-                    BackendConfig.getSubscriptionEmailSubject(), textMessage, htmlMessage);
-
+        } catch (Exception ex) {
+            log.error("Error!", ex);
         }
     }
-
-    /// ---------------------
-
-    /*
-    private void procSingleTagSubmission(EntityManager em, NotificationRequest req, Submission subm, String textBody, String htmlBody) {
-        String sbTitle = subm.getTitle();
-        String rsType = "";
-        String rsTitle = "";
-
-        SubmissionTagRef tr = subm.getTagRefs().iterator().next();
-
-        String tagsName = tr.getTag().getClassifier().getName() + ":" + tr.getTag().getName();
-
-        if (subm.getRootSection() != null) {
-            rsType = subm.getRootSection().getType();
-
-            rsTitle = Submission.getNodeTitle(subm.getRootSection());
-        }
-
-        SecurityManager smng = BackendConfig.getServiceManager().getSecurityManager();
-
-        TypedQuery<User> q = em.createNamedQuery(TagSubscription.GetUsersByTagIdsQuery, User.class);
-
-        q.setParameter(TagSubscription.TagIdQueryParameter, req.tagIds);
-
-        List<User> res = q.getResultList();
-
-        for (User u : res) {
-            if (!u.isActive() || u.getEmail() == null || u.getEmail().length() < 6 || !smng.mayUserReadSubmission(subm, u))
-                continue;
-
-
-            String tBody = textBody;
-            String hBody = htmlBody;
-
-            if (u.getFullName() != null) {
-                tBody = tBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-                hBody = hBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-            }
-
-            tBody = tBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
-            hBody = hBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
-
-            tBody = tBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
-            hBody = hBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
-
-            tBody = tBody.replaceAll(BackendConfig.TitlePlaceHolderRx, rsTitle);
-            hBody = hBody.replaceAll(BackendConfig.TitlePlaceHolderRx, rsTitle);
-
-            tBody = tBody.replaceAll(BackendConfig.TypePlaceHolderRx, rsType);
-            hBody = hBody.replaceAll(BackendConfig.TypePlaceHolderRx, rsType);
-
-            tBody = tBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
-            hBody = hBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
-
-            tBody = tBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
-            hBody = hBody.replaceAll(BackendConfig.TagsPlaceHolderRx, tagsName);
-
-
-            BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getSubscriptionEmailSubject(), tBody, hBody);
-        }
-
-    }   */
-
-    /*
-    private void procMultyTagSubmission(EntityManager em, NotificationRequest req, Submission subm, String textBody, String htmlBody) {
-        String sbTitle = subm.getTitle();
-        String rsType = "";
-        String rsTitle = "";
-
-        Map<Long, Tag> tmap = new HashMap<Long, Tag>();
-
-        for (Long tgId : req.tagIds) {
-            Tag t = em.find(Tag.class, tgId);
-
-            tmap.put(t.getId(), t);
-        }
-
-
-        if (subm.getRootSection() != null) {
-            rsType = subm.getRootSection().getType();
-            rsTitle = Submission.getNodeTitle(subm.getRootSection());
-        }
-
-        SecurityManager smng = BackendConfig.getServiceManager().getSecurityManager();
-
-        TypedQuery<Object[]> q = em.createNamedQuery(TagSubscription.GetSubsByTagIdsQuery, Object[].class);
-
-        q.setParameter(TagSubscription.TagIdQueryParameter, req.tagIds);
-
-        List<Object[]> res = q.getResultList();
-
-        User u = null;
-        boolean userOk = false;
-
-        Collection<Tag> tags = new HashSet<Tag>();
-
-
-        final String secTitle = rsTitle;
-        final String secType = rsType;
-
-        class Subst {
-            Matcher tagsMtch;
-            final StringBuffer bodySb = new StringBuffer();
-            final StringBuilder tagsSb = new StringBuilder();
-
-            void subst(User u, Collection<Tag> tags) {
-                String tBody = textBody;
-                String hBody = htmlBody;
-
-                if (u.getFullName() != null) {
-                    tBody = tBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-                    hBody = hBody.replaceAll(BackendConfig.UserNamePlaceHolderRx, u.getFullName());
-                }
-
-                tBody = tBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
-                hBody = hBody.replaceAll(BackendConfig.AccNoPlaceHolderRx, req.accNo);
-
-                tBody = tBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
-                hBody = hBody.replaceAll(BackendConfig.TextPlaceHolderRx, req.text);
-
-                tBody = tBody.replaceAll(BackendConfig.TitlePlaceHolderRx, secTitle);
-                hBody = hBody.replaceAll(BackendConfig.TitlePlaceHolderRx, secTitle);
-
-                tBody = tBody.replaceAll(BackendConfig.TypePlaceHolderRx, secType);
-                hBody = hBody.replaceAll(BackendConfig.TypePlaceHolderRx, secType);
-
-                tBody = tBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
-                hBody = hBody.replaceAll(BackendConfig.SbmTitlePlaceHolderRx, sbTitle);
-
-                String[] body = new String[]{tBody, hBody};
-
-                for (int i = 0; i < body.length; i++) {
-                    bodySb.setLength(0);
-
-                    if (tagsMtch == null)
-                        tagsMtch = Pattern.compile(BackendConfig.TagsPlaceHolderRx).matcher("");
-
-                    tagsMtch.reset(body[i]);
-
-                    while (tagsMtch.find()) {
-                        String sep = tagsMtch.group(1);
-
-                        if (sep == null)
-                            sep = ", ";
-                        else
-                            sep = sep.substring(1);
-
-                        tagsSb.setLength(0);
-
-                        for (Tag t : tags)
-                            tagsSb.append(t.getClassifier().getName()).append(':').append(t.getName()).append(sep);
-
-                        tagsSb.setLength(tagsSb.length() - sep.length());
-
-                        tagsMtch.appendReplacement(bodySb, tagsSb.toString());
-                    }
-
-                    tagsMtch.appendTail(bodySb);
-
-                    body[i] = bodySb.toString();
-
-                }
-
-                BackendConfig.getServiceManager().getEmailService().sendMultipartEmail(u.getEmail(), BackendConfig.getSubscriptionEmailSubject(), body[0], body[1]);
-            }
-        }
-
-        Subst subst = new Subst();
-
-        for (Object[] pair : res) {
-            if (u == null || ((Long) pair[0]).longValue() != u.getId()) {
-                if (u != null)
-                    subst.subst(u, tags);
-
-                tags.clear();
-                u = em.find(User.class, pair[0]);
-
-                if (!u.isActive() || u.getEmail() == null || u.getEmail().length() < 6 || !smng.mayUserReadSubmission(subm, u))
-                    userOk = false;
-                else
-                    userOk = true;
-
-            } else if (!userOk)
-                continue;
-
-
-            tags.add(tmap.get(pair[1]));
-
-        }
-
-        if (userOk)
-            subst.subst(u, tags);
-
-    }  */
-
 
 }

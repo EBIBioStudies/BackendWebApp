@@ -76,6 +76,9 @@ public class ConfigBean
  private Resource             subscriptionEmailHtmlFile;
  private Resource             subscriptionEmailPlainTextFile;
 
+ private Resource             textSubscriptionEmailHtmlFile;
+ private Resource             textSubscriptionEmailPlainTextFile;
+
  private String               defaultSubmissionAccPrefix = null;
  private String               defaultSubmissionAccSuffix = null;
 
@@ -91,7 +94,7 @@ public class ConfigBean
 
  private boolean              searchEnabled              = false;
 
- private boolean              webConfigEnabled           = true;
+ private boolean              webConfigEnabled           = false;
 
 
 
@@ -395,6 +398,26 @@ public class ConfigBean
  public void setSubscriptionEmailPlainTextFile(Resource subscriptionEmailPlainTextFile)
  {
   this.subscriptionEmailPlainTextFile = subscriptionEmailPlainTextFile;
+ }
+
+ public Resource getTextSubscriptionEmailHtmlFile()
+ {
+  return textSubscriptionEmailHtmlFile;
+ }
+
+ public void setTextSubscriptionEmailHtmlFile(Resource textSubscriptionEmailHtmlFile)
+ {
+  this.textSubscriptionEmailHtmlFile = textSubscriptionEmailHtmlFile;
+ }
+
+ public Resource getTextSubscriptionEmailPlainTextFile()
+ {
+  return textSubscriptionEmailPlainTextFile;
+ }
+
+ public void setTextSubscriptionEmailPlainTextFile(Resource textSubscriptionEmailPlainTextFile)
+ {
+  this.textSubscriptionEmailPlainTextFile = textSubscriptionEmailPlainTextFile;
  }
 
  public String getDefaultSubmissionAccPrefix()
