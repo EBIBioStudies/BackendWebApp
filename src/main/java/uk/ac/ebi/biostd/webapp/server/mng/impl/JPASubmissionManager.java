@@ -106,6 +106,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.impl.AccNoMatcher.Match;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
+import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
 import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 import uk.ac.ebi.biostd.webapp.shared.tags.TagRef;
 import uk.ac.ebi.mg.spreadsheet.cell.XSVCellStream;
@@ -938,7 +939,16 @@ public class JPASubmissionManager implements SubmissionManager
     if( rootPathAttr == null )
      rootPathAttr = "";
      
-    rootPI = PathInfo.getPathInfo(rootPathAttr, usr);
+    try
+    {
+     rootPI = PathInfo.getPathInfo(rootPathAttr, usr);
+    }
+    catch( InvalidPathException e )
+    {
+     si.getLogNode().log(Level.ERROR, "Invalid root path: "+rootPathAttr);
+     submOk = false;
+    }
+    
     
     
     if( submission.getAccessTags() != null )
