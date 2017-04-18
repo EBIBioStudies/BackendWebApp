@@ -19,27 +19,35 @@ limitations under the License.
 **/
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
-import org.apache.commons.io.Charsets;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import uk.ac.ebi.biostd.authz.*;
-import uk.ac.ebi.biostd.model.*;
-import uk.ac.ebi.biostd.util.FileUtil;
-import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
-import uk.ac.ebi.biostd.webapp.server.util.Resource;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
-import java.util.List;
+import org.apache.commons.io.Charsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import uk.ac.ebi.biostd.authz.SubscriptionMatchEvent;
+import uk.ac.ebi.biostd.authz.TextSubscription;
+import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.model.AbstractAttribute;
+import uk.ac.ebi.biostd.model.FileRef;
+import uk.ac.ebi.biostd.model.Link;
+import uk.ac.ebi.biostd.model.Section;
+import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 
 /**
@@ -346,7 +354,7 @@ public class SubscriptionProcessor implements Runnable {
         }
 
         try {
-            SecurityManager secMan = BackendConfig.getServiceManager().getSecurityManager();
+            uk.ac.ebi.biostd.webapp.server.mng.security.SecurityManager secMan = BackendConfig.getServiceManager().getSecurityManager();
 
             EntityManager entityMan = BackendConfig.getEntityManagerFactory().createEntityManager();
 
