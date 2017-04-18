@@ -43,8 +43,8 @@ import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
 import uk.ac.ebi.biostd.webapp.server.endpoint.Response;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.endpoint.TextHttpResponse;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
 
 public class TagsServlet extends ServiceServlet
 {

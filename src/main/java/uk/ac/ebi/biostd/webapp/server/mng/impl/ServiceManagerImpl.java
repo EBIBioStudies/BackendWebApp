@@ -25,13 +25,13 @@ import uk.ac.ebi.biostd.webapp.server.mng.AccessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ReleaseManager;
 import uk.ac.ebi.biostd.webapp.server.mng.RemoteRequestManager;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SessionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.SubmissionManager;
 import uk.ac.ebi.biostd.webapp.server.mng.TagManager;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityManager;
 
 
 public class ServiceManagerImpl implements ServiceManager

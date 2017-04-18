@@ -40,8 +40,8 @@ import uk.ac.ebi.biostd.idgen.Counter;
 import uk.ac.ebi.biostd.idgen.IdGen;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.AccessionManager;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
 
 public class JPAAccessionManager implements AccessionManager
 {

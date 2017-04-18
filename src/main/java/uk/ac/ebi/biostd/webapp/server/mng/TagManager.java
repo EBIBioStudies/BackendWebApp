@@ -27,6 +27,7 @@ import uk.ac.ebi.biostd.authz.Tag;
 import uk.ac.ebi.biostd.authz.TagSubscription;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
 
 public interface TagManager
 {

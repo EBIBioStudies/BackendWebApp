@@ -21,6 +21,7 @@ limitations under the License.
 package uk.ac.ebi.biostd.webapp.server.mng;
 
 import uk.ac.ebi.biostd.webapp.server.email.EmailService;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityManager;
 
 
 

@@ -37,7 +37,7 @@ import uk.ac.ebi.biostd.authz.BuiltInUsers;
 import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
-import uk.ac.ebi.biostd.webapp.server.mng.SecurityException;
+import uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException;
 
 import com.pri.util.StringUtils;
 

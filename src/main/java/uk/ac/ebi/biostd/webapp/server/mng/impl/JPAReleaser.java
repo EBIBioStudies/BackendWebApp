@@ -117,20 +117,13 @@ public class JPAReleaser implements ReleaseManager
     
     Path ftpDir = BackendConfig.getPublicFTPPath().resolve(s.getAccNo());
     
-    if( Files.exists(ftpDir) )
-    {
-     try
-     {
-      Files.setPosixFilePermissions(ftpDir, BackendConfig.rwxrwxr_x);
-     }
-     catch(UnsupportedOperationException ex)
-     {
-     }
-     catch(IOException e1)
-     {
+    if( Files.exists(ftpDir) ) {
+     try {
+      Files.setPosixFilePermissions(ftpDir, BackendConfig.rwxrwxr_x); }
+     catch(UnsupportedOperationException ex) {}
+     catch(IOException e1)  {
       log.error("Submission dir (" + ftpDir + ") set permissions error. " + e1.getMessage());
-      e1.printStackTrace();
-     }
+      e1.printStackTrace(); }
     }
    
    }
@@ -175,15 +168,16 @@ public class JPAReleaser implements ReleaseManager
     queueProc.shutdown();
    }
    
-   if( BackendConfig.getSubscriptionEmailSubject() != null )
-   {
-    for(Submission s : released)
-    {
-     if( s.getTagRefs() != null && s.getTagRefs().size() > 0 && BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(s) )
-      SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+   if( BackendConfig.getSubscriptionEmailSubject() != null ) {
+    for(Submission s : released) {
+     if (BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(s)) {
+      if( s.getTagRefs() != null && s.getTagRefs().size() > 0 ) {
+       SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+      }
+      SubscriptionProcessor.processAsync(s);
+     }
     }
    }
-     
   }
   catch(Exception e)
   {
