@@ -83,7 +83,7 @@ public interface SecurityManager
  
  int getUsersNumber();
  
- void setPermission(PermissionClass pClass, String pID, SubjectClass sClass, String sID, ObjectClass oClass, String oID, User user)  throws SecurityException;
- void clearPermission(PermissionClass pClass, String pID, SubjectClass sClass, String sID, ObjectClass oClass, String oID, User user)  throws SecurityException;
+ void setPermission(PermissionClass pClass, String pID, boolean pAction, SubjectClass sClass, String sID, ObjectClass oClass, String oID, User user)  throws SecurityException;
+ void clearPermission(PermissionClass pClass, String pID, boolean pAction, SubjectClass sClass, String sID, ObjectClass oClass, String oID, User user)  throws SecurityException;
 
 }

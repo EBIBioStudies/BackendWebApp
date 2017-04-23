@@ -28,6 +28,7 @@ public class PermissionsServlet extends ServiceServlet
  public static final String ObjectIDParameter        = "objectID";
  public static final String PermissionClassParameter = "permissionClass";
  public static final String PermissionIDParameter    = "permissionID";
+ public static final String PermissionActionParameter= "permissionAction";
 
  public enum Operation
  {
@@ -193,12 +194,35 @@ public class PermissionsServlet extends ServiceServlet
    return;
   }
 
+  boolean pAction = false;
+  
+  if( pClass == PermissionClass.Permission )
+  {
+   val = req.getParameter(PermissionActionParameter);
+   
+   if( val == null )
+   {
+    badReq(response, "Parameter '"+PermissionActionParameter+"' is not set");
+    return;
+   }
+
+   if( "deny".equalsIgnoreCase(val) )
+    pAction=false;
+   else if( "allow".equalsIgnoreCase(val) )
+    pAction=true;
+   else
+   {
+    badReq(response, "Invalid parameter '"+PermissionActionParameter+"' value");
+    return;
+   }
+  }
+  
   try
   {
    if(op == Operation.SET)
-    BackendConfig.getServiceManager().getSecurityManager().setPermission(pClass, pID, sClass, sID, oClass, oID, sess.getUser());
+    BackendConfig.getServiceManager().getSecurityManager().setPermission(pClass, pID, pAction, sClass, sID, oClass, oID, sess.getUser());
    else if(op == Operation.CLEAR)
-    BackendConfig.getServiceManager().getSecurityManager().clearPermission(pClass, pID, sClass, sID, oClass, oID, sess.getUser());
+    BackendConfig.getServiceManager().getSecurityManager().clearPermission(pClass, pID, pAction, sClass, sID, oClass, oID, sess.getUser());
   }
   catch(SecurityException e )
   {
