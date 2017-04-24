@@ -1060,8 +1060,30 @@ public class JPASubmissionManager implements SubmissionManager
        notMatched.add(s);
       else if( mtch == Match.YES )
        matched=true;
+
+      Collection<AccessTag> newSet = si.getSubmission().getAccessTags();
+      Collection<AccessTag> parentTags = s.getAccessTags();
+
+      if (parentTags != null) {
+       if (newSet == null) {
+        newSet = new ArrayList<>();
+        si.getSubmission().setAccessTags(newSet);
+       }
+       for (AccessTag pTag : parentTags) {
+        boolean found = false;
+        for (AccessTag aTag : newSet) {
+         if (pTag.getId() == aTag.getId()) {
+          found = true;
+          break;
+         }
+        }
+        if (!found) {
+         newSet.add(pTag);
+        }
+       }
+      }
      }
-     
+
      if( !matched && notMatched.size() > 0 )
      {
       for( Submission nms : notMatched )
