@@ -1,97 +1,46 @@
 package uk.ac.ebi.biostd.webapp.server.mng.security.acladp;
 
+import java.util.List;
+
 import javax.persistence.EntityManager;
+import javax.persistence.TypedQuery;
 
-import uk.ac.ebi.biostd.authz.ACR;
-import uk.ac.ebi.biostd.authz.PermissionProfile;
-import uk.ac.ebi.biostd.authz.SystemAction;
-import uk.ac.ebi.biostd.authz.User;
-import uk.ac.ebi.biostd.authz.UserGroup;
-import uk.ac.ebi.biostd.webapp.server.mng.security.ACLObjectAdapter;
+import uk.ac.ebi.biostd.idgen.IdGen;
 
-public class IdGenAA implements ACLObjectAdapter
+public class IdGenAA  extends AbstractAA
 {
 
  public IdGenAA(EntityManager em, String oId)
  {
-  // TODO Auto-generated constructor stub
+  super(em,oId);
  }
 
  @Override
- public boolean checkChangeAccessPermission(User user)
+ protected IdGen loadObject(String oID)
  {
-  // TODO Auto-generated method stub
-  return false;
- }
-
- @Override
- public ACR findACR(SystemAction act, boolean pAction, User usr)
- {
-  // TODO Auto-generated method stub
+  TypedQuery<IdGen> q = getEM().createNamedQuery(IdGen.GetByPfxSfxQuery, IdGen.class);
+  
+  String pfx = oID;
+  String sfx = null;
+  
+  int pos = oID.indexOf(",");
+  
+  if( pos >= 0 )
+  {
+   pfx = pos==0?null:oID.substring(0,pos);
+   sfx = pos==oID.length()-1?null:oID.substring(pos+1);
+  }
+  
+  q.setParameter("prefix", pfx);
+  q.setParameter("suffix", sfx);
+  
+  List<IdGen> tags = q.getResultList();
+  
+  if( tags.size() == 1 )
+   return tags.get(0);
+  
   return null;
- }
-
- @Override
- public ACR findACR(SystemAction act, boolean pAction, UserGroup grp)
- {
-  // TODO Auto-generated method stub
-  return null;
- }
-
- @Override
- public ACR findACR(PermissionProfile prof, User usr)
- {
-  // TODO Auto-generated method stub
-  return null;
- }
-
- @Override
- public ACR findACR(PermissionProfile prof, UserGroup grp)
- {
-  // TODO Auto-generated method stub
-  return null;
- }
-
- @Override
- public void addRule(SystemAction act, boolean pAction, User usr)
- {
-  // TODO Auto-generated method stub
-
- }
-
- @Override
- public void addRule(SystemAction act, boolean pAction, UserGroup grp)
- {
-  // TODO Auto-generated method stub
-
- }
-
- @Override
- public void addRule(PermissionProfile prof, User usr)
- {
-  // TODO Auto-generated method stub
-
- }
-
- @Override
- public void addRule(PermissionProfile prof, UserGroup grp)
- {
-  // TODO Auto-generated method stub
-
- }
-
- @Override
- public void removeRule(ACR rule)
- {
-  // TODO Auto-generated method stub
-
- }
-
- @Override
- public boolean isObjectOk()
- {
-  // TODO Auto-generated method stub
-  return false;
+  
  }
 
 }

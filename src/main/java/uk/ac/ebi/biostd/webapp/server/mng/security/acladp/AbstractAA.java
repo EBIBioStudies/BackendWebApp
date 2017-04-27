@@ -1,12 +1,13 @@
 package uk.ac.ebi.biostd.webapp.server.mng.security.acladp;
 
-import java.util.Collection;
-
 import javax.persistence.EntityManager;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.ACR;
 import uk.ac.ebi.biostd.authz.ACR.Permit;
-import uk.ac.ebi.biostd.authz.AccessTag;
+import uk.ac.ebi.biostd.authz.AuthzObject;
 import uk.ac.ebi.biostd.authz.OwnedObject;
 import uk.ac.ebi.biostd.authz.PermGroupACR;
 import uk.ac.ebi.biostd.authz.PermUserACR;
@@ -17,15 +18,31 @@ import uk.ac.ebi.biostd.authz.ProfileUserACR;
 import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
+import uk.ac.ebi.biostd.webapp.server.mng.security.ACLObjectAdapter;
 
-public class AccessTagDelegateAA extends AccessTagAA
+public abstract class AbstractAA implements ACLObjectAdapter
 {
-
- public AccessTagDelegateAA( EntityManager em, String oId )
+ private static Logger log;
+ 
+ protected AuthzObject obj;
+ private EntityManager em;
+ 
+ public AbstractAA( EntityManager em, String oId )
  {
-  super(em, oId);
+  if( log == null )
+   log = LoggerFactory.getLogger(getClass());
+  
+  this.em = em;
+  
+  obj = loadObject(oId);
  }
  
+ protected abstract AuthzObject loadObject( String oID );
+ 
+ protected EntityManager getEM()
+ {
+  return em;
+ }
  
  @Override
  public boolean checkChangeAccessPermission(User user)
@@ -39,12 +56,10 @@ public class AccessTagDelegateAA extends AccessTagAA
  @Override
  public ACR findACR(SystemAction act, boolean pAction, User usr)
  {
-  Collection<? extends PermUserACR> acl = ((AccessTag)obj).getDelegatePermissionForUserACRs();
-  
-  if( acl == null )
+  if( obj.getPermissionForUserACRs() == null )
    return null;
   
-  for( PermUserACR acr : acl )
+  for( PermUserACR acr : obj.getPermissionForUserACRs() )
   {
    Permission prm = acr.getPermissionUnit();
    
@@ -61,12 +76,10 @@ public class AccessTagDelegateAA extends AccessTagAA
  @Override
  public ACR findACR(SystemAction act, boolean pAction, UserGroup grp)
  {
-  Collection<? extends PermGroupACR> acl = ((AccessTag)obj).getDelegatePermissionForGroupACRs();
-  
-  if( acl == null )
+  if( obj.getPermissionForGroupACRs() == null )
    return null;
   
-  for( PermGroupACR acr : acl )
+  for( PermGroupACR acr : obj.getPermissionForGroupACRs() )
   {
    Permission prm = acr.getPermissionUnit();
    
@@ -83,12 +96,10 @@ public class AccessTagDelegateAA extends AccessTagAA
  @Override
  public ACR findACR(PermissionProfile prof, User usr)
  {
-  Collection<? extends ProfileUserACR> acl = ((AccessTag)obj).getDelegateProfileForUserACRs();
-  
-  if( acl == null )
+  if( obj.getProfileForUserACRs() == null )
    return null;
-
-  for( ProfileUserACR acr : acl )
+  
+  for( ProfileUserACR acr : obj.getProfileForUserACRs() )
   {
    if( usr.getId() == acr.getSubject().getId() && acr.getPermissionUnit().getId() == prof.getId() )
     return acr;
@@ -100,12 +111,10 @@ public class AccessTagDelegateAA extends AccessTagAA
  @Override
  public ACR findACR(PermissionProfile prof, UserGroup grp)
  {
-  Collection<? extends ProfileGroupACR> acl = ((AccessTag)obj).getDelegateProfileForGroupACRs();
-  
-  if( acl == null )
+  if( obj.getProfileForGroupACRs() == null )
    return null;
   
-  for( ProfileGroupACR acr : acl)
+  for( ProfileGroupACR acr : obj.getProfileForGroupACRs() )
   {
    if( grp.getId() == acr.getSubject().getId() && acr.getPermissionUnit().getId() == prof.getId() )
     return acr;
@@ -117,26 +126,26 @@ public class AccessTagDelegateAA extends AccessTagAA
  @Override
  public void addRule(SystemAction act, boolean pAction, User usr) throws uk.ac.ebi.biostd.webapp.server.mng.security.SecurityException
  {
-  ((AccessTag)obj).addDelegatePermissionForUserACR(usr, act, pAction);
+  obj.addPermissionForUserACR(usr, act, pAction);
  }
 
 
  @Override
  public void addRule(SystemAction act, boolean pAction, UserGroup grp)
  {
-  ((AccessTag)obj).addDelegatePermissionForGroupACR(grp, act, pAction);
+  obj.addPermissionForGroupACR(grp, act, pAction);
  }
 
  @Override
  public void addRule(PermissionProfile prof, User usr)
  {
-  ((AccessTag)obj).addDelegateProfileForUserACR(usr, prof);
+  obj.addProfileForUserACR(usr, prof);
  }
 
  @Override
  public void addRule(PermissionProfile prof, UserGroup grp)
  {
-  ((AccessTag)obj).addDelegateProfileForGroupACR(grp, prof);
+  obj.addProfileForGroupACR(grp, prof);
  }
 
  @Override
@@ -145,16 +154,23 @@ public class AccessTagDelegateAA extends AccessTagAA
   if( rule.getPermissionUnit() instanceof Permission )
   {
    if( rule.getSubject() instanceof User )
-    ((AccessTag)obj).getDelegatePermissionForUserACRs().remove(rule);
+    obj.getPermissionForUserACRs().remove(rule);
    else
-    ((AccessTag)obj).getDelegatePermissionForGroupACRs().remove(rule);
+    obj.getPermissionForGroupACRs().remove(rule);
   }
   else
   {
    if( rule.getSubject() instanceof User )
-    ((AccessTag)obj).getDelegateProfileForUserACRs().remove(rule);
+    obj.getProfileForUserACRs().remove(rule);
    else
-    ((AccessTag)obj).getDelegateProfileForGroupACRs().remove(rule);
+    obj.getProfileForGroupACRs().remove(rule);
   }
  }
+
+ @Override
+ public boolean isObjectOk()
+ {
+  return obj!=null;
+ }
+
 }

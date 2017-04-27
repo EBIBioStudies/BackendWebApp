@@ -1181,154 +1181,169 @@ public class SecurityManagerImpl implements SecurityManager
  {
   EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
 
-  ACLObjectAdapter drv = getACLAdapter(em, oClass, oID );
+  EntityTransaction trn = em.getTransaction();
   
-//  AuthzObject aObj = findAuthzObject(em,oClass,oID);
-
-  if( ! drv.isObjectOk() )
-   throw new SecurityException("Object not found. Class: "+oClass.name()+" ID="+oID);
-
-  if( ! user.isSuperuser() && ! drv.checkChangeAccessPermission(user) )
-   throw new SecurityException("Access denied");
-  
-  if( pClass == PermissionClass.Permission )
+  try
   {
-   SystemAction act = null;
-   
-   for( SystemAction ac : SystemAction.values() )
+   trn.begin();
+
+   ACLObjectAdapter drv = getACLAdapter(em, oClass, oID);
+
+   if(!drv.isObjectOk())
+    throw new SecurityException("Object not found. Class: " + oClass.name() + " ID=" + oID);
+
+   if(!user.isSuperuser() && !drv.checkChangeAccessPermission(user))
+    throw new SecurityException("Access denied");
+
+   if(pClass == PermissionClass.Permission)
    {
-    if( ac.name().equalsIgnoreCase(pID) )
+    SystemAction act = null;
+
+    for(SystemAction ac : SystemAction.values())
     {
-     act = ac;
-     break;
+     if(ac.name().equalsIgnoreCase(pID))
+     {
+      act = ac;
+      break;
+     }
+    }
+
+    if(act == null)
+     throw new SecurityException("Invalid system action/permission: " + pID);
+
+    if(sClass == SubjectClass.User)
+    {
+     User usr = null;
+
+     usr = getUserByLogin(sID);
+
+     if(usr == null)
+      usr = getUserByEmail(sID);
+
+     if(usr == null)
+      throw new SecurityException("User not found: " + sID);
+
+     ACR rule = drv.findACR(act, pAction, usr);
+
+     if(set)
+     {
+      if(rule != null)
+       throw new SecurityException("ACR already exists");
+
+      drv.addRule(act, pAction, usr);
+     }
+     else
+     {
+      if(rule == null)
+       throw new SecurityException("ACR not found");
+
+      drv.removeRule(rule);
+     }
+    }
+    else if(sClass == SubjectClass.Group)
+    {
+     UserGroup grp = null;
+
+     grp = getGroup(sID);
+
+     if(grp == null)
+      throw new SecurityException("Group not found: " + sID);
+
+     ACR rule = drv.findACR(act, pAction, grp);
+
+     if(set)
+     {
+      if(rule != null)
+       throw new SecurityException("ACR already exists");
+
+      drv.addRule(act, pAction, grp);
+     }
+     else
+     {
+      if(rule == null)
+       throw new SecurityException("ACR not found");
+
+      drv.removeRule(rule);
+     }
     }
    }
-   
-   if( act == null )
-    throw new SecurityException("Invalid system action/permission: "+pID);
-   
-
-   if( sClass == SubjectClass.User )
+   else
    {
-    User usr = null;
-    
-    usr = getUserByLogin(sID);
-    
-    if( usr == null )
-     usr = getUserByEmail(sID);
-    
-    if( usr == null )
-     throw new SecurityException("User not found: "+sID);
+    PermissionProfile prof = null;
 
-    ACR rule = drv.findACR(act, pAction, usr);
+    prof = getPermissionProfile(pID);
 
-    if( set )
+    if(prof == null)
+     throw new SecurityException("Permission profile not found: " + pID);
+
+    if(sClass == SubjectClass.User)
     {
-     if( rule != null )
-      throw new SecurityException("ACR already exists");
+     User usr = null;
 
-     drv.addRule(act, pAction, usr);
+     usr = getUserByLogin(sID);
+
+     if(usr == null)
+      usr = getUserByEmail(sID);
+
+     if(usr == null)
+      throw new SecurityException("User not found: " + sID);
+
+     ACR rule = drv.findACR(prof, usr);
+
+     if(set)
+     {
+      if(rule != null)
+       throw new SecurityException("ACR already exists");
+
+      drv.addRule(prof, em.find(User.class, usr.getId()));
+     }
+     else
+     {
+      if(rule == null)
+       throw new SecurityException("ACR not found");
+
+      drv.removeRule(rule);
+     }
     }
-    else
+    else if(sClass == SubjectClass.Group)
     {
-     if( rule == null )
-      throw new SecurityException("ACR not found");
+     UserGroup grp = null;
 
-     drv.removeRule(rule);
+     grp = getGroup(sID);
+
+     if(grp == null)
+      throw new SecurityException("Group not found: " + sID);
+
+     ACR rule = drv.findACR(prof, grp);
+
+     if(set)
+     {
+      if(rule != null)
+       throw new SecurityException("ACR already exists");
+
+      drv.addRule(prof, em.find(UserGroup.class, grp.getId()));
+     }
+     else
+     {
+      if(rule == null)
+       throw new SecurityException("ACR not found");
+
+      drv.removeRule(rule);
+     }
     }
+
    }
-   else if( sClass == SubjectClass.Group )
-   {
-    UserGroup grp = null;
-    
-    grp = getGroup(sID);
-    
-    if( grp == null )
-     throw new SecurityException("Group not found: "+sID);
-
-    ACR rule = drv.findACR(act, pAction, grp);
-
-    if( set )
-    {
-     if( rule != null )
-      throw new SecurityException("ACR already exists");
-
-     drv.addRule(act, pAction, grp);
-    }
-    else
-    {
-     if( rule == null )
-      throw new SecurityException("ACR not found");
-
-     drv.removeRule(rule);
-    }
-   }
+   
+   trn.commit();
   }
-  else
+  catch(Exception e)
   {
-   PermissionProfile prof = null;
+   if( trn.isActive() )
+    trn.rollback();
    
-   prof = getPermissionProfile( pID );
+   log.error("Permission managing error: "+e.getMessage(),e);
    
-   if( prof == null )
-    throw new SecurityException("Permission profile not found: "+pID);
-   
-   if( sClass == SubjectClass.User )
-   {
-    User usr = null;
-    
-    usr = getUserByLogin(sID);
-    
-    if( usr == null )
-     usr = getUserByEmail(sID);
-    
-    if( usr == null )
-     throw new SecurityException("User not found: "+sID);
-
-    ACR rule = drv.findACR(prof, usr);
-
-    if( set )
-    {
-     if( rule != null )
-      throw new SecurityException("ACR already exists");
-
-     drv.addRule(prof, em.find(User.class, usr.getId()));
-    }
-    else
-    {
-     if( rule == null )
-      throw new SecurityException("ACR not found");
-
-     drv.removeRule(rule);
-    }
-   }
-   else if( sClass == SubjectClass.Group )
-   {
-    UserGroup grp = null;
-    
-    grp = getGroup(sID);
-    
-    if( grp == null )
-     throw new SecurityException("Group not found: "+sID);
-
-    ACR rule = drv.findACR(prof, grp);
-
-    if( set )
-    {
-     if( rule != null )
-      throw new SecurityException("ACR already exists");
-
-     drv.addRule(prof, em.find(UserGroup.class, grp.getId()));
-    }
-    else
-    {
-     if( rule == null )
-      throw new SecurityException("ACR not found");
-
-     drv.removeRule(rule);
-    }
-   }
-
+   throw new SecurityException("System error");
   }
   
  }

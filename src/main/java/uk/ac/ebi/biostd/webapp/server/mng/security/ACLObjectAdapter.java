@@ -17,13 +17,13 @@ public interface ACLObjectAdapter
  ACR findACR(PermissionProfile prof, User usr);
  ACR findACR(PermissionProfile prof, UserGroup grp);
 
- void addRule(SystemAction act, boolean pAction, User usr);
- void addRule(SystemAction act, boolean pAction, UserGroup grp);
+ void addRule(SystemAction act, boolean pAction, User usr) throws SecurityException;
+ void addRule(SystemAction act, boolean pAction, UserGroup grp) throws SecurityException;
 
- void addRule(PermissionProfile prof, User usr);
- void addRule(PermissionProfile prof, UserGroup grp);
+ void addRule(PermissionProfile prof, User usr) throws SecurityException;
+ void addRule(PermissionProfile prof, UserGroup grp) throws SecurityException;
 
- void removeRule(ACR rule);
+ void removeRule(ACR rule) throws SecurityException;
 
  boolean isObjectOk();
 
