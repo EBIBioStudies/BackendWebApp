@@ -351,7 +351,12 @@ public class FileManagerImpl implements FileManager
   PathInfo filePi = PathInfo.getPathInfo(name, user);
 
   if( !filePi.isAbsolute() )
-   filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getRelPath()), user);
+  {
+   if( rootPI != null )
+    filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getRelPath()), user);
+   else
+    return null;
+  }
   
   long grpId = filePi.getGroup()==null?0:filePi.getGroup().getId();
 
@@ -372,7 +377,12 @@ public class FileManagerImpl implements FileManager
   FilePointer fp=null;
   
   if( !filePi.isAbsolute() )
-   filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getRelPath()), user);
+  {
+   if( rootPI != null )
+    filePi = PathInfo.getPathInfo(rootPI.getVirtPath().resolve(filePi.getRelPath()), user);
+   else
+    return null;
+  }
 
   fp =  checkFileExist(filePi.getRealBasePath(), filePi.getRelPath());
   

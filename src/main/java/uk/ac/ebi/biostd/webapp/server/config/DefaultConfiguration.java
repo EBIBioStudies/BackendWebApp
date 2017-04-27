@@ -90,6 +90,8 @@ public class DefaultConfiguration
   cfgBean.setSubscriptionEmailSubject("Subscription notification");
   cfgBean.setSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/subscriptionMail.txt"));
   cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/email/subscriptionMail.html"));
-  
+  cfgBean.setTextSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/subscriptionMail.txt"));
+  cfgBean.setTextSubscriptionEmailHtmlFile( new JavaResource("/resources/email/subscriptionMail.html"));
+
  }
 }

@@ -106,6 +106,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.impl.AccNoMatcher.Match;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.AccNoUtil;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
+import uk.ac.ebi.biostd.webapp.server.vfs.InvalidPathException;
 import uk.ac.ebi.biostd.webapp.server.vfs.PathInfo;
 import uk.ac.ebi.biostd.webapp.shared.tags.TagRef;
 import uk.ac.ebi.mg.spreadsheet.cell.XSVCellStream;
@@ -938,7 +939,16 @@ public class JPASubmissionManager implements SubmissionManager
     if( rootPathAttr == null )
      rootPathAttr = "";
      
-    rootPI = PathInfo.getPathInfo(rootPathAttr, usr);
+    try
+    {
+     rootPI = PathInfo.getPathInfo(rootPathAttr, usr);
+    }
+    catch( InvalidPathException e )
+    {
+     si.getLogNode().log(Level.ERROR, "Invalid root path: "+rootPathAttr);
+     submOk = false;
+    }
+    
     
     
     if( submission.getAccessTags() != null )
@@ -1050,8 +1060,30 @@ public class JPASubmissionManager implements SubmissionManager
        notMatched.add(s);
       else if( mtch == Match.YES )
        matched=true;
+
+      Collection<AccessTag> newSet = si.getSubmission().getAccessTags();
+      Collection<AccessTag> parentTags = s.getAccessTags();
+
+      if (parentTags != null) {
+       if (newSet == null) {
+        newSet = new ArrayList<>();
+        si.getSubmission().setAccessTags(newSet);
+       }
+       for (AccessTag pTag : parentTags) {
+        boolean found = false;
+        for (AccessTag aTag : newSet) {
+         if (pTag.getId() == aTag.getId()) {
+          found = true;
+          break;
+         }
+        }
+        if (!found) {
+         newSet.add(pTag);
+        }
+       }
+      }
      }
-     
+
      if( !matched && notMatched.size() > 0 )
      {
       for( Submission nms : notMatched )
@@ -1368,17 +1400,17 @@ public class JPASubmissionManager implements SubmissionManager
   }
   
   
-  if( BackendConfig.getSubscriptionEmailSubject() != null )
-  {
-   for(SubmissionInfo si : doc.getSubmissions())
-   {
+  if( BackendConfig.getSubscriptionEmailSubject() != null ) {
+   for(SubmissionInfo si : doc.getSubmissions()) {
     Submission s = si.getSubmission();
 
-    if(s.getTagRefs() != null && s.getTagRefs().size() > 0 )
+    if(s.getTagRefs() != null && s.getTagRefs().size() > 0 ) {
      SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+    }
+    SubscriptionProcessor.processAsync(s);
    }
   }
-  
+
   return res;
  }
 
@@ -3082,9 +3114,13 @@ public class JPASubmissionManager implements SubmissionManager
     e.printStackTrace();
    }
   
-   if( BackendConfig.getSubscriptionEmailSubject() != null && nowPublic && ! wasPublic )
+   if( BackendConfig.getSubscriptionEmailSubject() != null && nowPublic && ! wasPublic ) {
     SubscriptionNotifier.notifyByTags(sbm.getTagRefs(), sbm);
-  
+    SubscriptionProcessor.processAsync(sbm);
+   }
+
+
+
   }
   
   return gln;

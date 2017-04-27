@@ -64,6 +64,7 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
 import uk.ac.ebi.biostd.webapp.server.mng.IndexManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.SubscriptionProcessor;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
@@ -126,7 +127,10 @@ public class ConfigurationManager
  public static final String             SubscriptionEmailSubjectParameter   = "subscriptionEmailSubject";
  public static final String             SubscriptionEmailPlainTextParameter = "subscriptionEmailPlainTextFile";
  public static final String             SubscriptionEmailHtmlParameter      = "subscriptionEmailHtmlFile";
- 
+ public static final String             TextSubscriptionEmailPlainTextParameter
+                                                                            = "textSubscriptionEmailPlainTextFile";
+ public static final String             TextSubscriptionEmailHtmlParameter  = "textSubscriptionEmailHtmlFile";
+
  public static final String             PassResetTimeoutParameter           = "passwordResetTimeout";
  public static final String             PassResetEmailSubjectParameter      = "passwordResetEmailSubject";
  public static final String             PassResetEmailPlainTextParameter    = "passwordResetEmailPlainTextFile";
@@ -154,7 +158,7 @@ public class ConfigurationManager
 
  private static final long dayInMills = TimeUnit.DAYS.toMillis(1);
  private static final long hourInMills = TimeUnit.HOURS.toMillis(1);
- 
+
  public ConfigurationManager( ParamPool ctx )
  {
   if( log == null )
@@ -168,10 +172,13 @@ public class ConfigurationManager
   ConfigBean cfgBean = BackendConfig.createConfig(); 
   
   String dsblVal = contextParamPool.getParameter(DisablePreferencesConfigParameter);
-  
+
+  if (dsblVal == null)
+   cfgBean.setWebConfigEnabled(false);
+
   if( dsblVal != null )
    cfgBean.setWebConfigEnabled( ! ("yes".equalsIgnoreCase(dsblVal) || "true".equalsIgnoreCase(dsblVal) || "on".equalsIgnoreCase(dsblVal) || "1".equals(dsblVal) ) );
-  
+
   boolean loaded = false;
   try
   {
@@ -201,10 +208,14 @@ public class ConfigurationManager
   {
    if( ! checkReset( contextParamPool.getParameter(ConfigurationResetParameter), "webapp" ) )
     DefaultConfiguration.loadDefaults( cfgBean );
-   
-   readConfiguration(contextParamPool, cfgBean);
+    readConfiguration(contextParamPool, cfgBean);
   }
-  
+
+  String baseDir = System.getenv().get("BIOSTUDY_BASE_DIR");
+  if (baseDir != null) {
+   cfgBean.setBaseDirectory(new java.io.File(baseDir).toPath());
+  }
+
   if( cfgBean.getBaseDirectory() != null )
   {
    if( ! cfgBean.getBaseDirectory().isAbsolute() )
@@ -359,6 +370,15 @@ public class ConfigurationManager
    }
   }, hourInMills-(now % hourInMills) , hourInMills);
   
+   timer.scheduleAtFixedRate( new TimerTask()
+  {
+   @Override
+   public void run()
+   {
+    SubscriptionProcessor.processEvents();
+   }
+  }, dayInMills-(now % dayInMills) , dayInMills);
+
   if( BackendConfig.getTaskConfig() != null )
   {
    TaskInfo tinf = null;
@@ -1186,6 +1206,20 @@ public class ConfigurationManager
   {
    cfg.setSubscriptionEmailHtmlFile( new FileResource( createPath(SubscriptionEmailHtmlParameter,val, cfg.getBaseDirectory()) ) );
    
+   return true;
+  }
+
+  if( TextSubscriptionEmailPlainTextParameter.equals(param) )
+  {
+   cfg.setTextSubscriptionEmailPlainTextFile( new FileResource( createPath(TextSubscriptionEmailPlainTextParameter,val, cfg.getBaseDirectory()) ) );
+
+   return true;
+  }
+
+  if( TextSubscriptionEmailHtmlParameter.equals(param) )
+  {
+   cfg.setTextSubscriptionEmailHtmlFile( new FileResource( createPath(TextSubscriptionEmailHtmlParameter,val, cfg.getBaseDirectory()) ) );
+
    return true;
   }
 
