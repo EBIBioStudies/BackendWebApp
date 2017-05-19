@@ -103,7 +103,7 @@ public class SingleSubmissionServlet extends ServiceServlet
   
   if( sess == null || sess.isAnonymouns() )
   {
-   getResponse(format, resp).respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "User not logged in");
+   getResponse(format, resp).respond(HttpServletResponse.SC_UNAUTHORIZED, "FAIL", "User not logged in");
    return;
   }
   

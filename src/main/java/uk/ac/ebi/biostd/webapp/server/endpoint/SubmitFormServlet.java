@@ -47,7 +47,7 @@ public class SubmitFormServlet extends ServiceServlet
   
   if( sess == null )
   {
-   resp.sendError(HttpServletResponse.SC_FORBIDDEN, "User not authenticated");
+   resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not authenticated");
    return;
   }
   

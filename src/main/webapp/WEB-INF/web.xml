@@ -186,6 +186,17 @@
     <url-pattern>/subscription/*</url-pattern>
   </servlet-mapping>
 
+  <servlet>
+    <description></description>
+    <display-name>SubscribeAttributeServlet</display-name>
+    <servlet-name>SubscribeAttributeServlet</servlet-name>
+    <servlet-class>uk.ac.ebi.biostd.webapp.server.endpoint.subscription.SubscribeAttributeServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SubscribeAttributeServlet</servlet-name>
+    <url-pattern>/attribute-subscription/*</url-pattern>
+  </servlet-mapping>
+
 
   <servlet>
     <description></description>

@@ -64,7 +64,8 @@ import uk.ac.ebi.biostd.webapp.server.export.TaskInitError;
 import uk.ac.ebi.biostd.webapp.server.mng.IndexManager;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceConfigException;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceFactory;
-import uk.ac.ebi.biostd.webapp.server.mng.impl.SubscriptionProcessor;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.AttributeSubscriptionProcessor;
+import uk.ac.ebi.biostd.webapp.server.mng.impl.TagSubscriptionProcessor;
 import uk.ac.ebi.biostd.webapp.server.search.SearchMapper;
 import uk.ac.ebi.biostd.webapp.server.util.ExceptionUtil;
 import uk.ac.ebi.biostd.webapp.server.util.FileNameUtil;
@@ -125,11 +126,13 @@ public class ConfigurationManager
  public static final String             ActivationTimeoutParameterHours     = "activationTimeoutHours";
 
  public static final String             SubscriptionEmailSubjectParameter   = "subscriptionEmailSubject";
- public static final String             SubscriptionEmailPlainTextParameter = "subscriptionEmailPlainTextFile";
- public static final String             SubscriptionEmailHtmlParameter      = "subscriptionEmailHtmlFile";
- public static final String             TextSubscriptionEmailPlainTextParameter
-                                                                            = "textSubscriptionEmailPlainTextFile";
- public static final String             TextSubscriptionEmailHtmlParameter  = "textSubscriptionEmailHtmlFile";
+ public static final String             TagSubscriptionEmailPlainTextParameter
+                                                                            = "tagSubscriptionEmailPlainTextFile";
+ public static final String             TagSubscriptionEmailHtmlParameter   = "tagSubscriptionEmailHtmlFile";
+ public static final String             AttributeSubscriptionEmailPlainTextParameter
+                                                                            = "attributeSubscriptionEmailPlainTextFile";
+ public static final String             AttributeSubscriptionEmailHtmlParameter
+                                                                            = "attributeSubscriptionEmailHtmlFile";
 
  public static final String             PassResetTimeoutParameter           = "passwordResetTimeout";
  public static final String             PassResetEmailSubjectParameter      = "passwordResetEmailSubject";
@@ -277,8 +280,12 @@ public class ConfigurationManager
   adjustResource(cfgBean.getPassResetEmailHtmlFile(), baseP);
   adjustResource(cfgBean.getPassResetEmailPlainTextFile(), baseP);
 
-  adjustResource(cfgBean.getSubscriptionEmailHtmlFile(), baseP);
-  adjustResource(cfgBean.getSubscriptionEmailPlainTextFile(), baseP);
+  adjustResource(cfgBean.getTagSubscriptionEmailHtmlFile(), baseP);
+  adjustResource(cfgBean.getTagSubscriptionEmailPlainTextFile(), baseP);
+
+  adjustResource(cfgBean.getAttributeSubscriptionEmailHtmlFile(), baseP);
+  adjustResource(cfgBean.getAttributeSubscriptionEmailPlainTextFile(), baseP);
+
 
   adjustSearchIndexPath(cfgBean, baseP);
   adjustH2DBPath(cfgBean, baseP);
@@ -375,7 +382,8 @@ public class ConfigurationManager
    @Override
    public void run()
    {
-    SubscriptionProcessor.processEvents();
+    AttributeSubscriptionProcessor.processEvents();
+    TagSubscriptionProcessor.processEvents();
    }
   }, dayInMills-(now % dayInMills) , dayInMills);
 
@@ -872,36 +880,68 @@ public class ConfigurationManager
    throw new ConfigurationException("Invalid configuration");
   }
 
-  
-  if( cfg.getSubscriptionEmailSubject() != null || cfg.getSubscriptionEmailPlainTextFile() != null || cfg.getSubscriptionEmailHtmlFile() != null )
+  // tag subscription
+  if( cfg.getSubscriptionEmailSubject() != null || cfg.getTagSubscriptionEmailPlainTextFile() != null || cfg.getTagSubscriptionEmailHtmlFile() != null )
   {
-   if( cfg.getSubscriptionEmailSubject() == null || cfg.getSubscriptionEmailPlainTextFile() == null || cfg.getSubscriptionEmailHtmlFile() == null )
+   if( cfg.getSubscriptionEmailSubject() == null || cfg.getTagSubscriptionEmailPlainTextFile() == null || cfg.getTagSubscriptionEmailHtmlFile() == null )
    {
     log.error("To activate tag subscriptions service the following parameters should be set: "
      +ServiceParamPrefix+SubscriptionEmailSubjectParameter
-     +", "+ServiceParamPrefix+SubscriptionEmailPlainTextParameter
-     +", "+ServiceParamPrefix+SubscriptionEmailHtmlParameter
+     +", "+ServiceParamPrefix+TagSubscriptionEmailPlainTextParameter
+     +", "+ServiceParamPrefix+TagSubscriptionEmailHtmlParameter
       );
     throw new ConfigurationException("Invalid configuration");
    }
    
-   emailFile = cfg.getSubscriptionEmailPlainTextFile();
+   emailFile = cfg.getTagSubscriptionEmailPlainTextFile();
 
    if( emailFile != null && ! emailFile.isValid() )
    {
-    log.error(ServiceParamPrefix+SubscriptionEmailPlainTextParameter+" should point to a regular readable file");
+    log.error(ServiceParamPrefix+TagSubscriptionEmailPlainTextParameter+" should point to a regular readable file");
     throw new ConfigurationException("Invalid configuration");
    }
 
-   emailFile = cfg.getSubscriptionEmailHtmlFile();
+   emailFile = cfg.getTagSubscriptionEmailHtmlFile();
    
    if( emailFile != null && ! emailFile.isValid()  )
    {
-    log.error(ServiceParamPrefix+SubscriptionEmailHtmlParameter+" should point to a regular readable file");
+    log.error(ServiceParamPrefix+TagSubscriptionEmailHtmlParameter+" should point to a regular readable file");
     throw new ConfigurationException("Invalid configuration");
    }
   }
-  
+
+  // attribute subscription
+  // would be nice to rework everything to remove code duplication
+  if( cfg.getAttributeSubscriptionEmailPlainTextFile() != null || cfg.getAttributeSubscriptionEmailHtmlFile() != null )
+  {
+   if( cfg.getSubscriptionEmailSubject() == null || cfg.getAttributeSubscriptionEmailPlainTextFile() == null ||
+           cfg.getAttributeSubscriptionEmailHtmlFile() == null )
+   {
+    log.error("To activate attribute subscriptions service the following parameters should be set: "
+     +ServiceParamPrefix+SubscriptionEmailSubjectParameter
+     +", "+ServiceParamPrefix+AttributeSubscriptionEmailPlainTextParameter
+     +", "+ServiceParamPrefix+AttributeSubscriptionEmailHtmlParameter
+      );
+    throw new ConfigurationException("Invalid configuration");
+   }
+
+   emailFile = cfg.getAttributeSubscriptionEmailPlainTextFile();
+
+   if( emailFile != null && ! emailFile.isValid() )
+   {
+    log.error(ServiceParamPrefix+AttributeSubscriptionEmailPlainTextParameter+" should point to a regular readable file");
+    throw new ConfigurationException("Invalid configuration");
+   }
+
+   emailFile = cfg.getAttributeSubscriptionEmailHtmlFile();
+
+   if( emailFile != null && ! emailFile.isValid()  )
+   {
+    log.error(ServiceParamPrefix+AttributeSubscriptionEmailHtmlParameter+" should point to a regular readable file");
+    throw new ConfigurationException("Invalid configuration");
+   }
+  }
+
   
   Path sbmTestDir = cfg.getSubmissionsPath().resolve("~tmp");
   try
@@ -1195,30 +1235,32 @@ public class ConfigurationManager
   }
 
 
-  if( SubscriptionEmailPlainTextParameter.equals(param) )
+  if( TagSubscriptionEmailPlainTextParameter.equals(param) )
   {
-   cfg.setSubscriptionEmailPlainTextFile( new FileResource( createPath(SubscriptionEmailPlainTextParameter,val, cfg.getBaseDirectory()) ) );
+   cfg.setTagSubscriptionEmailPlainTextFile( new FileResource( createPath(TagSubscriptionEmailPlainTextParameter,val, cfg.getBaseDirectory()) ) );
    
    return true;
   }
 
-  if( SubscriptionEmailHtmlParameter.equals(param) )
+  if( TagSubscriptionEmailHtmlParameter.equals(param) )
   {
-   cfg.setSubscriptionEmailHtmlFile( new FileResource( createPath(SubscriptionEmailHtmlParameter,val, cfg.getBaseDirectory()) ) );
+   cfg.setTagSubscriptionEmailHtmlFile( new FileResource( createPath(TagSubscriptionEmailHtmlParameter,val, cfg.getBaseDirectory()) ) );
    
    return true;
   }
 
-  if( TextSubscriptionEmailPlainTextParameter.equals(param) )
+  if( AttributeSubscriptionEmailPlainTextParameter.equals(param) )
   {
-   cfg.setTextSubscriptionEmailPlainTextFile( new FileResource( createPath(TextSubscriptionEmailPlainTextParameter,val, cfg.getBaseDirectory()) ) );
+   cfg.setAttributeSubscriptionEmailPlainTextFile( new FileResource( createPath(
+           AttributeSubscriptionEmailPlainTextParameter, val, cfg.getBaseDirectory()) ) );
 
    return true;
   }
 
-  if( TextSubscriptionEmailHtmlParameter.equals(param) )
+  if( AttributeSubscriptionEmailHtmlParameter.equals(param) )
   {
-   cfg.setTextSubscriptionEmailHtmlFile( new FileResource( createPath(TextSubscriptionEmailHtmlParameter,val, cfg.getBaseDirectory()) ) );
+   cfg.setAttributeSubscriptionEmailHtmlFile( new FileResource( createPath(
+           AttributeSubscriptionEmailHtmlParameter, val, cfg.getBaseDirectory()) ) );
 
    return true;
   }

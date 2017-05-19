@@ -39,8 +39,8 @@ import org.apache.commons.io.Charsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import uk.ac.ebi.biostd.authz.SubscriptionMatchEvent;
-import uk.ac.ebi.biostd.authz.TextSubscription;
+import uk.ac.ebi.biostd.authz.AttributeSubscriptionMatchEvent;
+import uk.ac.ebi.biostd.authz.AttributeSubscription;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.model.AbstractAttribute;
 import uk.ac.ebi.biostd.model.FileRef;
@@ -54,7 +54,7 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
  * Created by andrew on 24/03/2017.
  */
 
-public class SubscriptionProcessor implements Runnable {
+public class AttributeSubscriptionProcessor implements Runnable {
 
     private static boolean isProcessorRunning = true;
 
@@ -81,7 +81,7 @@ public class SubscriptionProcessor implements Runnable {
 
     private static Logger logger() {
         if (log == null)
-            log = LoggerFactory.getLogger(SubscriptionProcessor.class);
+            log = LoggerFactory.getLogger(AttributeSubscriptionProcessor.class);
 
         return log;
     }
@@ -106,7 +106,7 @@ public class SubscriptionProcessor implements Runnable {
     private static synchronized BlockingQueue<ProcessorRequest> getQueue() {
         if (queue == null) {
             queue = new LinkedBlockingQueue<ProcessorRequest>();
-            new Thread(new SubscriptionProcessor(), "SubscriptionProcessor").start();
+            new Thread(new AttributeSubscriptionProcessor(), "AttributeSubscriptionProcessor").start();
         }
 
         return queue;
@@ -146,7 +146,7 @@ public class SubscriptionProcessor implements Runnable {
             List<Submission> submissions = query.getResultList();
 
             if (submissions.size() != 1) {
-                logger().warn("SubscriptionProcessor: submission not found or multiple results id=" + request.sbmId);
+                logger().warn("AttributeSubscriptionProcessor: submission not found or multiple results id=" + request.sbmId);
                 continue;
             }
 
@@ -216,14 +216,14 @@ public class SubscriptionProcessor implements Runnable {
 
             // get defined subscriptions
             //
-            TypedQuery<TextSubscription> subscriptionQuery = entityMan.createNamedQuery(
-                    TextSubscription.GetAllByAttributeQuery, TextSubscription.class);
-            subscriptionQuery.setParameter(TextSubscription.AttributeQueryParameter, container.nameset);
-            List<TextSubscription> subscriptionList = subscriptionQuery.getResultList();
+            TypedQuery<AttributeSubscription> subscriptionQuery = entityMan.createNamedQuery(
+                    AttributeSubscription.GetAllByAttributeQuery, AttributeSubscription.class);
+            subscriptionQuery.setParameter(AttributeSubscription.AttributeQueryParameter, container.nameset);
+            List<AttributeSubscription> subscriptionList = subscriptionQuery.getResultList();
 
             Set<Map.Entry<String, String>> set = container.map.entrySet();
 
-            for (TextSubscription subscription : subscriptionList) {
+            for (AttributeSubscription subscription : subscriptionList) {
 
                 // check map contains our attribute
                 //
@@ -240,7 +240,7 @@ public class SubscriptionProcessor implements Runnable {
                         //
                         EntityTransaction transaction = entityMan.getTransaction();
 
-                        SubscriptionMatchEvent event = new SubscriptionMatchEvent();
+                        AttributeSubscriptionMatchEvent event = new AttributeSubscriptionMatchEvent();
                         event.setSubmission(submission);
                         event.setSubscription(subscription);
                         event.setUser(subscription.getUser());
@@ -271,7 +271,7 @@ public class SubscriptionProcessor implements Runnable {
 
         /*
         new Thread( () -> processEvents() ).start();
-        new Thread( SubscriptionProcessor::processEvents ).start();
+        new Thread( AttributeSubscriptionProcessor::processEvents ).start();
         */
 
 
@@ -338,7 +338,7 @@ public class SubscriptionProcessor implements Runnable {
         EmailTemplates textTemplates;
 
         try {
-            htmlTemplates = parseMessage(BackendConfig.getTextSubscriptionEmailHtmlFile().
+            htmlTemplates = parseMessage(BackendConfig.getAttributeSubscriptionEmailHtmlFile().
                     readToString(Charsets.UTF_8));
         } catch (IOException e1) {
             log.error("Error!", e1);
@@ -346,7 +346,7 @@ public class SubscriptionProcessor implements Runnable {
         }
 
         try {
-            textTemplates = parseMessage(BackendConfig.getTextSubscriptionEmailPlainTextFile().
+            textTemplates = parseMessage(BackendConfig.getAttributeSubscriptionEmailPlainTextFile().
                     readToString(Charsets.UTF_8));
         } catch (IOException e1) {
             log.error("Error!", e1);
@@ -361,7 +361,7 @@ public class SubscriptionProcessor implements Runnable {
             // get all users with events
             //
             TypedQuery<User> userQuery = entityMan.createNamedQuery(
-                    SubscriptionMatchEvent.GetAllUsersWithEventsQuery, User.class);
+                    AttributeSubscriptionMatchEvent.GetAllUsersWithEventsQuery, User.class);
             List<User> users = userQuery.getResultList();
 
             for (User u : users) {
@@ -375,14 +375,14 @@ public class SubscriptionProcessor implements Runnable {
 
                 // get all subscriptions events
                 //
-                TypedQuery<SubscriptionMatchEvent> eventQuery = entityMan.createNamedQuery(
-                        SubscriptionMatchEvent.GetEventsByUserIdQuery, SubscriptionMatchEvent.class);
+                TypedQuery<AttributeSubscriptionMatchEvent> eventQuery = entityMan.createNamedQuery(
+                        AttributeSubscriptionMatchEvent.GetEventsByUserIdQuery, AttributeSubscriptionMatchEvent.class);
 
-                eventQuery.setParameter(SubscriptionMatchEvent.UserIdQueryParameter, u.getId());
+                eventQuery.setParameter(AttributeSubscriptionMatchEvent.UserIdQueryParameter, u.getId());
 
-                List<SubscriptionMatchEvent> events = eventQuery.getResultList();
+                List<AttributeSubscriptionMatchEvent> events = eventQuery.getResultList();
 
-                for (SubscriptionMatchEvent event : events) {
+                for (AttributeSubscriptionMatchEvent event : events) {
                     // skip submission if user may not "see" it
                     //
                     if (!secMan.mayUserReadSubmission(event.getSubmission(), u))
@@ -479,9 +479,9 @@ public class SubscriptionProcessor implements Runnable {
                 // remove events
                 //
                 Query deleteQuery = entityMan.createNamedQuery(
-                        SubscriptionMatchEvent.DeleteEventsByUserIdQuery);
+                        AttributeSubscriptionMatchEvent.DeleteEventsByUserIdQuery);
 
-                deleteQuery.setParameter(SubscriptionMatchEvent.UserIdQueryParameter, u.getId());
+                deleteQuery.setParameter(AttributeSubscriptionMatchEvent.UserIdQueryParameter, u.getId());
 
                 EntityTransaction transation = entityMan.getTransaction();
 
@@ -496,5 +496,4 @@ public class SubscriptionProcessor implements Runnable {
             log.error("Error!", ex);
         }
     }
-
 }

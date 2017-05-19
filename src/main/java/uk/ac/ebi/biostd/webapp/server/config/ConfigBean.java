@@ -73,11 +73,11 @@ public class ConfigBean
  private Resource             passResetEmailPlainTextFile;
  private Resource             passResetEmailHtmlFile;
 
- private Resource             subscriptionEmailHtmlFile;
- private Resource             subscriptionEmailPlainTextFile;
+ private Resource             tagSubscriptionEmailHtmlFile;
+ private Resource             tagSubscriptionEmailPlainTextFile;
 
- private Resource             textSubscriptionEmailHtmlFile;
- private Resource             textSubscriptionEmailPlainTextFile;
+ private Resource             attributeSubscriptionEmailHtmlFile;
+ private Resource             attributeSubscriptionEmailPlainTextFile;
 
  private String               defaultSubmissionAccPrefix = null;
  private String               defaultSubmissionAccSuffix = null;
@@ -380,44 +380,44 @@ public class ConfigBean
   this.passResetEmailHtmlFile = passResetEmailHtmlFile;
  }
 
- public Resource getSubscriptionEmailHtmlFile()
+ public Resource getTagSubscriptionEmailHtmlFile()
  {
-  return subscriptionEmailHtmlFile;
+  return tagSubscriptionEmailHtmlFile;
  }
 
- public void setSubscriptionEmailHtmlFile(Resource subscriptionEmailHtmlFile)
+ public void setTagSubscriptionEmailHtmlFile(Resource tagSubscriptionEmailHtmlFile)
  {
-  this.subscriptionEmailHtmlFile = subscriptionEmailHtmlFile;
+  this.tagSubscriptionEmailHtmlFile = tagSubscriptionEmailHtmlFile;
  }
 
- public Resource getSubscriptionEmailPlainTextFile()
+ public Resource getTagSubscriptionEmailPlainTextFile()
  {
-  return subscriptionEmailPlainTextFile;
+  return tagSubscriptionEmailPlainTextFile;
  }
 
- public void setSubscriptionEmailPlainTextFile(Resource subscriptionEmailPlainTextFile)
+ public void setTagSubscriptionEmailPlainTextFile(Resource tagSubscriptionEmailPlainTextFile)
  {
-  this.subscriptionEmailPlainTextFile = subscriptionEmailPlainTextFile;
+  this.tagSubscriptionEmailPlainTextFile = tagSubscriptionEmailPlainTextFile;
  }
 
- public Resource getTextSubscriptionEmailHtmlFile()
+ public Resource getAttributeSubscriptionEmailHtmlFile()
  {
-  return textSubscriptionEmailHtmlFile;
+  return attributeSubscriptionEmailHtmlFile;
  }
 
- public void setTextSubscriptionEmailHtmlFile(Resource textSubscriptionEmailHtmlFile)
+ public void setAttributeSubscriptionEmailHtmlFile(Resource attributeSubscriptionEmailHtmlFile)
  {
-  this.textSubscriptionEmailHtmlFile = textSubscriptionEmailHtmlFile;
+  this.attributeSubscriptionEmailHtmlFile = attributeSubscriptionEmailHtmlFile;
  }
 
- public Resource getTextSubscriptionEmailPlainTextFile()
+ public Resource getAttributeSubscriptionEmailPlainTextFile()
  {
-  return textSubscriptionEmailPlainTextFile;
+  return attributeSubscriptionEmailPlainTextFile;
  }
 
- public void setTextSubscriptionEmailPlainTextFile(Resource textSubscriptionEmailPlainTextFile)
+ public void setAttributeSubscriptionEmailPlainTextFile(Resource attributeSubscriptionEmailPlainTextFile)
  {
-  this.textSubscriptionEmailPlainTextFile = textSubscriptionEmailPlainTextFile;
+  this.attributeSubscriptionEmailPlainTextFile = attributeSubscriptionEmailPlainTextFile;
  }
 
  public String getDefaultSubmissionAccPrefix()

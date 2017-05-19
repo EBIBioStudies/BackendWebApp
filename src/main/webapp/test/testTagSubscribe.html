@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Subscription tests</title>
+
+<style type="text/css">
+
+.subscriptionTable { border: 1px solid black; border-collapse: collapse; }
+.subscriptionTable td, .subscriptionTable th { border: 1px solid black; padding: 4px }
+
+.out { margin: 10px }
+
+</style>
+
+<script type="text/javascript">
+
+    /*
+    function createUserRow() {
+        var tr = document.createElement("tr");
+
+        var uid = arguments[0] ? arguments[0] : arguments[1];
+
+        for (i = 0; i < arguments.length; i++) {
+            var td = document.createElement("td");
+            td.innerHTML = arguments[i];
+            td.onclick = function () {
+                selectUser(uid)
+            };
+            tr.appendChild(td);
+        }
+
+        return tr;
+    }   */
+
+    /*
+    function selectUser(usr) {
+        document.getElementById("user").value = usr;
+    } */
+
+    function rowClicked( obj ) {
+        //document.getElementById("subscriptionid").value =
+        //        obj.target.parentElement.getElementsByTagName("td")[0].innerHTML ;
+    }
+
+    function createRow() {
+        var tag = arguments[0];
+
+        var tr = document.createElement("tr");
+
+        for (i = 1; i < arguments.length; i++) {
+            var td = document.createElement(tag);
+            td.innerHTML = arguments[i];
+            td.onclick = rowClicked;
+            tr.appendChild(td);
+        }
+
+        return tr;
+    }
+
+    function doListTagSubscriptions() {
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+                var tblOut = document.getElementById("subscriptionlist");
+                tblOut.innerHTML = "";
+
+                var tbl = document.createElement("table");
+                tbl.className = "subscriptionTable";
+                tblOut.appendChild(tbl);
+
+                tbl.appendChild(createRow("th", "tagId", "tag", "classifierId", "classifier"));
+
+                for (var i = 0; i < json.length; i++)
+                    tbl.appendChild( createRow("td", json[i].tagId, json[i].tag,
+                            json[i].classifierId, json[i].classifier) );
+
+            }
+        }
+
+        xmlhttp.open("GET", "../subscription/list?format=json", true);
+        xmlhttp.send();
+    }
+
+    function doAddTagSubscription() {
+        //var gName = document.getElementById("subscriptionid").value;
+        var tag = document.getElementById("subscriptiontag").value;
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+            }
+        }
+
+        xmlhttp.open("GET", "../subscription/subscribe?format=json&tag=" + tag, true);
+        xmlhttp.send();
+    }
+
+    function doDeleteTagSubscription() {
+        var tag = document.getElementById("subscriptiontag").value;
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+            }
+        }
+
+        xmlhttp.open("GET", "../subscription/unsubscribe?format=json&tag=" + tag, true);
+        xmlhttp.send();
+    }
+
+    function doCreateTag() {
+        var tag = document.getElementById("tagname").value;
+        var description = document.getElementById("tagdescription").value;
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+            }
+        }
+
+        xmlhttp.open("GET", "../tags/createtag?format=json&tag=" + tag, "&description=" + description, true);
+        xmlhttp.send();
+    }
+
+    function doListTags() {
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+                var tblOut = document.getElementById("taglist");
+                tblOut.innerHTML = "";
+
+                var tbl = document.createElement("table");
+                tbl.className = "subscriptionTable";
+                tblOut.appendChild(tbl);
+
+                tbl.appendChild(createRow("th", "id", "name", "description", "classifierId",
+                        "classifier", "parentId", "parent"));
+
+                for (var i = 0; i < json.length; i++)
+                    tbl.appendChild( createRow("td", json[i].id, json[i].name, json[i].description,
+                            json[i].classifierId, json[i].classifier,
+                            (typeof(json[i].parentId) !== 'undefined' ? json[i].parentId : "undefined") ,
+                            (typeof(json[i].parent) !== 'undefined' ? json[i].parent : "undefined") ));
+
+            }
+        }
+
+        xmlhttp.open("GET", "../tags/listtags?format=json", true);
+        xmlhttp.send();
+    }
+
+    function doCreateClassifier() {
+        var classifier = document.getElementById("classifiername").value;
+        var description = document.getElementById("classifierdescription").value;
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+            }
+        }
+
+        xmlhttp.open("GET", "../tags/createclassifier?format=json&classifier=" + classifier, "&description=" + description, true);
+        xmlhttp.send();
+    }
+
+
+    function doListClassifiers() {
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+                var tblOut = document.getElementById("classifierlist");
+                tblOut.innerHTML = "";
+
+                var tbl = document.createElement("table");
+                tbl.className = "subscriptionTable";
+                tblOut.appendChild(tbl);
+
+                tbl.appendChild(createRow("th", "id", "name", "description"));
+
+                for (var i = 0; i < json.length; i++)
+                    tbl.appendChild( createRow("td", json[i].id, json[i].name, json[i].description) );
+
+            }
+        }
+
+        xmlhttp.open("GET", "../tags/listclassifiers?format=json", true);
+        xmlhttp.send();
+    }
+
+
+</script>
+
+</head>
+<body>
+<table>
+
+    <tr>
+        <td>Tag : </td><td><input type="text" id="tagname" style="width: 200px"/></td>
+        <td>Description : </td><td><input type="text" id="tagdescription" style="width: 200px"/></td>
+        <td><button onClick="doCreateTag()">Create Tag</button></td>
+        <td><button onClick="doListTags()">List Tags</button></td>
+    </tr>
+
+    <tr>
+        <td>Classifier : </td><td><input type="text" id="classifiername" style="width: 200px"/></td>
+        <td>Description : </td><td><input type="text" id="classifierdescription" style="width: 200px"/></td>
+        <td><button onClick="doCreateClassifier()">Create Classifier</button></td>
+        <td><button onClick="doListClassifiers()">List Classifiers</button></td>
+    </tr>
+
+    <tr>
+        <td>Subscription Tag: </td><td><input type="text" id="subscriptiontag" style="width: 200px"/></td>
+    </tr>
+</table>
+
+<table>
+    <tr>
+        <td><button onClick="doAddTagSubscription()">Add Tag subscription</button></td>
+        <td><button onClick="doDeleteTagSubscription()">Delete Tag subscription</button></td>
+        <td><button onClick="doListTagSubscriptions()">List All Subscriptions</button></td>
+    </tr>
+</table>
+
+
+<div id="msg" class="out"></div>
+<div id="taglist" class="out"></div>
+<div id="classifierlist" class="out"></div>
+<div id="subscriptionlist" class="out"></div>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Subscription tests</title>
+
+<style type="text/css">
+
+.subscriptionTable { border: 1px solid black; border-collapse: collapse; }
+.subscriptionTable td, .subscriptionTable th { border: 1px solid black; padding: 4px }
+
+.out { margin: 10px }
+
+</style>
+
+<script type="text/javascript">
+
+    /*
+    function createUserRow() {
+        var tr = document.createElement("tr");
+
+        var uid = arguments[0] ? arguments[0] : arguments[1];
+
+        for (i = 0; i < arguments.length; i++) {
+            var td = document.createElement("td");
+            td.innerHTML = arguments[i];
+            td.onclick = function () {
+                selectUser(uid)
+            };
+            tr.appendChild(td);
+        }
+
+        return tr;
+    }   */
+
+    /*
+    function selectUser(usr) {
+        document.getElementById("user").value = usr;
+    } */
+
+
+    //   A T T R I B U T E S
+    //
+    //
+
+    function rowClicked( obj ) {
+        document.getElementById("subscriptionid").value =
+                obj.target.parentElement.getElementsByTagName("td")[0].innerHTML ;
+    }
+
+    function createRow() {
+        var tag = arguments[0];
+
+        var tr = document.createElement("tr");
+
+        for (i = 1; i < arguments.length; i++) {
+            var td = document.createElement(tag);
+            td.innerHTML = arguments[i];
+            td.onclick = rowClicked;
+            tr.appendChild(td);
+        }
+
+        return tr;
+    }
+
+    function doListSubscriptions() {
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+                var tblOut = document.getElementById("subscriptionlist");
+                tblOut.innerHTML = "";
+
+                var tbl = document.createElement("table");
+                tbl.className = "subscriptionTable";
+                tblOut.appendChild(tbl);
+
+                tbl.appendChild(createRow("th", "SubscriptionId", "Attribute", "Pattern"));
+
+                for (var i = 0; i < json.length; i++)
+                    tbl.appendChild( createRow("td", json[i].subscriptionId, json[i].attribute, json[i].pattern) );
+
+            }
+        }
+
+        xmlhttp.open("GET", "../attribute-subscription/list?format=json", true);
+        xmlhttp.send();
+    }
+
+    function doAddSubscription() {
+        //var gName = document.getElementById("subscriptionid").value;
+        var attribute = document.getElementById("attribute").value;
+        var pattern = document.getElementById("pattern").value;
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+            }
+        }
+
+        xmlhttp.open("GET", "../attribute-subscription/subscribe?format=json&attribute=" +
+                attribute + "&pattern=" + pattern, true);
+        xmlhttp.send();
+    }
+
+    function doDeleteSubscription() {
+        var subscriptionid = encodeURIComponent(document.getElementById("subscriptionid").value);
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+            }
+        }
+
+        xmlhttp.open("GET", "../attribute-subscription/unsubscribe?format=json&subscriptionId=" +
+                subscriptionid, true);
+        xmlhttp.send();
+    }
+
+    function doTriggerTagEvents() {
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+            }
+        }
+
+        xmlhttp.open("GET", "../attribute-subscription/triggertagevents?format=json", true);
+        xmlhttp.send();
+    }
+
+    function doTriggerAttributeEvents() {
+
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+
+            var out = document.getElementById("msg");
+
+            if (xmlhttp.readyState == 4) {
+                if (xmlhttp.status == 200)
+                    out.innerHTML = "OK";
+                else
+                    out.innerHTML = "Error: " + xmlhttp.status;
+
+                var json = JSON.parse(xmlhttp.responseText);
+
+                if (json.status == "FAIL") {
+                    out.innerHTML += "<br/>FAIL: " + json.message;
+                    return;
+                }
+
+            }
+        }
+
+        xmlhttp.open("GET", "../attribute-subscription/triggerattrevents?format=json", true);
+        xmlhttp.send();
+    }
+
+</script>
+
+</head>
+<body>
+<table>
+    <tr>
+        <td>Attribute : </td><td><input type="text" id="attribute" style="width: 200px"/></td>
+        <td>Pattern: </td><td><input type="text" id="pattern" style="width: 200px"/> </td>
+    </tr>
+    <tr>
+        <td>User : </td><td><input type="text" id="user" style="width: 200px"/></td>
+        <td>Subscription id: </td><td><input type="text" id="subscriptionid" style="width: 200px"/></td>
+    </tr>
+    <tr>
+    </tr>
+</table>
+
+<table>
+    <td><button onClick="doAddSubscription()">Add subscription</button></td>
+    <td><button onClick="doDeleteSubscription()">Delete subscription</button></td>
+    <td><button onClick="doListSubscriptions()">List All Subscriptions</button></td>
+    <td><button onClick="doTriggerTagEvents()">Trigger Tag Events</button></td>
+    <td><button onClick="doTriggerAttributeEvents()">Trigger Attribute Events</button></td>
+</table>
+
+<div id="msg" class="out"></div>
+<div id="subscriptionlist" class="out"></div>
+</body>
+</html>
