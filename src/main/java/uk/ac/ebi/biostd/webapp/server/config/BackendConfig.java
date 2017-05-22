@@ -498,24 +498,24 @@ public class BackendConfig
   return sessionTokenHeader;
  }
 
- public static Resource getSubscriptionEmailHtmlFile()
+ public static Resource getTagSubscriptionEmailHtmlFile()
  {
-  return conf.getSubscriptionEmailHtmlFile();
+  return conf.getTagSubscriptionEmailHtmlFile();
  }
 
- public static Resource getSubscriptionEmailPlainTextFile()
+ public static Resource getTagSubscriptionEmailPlainTextFile()
  {
-  return conf.getSubscriptionEmailPlainTextFile();
+  return conf.getTagSubscriptionEmailPlainTextFile();
  }
  
- public static Resource getTextSubscriptionEmailHtmlFile()
+ public static Resource getAttributeSubscriptionEmailHtmlFile()
   {
-   return conf.getTextSubscriptionEmailHtmlFile();
+   return conf.getAttributeSubscriptionEmailHtmlFile();
   }
 
-  public static Resource getTextSubscriptionEmailPlainTextFile()
+  public static Resource getAttributeSubscriptionEmailPlainTextFile()
   {
-   return conf.getTextSubscriptionEmailPlainTextFile();
+   return conf.getAttributeSubscriptionEmailPlainTextFile();
   }
 
  public static String getSubscriptionEmailSubject()

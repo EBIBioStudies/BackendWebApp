@@ -172,9 +172,9 @@ public class JPAReleaser implements ReleaseManager
     for(Submission s : released) {
      if (BackendConfig.getServiceManager().getSecurityManager().mayEveryoneReadSubmission(s)) {
       if( s.getTagRefs() != null && s.getTagRefs().size() > 0 ) {
-       SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+       TagSubscriptionProcessor.notifyByTags(s.getTagRefs(), s);
       }
-      SubscriptionProcessor.processAsync(s);
+      AttributeSubscriptionProcessor.processAsync(s);
      }
     }
    }

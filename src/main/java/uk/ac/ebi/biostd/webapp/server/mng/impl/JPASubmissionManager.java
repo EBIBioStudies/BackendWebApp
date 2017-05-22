@@ -1405,9 +1405,9 @@ public class JPASubmissionManager implements SubmissionManager
     Submission s = si.getSubmission();
 
     if(s.getTagRefs() != null && s.getTagRefs().size() > 0 ) {
-     SubscriptionNotifier.notifyByTags(s.getTagRefs(), s);
+     TagSubscriptionProcessor.notifyByTags(s.getTagRefs(), s);
     }
-    SubscriptionProcessor.processAsync(s);
+    AttributeSubscriptionProcessor.processAsync(s);
    }
   }
 
@@ -3115,8 +3115,8 @@ public class JPASubmissionManager implements SubmissionManager
    }
   
    if( BackendConfig.getSubscriptionEmailSubject() != null && nowPublic && ! wasPublic ) {
-    SubscriptionNotifier.notifyByTags(sbm.getTagRefs(), sbm);
-    SubscriptionProcessor.processAsync(sbm);
+    TagSubscriptionProcessor.notifyByTags(sbm.getTagRefs(), sbm);
+    AttributeSubscriptionProcessor.processAsync(sbm);
    }
 
 

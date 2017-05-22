@@ -88,10 +88,10 @@ public class DefaultConfiguration
   cfgBean.setPassResetEmailHtmlFile( new JavaResource("/resources/email/passResetMail.html"));
 
   cfgBean.setSubscriptionEmailSubject("Subscription notification");
-  cfgBean.setSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/subscriptionMail.txt"));
-  cfgBean.setSubscriptionEmailHtmlFile( new JavaResource("/resources/email/subscriptionMail.html"));
-  cfgBean.setTextSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/subscriptionMail.txt"));
-  cfgBean.setTextSubscriptionEmailHtmlFile( new JavaResource("/resources/email/subscriptionMail.html"));
+  cfgBean.setTagSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/tagSubscriptionMail.txt"));
+  cfgBean.setTagSubscriptionEmailHtmlFile( new JavaResource("/resources/email/tagSubscriptionMail.html"));
+  cfgBean.setAttributeSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/attributeSubscriptionMail.txt"));
+  cfgBean.setAttributeSubscriptionEmailHtmlFile( new JavaResource("/resources/email/attributeSubscriptionMail.html"));
 
  }
 }

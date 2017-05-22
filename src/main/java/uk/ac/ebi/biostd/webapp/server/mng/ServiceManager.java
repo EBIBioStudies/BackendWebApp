@@ -53,5 +53,9 @@ public interface ServiceManager
 
  TagManager getTagManager();
 
+ SubscriptionManager getSubscriptionManager();
+
+ void setSubscriptionManager(SubscriptionManager subscriptionManager);
+
  void shutdown();
 }

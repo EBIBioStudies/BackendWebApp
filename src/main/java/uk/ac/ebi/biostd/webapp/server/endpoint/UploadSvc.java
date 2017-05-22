@@ -58,7 +58,7 @@ public class UploadSvc extends ServiceServlet
    
    if(sess == null)
    {
-    resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
     return;
    }
 
