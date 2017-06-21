@@ -29,6 +29,7 @@ import java.util.UUID;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 
 import com.pri.log.Log;
 
@@ -77,7 +78,7 @@ public class JPAUserManager implements UserManager, SessionListener
    
    Query q = em.createNamedQuery(User.GetByLoginQuery);
 
-   q.setParameter("login", uName);
+   q.setParameter(User.LoginQueryParameter, uName);
 
    @SuppressWarnings("unchecked")
    List<User> res = q.getResultList();
@@ -108,6 +109,12 @@ public class JPAUserManager implements UserManager, SessionListener
  }
 
  @Override
+ public User getUserBySSOSubject(String ssoSubject)
+ {
+  return BackendConfig.getServiceManager().getSecurityManager().getUserBySSOSubject(ssoSubject);
+ }
+
+ @Override
  public UserGroup getGroup(String name)
  {
   return BackendConfig.getServiceManager().getSecurityManager().getGroup(name);
@@ -120,7 +127,7 @@ public class JPAUserManager implements UserManager, SessionListener
 
   Query q = em.createNamedQuery(User.GetByEMailQuery);
 
-  q.setParameter("email", prm);
+  q.setParameter(User.EmailQueryParameter, prm);
 
   @SuppressWarnings("unchecked")
   List<User> res = q.getResultList();
@@ -405,7 +412,7 @@ public class JPAUserManager implements UserManager, SessionListener
    
    Query q = em.createNamedQuery(User.GetByEMailQuery);
 
-   q.setParameter("email", ainf.email);
+   q.setParameter(User.EmailQueryParameter, ainf.email);
 
    @SuppressWarnings("unchecked")
    List<User> res = q.getResultList();
@@ -540,7 +547,7 @@ public class JPAUserManager implements UserManager, SessionListener
    
    Query q = em.createNamedQuery(User.GetByEMailQuery);
 
-   q.setParameter("email", ainf.email);
+   q.setParameter(User.EmailQueryParameter, ainf.email);
 
    @SuppressWarnings("unchecked")
    List<User> res = q.getResultList();
@@ -604,10 +611,6 @@ public class JPAUserManager implements UserManager, SessionListener
 
  }
 
-
-
- 
- 
  @Override
  public Session login(String login, String password, boolean passHash) throws SecurityException
  {
@@ -622,6 +625,69 @@ public class JPAUserManager implements UserManager, SessionListener
 
   return sess;
  }
+
+ @Override
+ public Session loginUsingSSOToken(User user0, String ssoToken, String ssoSubject) throws SecurityException
+ {
+  User user = BackendConfig.getServiceManager().getSecurityManager().checkUserSSOSubject(ssoSubject);
+
+  SessionManager sessMngr = BackendConfig.getServiceManager().getSessionManager();
+
+  Session sess = sessMngr.getSessionByUserId(user.getId());
+
+  if(sess == null)
+   sess = sessMngr.createSession(user);
+
+  sess.setSSOToken(ssoToken);
+
+  return sess;
+ }
+
+ @Override
+ public void linkSSOSubjectToUser(User user, String ssoSubject) throws UserMngException
+ {
+  EntityManager em = BackendConfig.getServiceManager().getSessionManager().getSession().getEntityManager();
+  EntityTransaction trn = em.getTransaction();
+  User u = null;
+
+  try
+  {
+   trn.begin();
+   TypedQuery<User> q = em.createNamedQuery(User.GetByEMailQuery, User.class);
+   q.setParameter(User.EmailQueryParameter, user.getEmail());
+
+   List<User> res = q.getResultList();
+
+   if(res.size() != 0)
+    u = res.get(0);
+
+   if(u == null)
+    throw new UserNotFoundException();
+
+   u.setSsoSubject(ssoSubject);
+
+  } catch(UserMngException e) {
+   trn.rollback();
+   throw e;
+  } catch(Exception e) {
+   trn.rollback();
+   throw new SystemUserMngException("System error",e);
+  } finally {
+   if(trn.isActive() && !trn.getRollbackOnly()) {
+    trn.commit();
+    if( u != null ) {
+     // We also need to update a user cache
+     uk.ac.ebi.biostd.webapp.server.mng.security.SecurityManager secMan =
+             BackendConfig.getServiceManager().getSecurityManager();
+     User cchUsr = secMan.getUserById(u.getId());
+     if( cchUsr != null )
+      cchUsr.setSsoSubject( ssoSubject );
+      secMan.addUserSSOSubject(u, ssoSubject);
+    }
+   }
+  }
+ }
+
 
  @Override
  public void passwordResetRequest(User usr, String resetURL) throws UserMngException
@@ -640,7 +706,7 @@ public class JPAUserManager implements UserManager, SessionListener
    {
     Query q = em.createNamedQuery(User.GetByEMailQuery);
     
-    q.setParameter("email", usr.getEmail());
+    q.setParameter(User.EmailQueryParameter, usr.getEmail());
     
     @SuppressWarnings("unchecked")
     List<User> res = q.getResultList();
@@ -653,7 +719,7 @@ public class JPAUserManager implements UserManager, SessionListener
    {
     Query q = em.createNamedQuery(User.GetByLoginQuery);
     
-    q.setParameter("login", usr.getLogin());
+    q.setParameter(User.LoginQueryParameter, usr.getLogin());
     
     @SuppressWarnings("unchecked")
     List<User> res = q.getResultList();
@@ -713,7 +779,6 @@ public class JPAUserManager implements UserManager, SessionListener
     }
    }
   }
-
  }
 
 

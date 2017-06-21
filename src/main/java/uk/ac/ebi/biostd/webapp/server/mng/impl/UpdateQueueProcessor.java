@@ -28,6 +28,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -37,8 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.in.pageml.PageMLElements;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
-
-import com.google.gwt.thirdparty.guava.common.base.Charsets;
 
 public class UpdateQueueProcessor implements Runnable
 {
@@ -170,7 +169,7 @@ public class UpdateQueueProcessor implements Runnable
   
   try
   {
-   out = new OutputStreamWriter( new FileOutputStream(f), Charsets.UTF_8 );
+   out = new OutputStreamWriter( new FileOutputStream(f), StandardCharsets.UTF_8 ); // Charsets.UTF_8
    
    out.append("<").append(PageMLElements.ROOT.getElementName()).append(">\n");
    out.append("<").append(PageMLElements.SUBMISSIONS.getElementName()).append(">\n");

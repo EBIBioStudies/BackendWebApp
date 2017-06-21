@@ -112,7 +112,7 @@ public class BackendConfig
  
  private static ConfigurationManager configurationManager;
  
- private static ConfigBean conf= new ConfigBean();
+ private static ConfigBean conf = new ConfigBean();
  
  private static boolean configValid=false;
  
@@ -582,5 +582,19 @@ public class BackendConfig
  {
   conf.setTimer(timer);
  }
+
+ // SSO support
+ public static String getSSOPublicCertificatePemURL()
+ {
+  return conf.getSSOPublicCertificatePemURL();
+ }
+ public static String getSSOPublicCertificateDerURL()
+  {
+   return conf.getSSOPublicCertificateDerURL();
+  }
+ public static String getSSOAuthURL()
+  {
+   return conf.getSSOAuthURL();
+  }
 
 }
