@@ -34,9 +34,12 @@ public interface UserManager
 {
 
  Session login(String login, String password, boolean passHash) throws SecurityException;
- 
+ Session loginUsingSSOToken(User user, String ssoToken, String ssoSubject) throws SecurityException;
+ void linkSSOSubjectToUser(User user, String ssoSubject) throws UserMngException;
+
  User getUserByLogin(String uName);
  User getUserByEmail(String email);
+ User getUserBySSOSubject(String ssoSubject);
 
  int getUsersNumber();
  

@@ -154,7 +154,12 @@ public class ConfigurationManager
 
  
  public static final String             EmailInquiresParameter              = "email.inquiries";
- 
+
+ public static final String             SSOPemURLParameter                  = "sso.pem.url";
+ public static final String             SSODerURLParameter                  = "sso.der.url";
+ public static final String             SSOAuthPemURLParameter              = "sso.auth.url";
+
+
  private ParamPool contextParamPool;
  
  private static Logger log = LoggerFactory.getLogger(ConfigurationManager.class);
@@ -1294,7 +1299,23 @@ public class ConfigurationManager
    
    return true;
   }
-  
+
+  // SSO stuff
+  if( SSOPemURLParameter.equals(param) ) {
+   cfg.setSSOPublicCertificatePemURL( val );
+   return true;
+  }
+
+  if( SSODerURLParameter.equals(param) ) {
+   cfg.setSSOPublicCertificateDerURL( val );
+   return true;
+  }
+
+  if( SSOAuthPemURLParameter.equals(param) ) {
+   cfg.setSSOAuthURL( val );
+   return true;
+  }
+
   return false;
 
  }

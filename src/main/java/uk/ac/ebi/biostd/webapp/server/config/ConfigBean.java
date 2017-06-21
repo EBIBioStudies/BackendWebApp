@@ -107,6 +107,11 @@ public class ConfigBean
  private Timer timer;
  private String uiURL;
 
+ // SSO support
+ private String SSOpemURL;
+ private String SSOderURL;
+ private String SSOauthURL;
+
 
  public String getDataMountPath()
  {
@@ -596,4 +601,34 @@ public class ConfigBean
  {
   this.webConfigEnabled = webConfigEnabled;
  }
+
+ // SSO support
+ public String getSSOPublicCertificatePemURL()
+ {
+  return SSOpemURL;
+ }
+ public void setSSOPublicCertificatePemURL(String pemUrl)
+ {
+  this.SSOpemURL = pemUrl;
+ }
+
+ public String getSSOPublicCertificateDerURL()
+ {
+  return SSOderURL;
+ }
+ public void setSSOPublicCertificateDerURL(String derUrl)
+ {
+  this.SSOderURL = derUrl;
+ }
+
+ public String getSSOAuthURL()
+ {
+  return SSOauthURL;
+ }
+ public void setSSOAuthURL(String authUrl)
+ {
+  this.SSOauthURL = authUrl;
+ }
+
+
 }

@@ -93,5 +93,9 @@ public class DefaultConfiguration
   cfgBean.setAttributeSubscriptionEmailPlainTextFile( new JavaResource("/resources/email/attributeSubscriptionMail.txt"));
   cfgBean.setAttributeSubscriptionEmailHtmlFile( new JavaResource("/resources/email/attributeSubscriptionMail.html"));
 
+  cfgBean.setSSOPublicCertificatePemURL("https://explore.api.aap.tsi.ebi.ac.uk/meta/public.pem");
+  cfgBean.setSSOPublicCertificateDerURL("https://explore.api.aap.tsi.ebi.ac.uk/meta/public.der");
+  cfgBean.setSSOAuthURL("https://explore.api.aap.tsi.ebi.ac.uk/auth");
+
  }
 }

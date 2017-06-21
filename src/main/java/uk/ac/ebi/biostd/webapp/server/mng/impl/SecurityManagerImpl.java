@@ -34,6 +34,8 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,6 +98,7 @@ public class SecurityManagerImpl implements SecurityManager
  private Map<Long, User> userMap = new HashMap<Long, User>();
  private Map<String, User> userEmailMap = new HashMap<String, User>();
  private Map<String, User> userLoginMap = new HashMap<String, User>();
+ private Map<String, User> userSSOSubjectMap = new HashMap<String, User>();
  private Map<String, UserGroup> groupNameMap = new HashMap<String, UserGroup>();
  private Map<Long, PermissionProfile> profileMap = new HashMap<Long, PermissionProfile>();
 
@@ -129,6 +132,7 @@ public class SecurityManagerImpl implements SecurityManager
    userMap.clear();
    userEmailMap.clear();
    userLoginMap.clear();
+   userSSOSubjectMap.clear();
    groupNameMap.clear();
    profileMap.clear();
 
@@ -318,7 +322,26 @@ public class SecurityManagerImpl implements SecurityManager
 
   return uHash.equalsIgnoreCase( StringUtils.toHexStr(u.getPasswordDigest()) );
  }
- 
+
+ @Override
+ public User checkUserSSOSubject( String ssoSubject ) throws SecurityException
+ {
+  if( ssoSubject == null || ssoSubject.length() == 0 )
+   throw new SecurityException("Invalid sso subject");
+
+  User usr = null;
+
+  usr = getUserBySSOSubject(ssoSubject);
+
+  if(usr == null)
+   throw new SecurityException("Login failed");
+
+  if(!usr.isActive())
+   throw new SecurityException("Account has not been activated");
+
+  return usr;
+ }
+
  @Override
  public int getUsersNumber()
  {
@@ -613,7 +636,13 @@ public class SecurityManagerImpl implements SecurityManager
   
   return du;
  }
- 
+
+ @Override
+ public synchronized void addUserSSOSubject(User user, String ssoSubject) {
+  userSSOSubjectMap.put(ssoSubject, user);
+ }
+
+
  @Override
  public synchronized void removeExpiredUsers()
  {
@@ -689,6 +718,9 @@ public class SecurityManagerImpl implements SecurityManager
   
   if( du.getLogin() != null && du.getLogin().length() > 0 )
    userLoginMap.put(du.getLogin(), du);
+
+  if( du.getSsoSubject() != null && du.getSsoSubject().length() > 0 )
+   userSSOSubjectMap.put(du.getSsoSubject(), du);
 
   if( u.getGroups() != null  )
   {
@@ -984,6 +1016,12 @@ public class SecurityManagerImpl implements SecurityManager
  public User getUserByEmail(String email)
  {
   return userEmailMap.get(email);
+ }
+
+ @Override
+ public User getUserBySSOSubject(String ssoSubject)
+ {
+  return userSSOSubjectMap.get(ssoSubject);
  }
 
  @Override

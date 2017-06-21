@@ -39,7 +39,9 @@ public interface SecurityManager
  void refreshUserCache();
 
  User checkUserLogin(String login, String pass, boolean passHash) throws SecurityException;
- 
+ User checkUserSSOSubject(String ssoSubject) throws SecurityException;
+ void addUserSSOSubject(User user, String ssoSubject);
+
  boolean mayUserListAllSubmissions(User u);
  boolean mayUserReadSubmission(Submission sub, User user);
 
@@ -61,7 +63,8 @@ public interface SecurityManager
  User getUserById( long id );
  User getUserByLogin( String login );
  User getUserByEmail( String email );
- 
+ User getUserBySSOSubject( String ssoSubject );
+
  User getAnonymousUser();
 
  UserGroup addGroup(UserGroup ug) throws ServiceException;
