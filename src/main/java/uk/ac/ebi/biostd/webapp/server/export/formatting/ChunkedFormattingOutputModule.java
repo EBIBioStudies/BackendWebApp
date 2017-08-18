@@ -289,7 +289,7 @@ public class ChunkedFormattingOutputModule implements OutputModule
   
   Path outParent = outDir.getParent();
  
-  Path tmpOutDir =outParent.resolve( "biostdMovingChunkedDir."+System.currentTimeMillis() );
+  Path tmpOutDir =outParent.resolve( ".biostdMovingChunkedDir."+System.currentTimeMillis() );
   
 //  FileManager fmgr = BackendConfig.getServiceManager().getFileManager();
   
@@ -306,7 +306,7 @@ public class ChunkedFormattingOutputModule implements OutputModule
    fsys.deleteDirectoryContents(tmpDir);
   }
   
-  Path tmpOutDir2 = outParent.resolve( "biostdMovingDirBackup."+System.currentTimeMillis() );
+  Path tmpOutDir2 = outParent.resolve( ".biostdMovingDirBackup."+System.currentTimeMillis() );
   
   
   try

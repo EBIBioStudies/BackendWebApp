@@ -128,7 +128,7 @@ public class TaskInfo extends TimerTask
   {
    log.info("Delaying export task: " + task.getName());
    
-   timer.schedule(this, BackendConfig.getExportLockDelayMsec());
+   getTimer().schedule(this, BackendConfig.getExportLockDelayMsec());
    
    return;
   }
@@ -159,7 +159,11 @@ public class TaskInfo extends TimerTask
 
  public Timer getTimer()
  {
+  if (timer == null) {
+   timer = new Timer();
+  }
   return timer;
+
  }
 
  public void setTimer(Timer timer)

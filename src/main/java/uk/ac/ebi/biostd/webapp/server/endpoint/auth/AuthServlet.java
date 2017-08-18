@@ -324,8 +324,10 @@ public class AuthServlet extends ServiceServlet {
         String ssoToken = prms.getParameter(SSOTokenParameter);
         Session sess = null;
 
+        /*
         boolean trySSOauthentication = false;
         Exception deferredException = null;
+        */
 
         UserManager um = BackendConfig.getServiceManager().getUserManager();
 
@@ -365,14 +367,18 @@ public class AuthServlet extends ServiceServlet {
                 sess = um.login(uname, pass, passHash);
             } catch (SecurityException e) {
 
-                log.info("Local authentication Failed for " + uname + ", trying SSO");
-
+                resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL " + e.getMessage());
+                return;
+                /*
                 // make attempt to authenticate using SSO
                 //
                 trySSOauthentication = true;
                 deferredException = e;
+                */
+
             }
 
+            /*
             if (trySSOauthentication) {
                 try {
                     ssoToken = SSOSupport.authenticateUsingSSOServer(uname, pass);
@@ -389,7 +395,7 @@ public class AuthServlet extends ServiceServlet {
                             (deferredException != null ? (", and: " + deferredException.getMessage()) : ""));
                     return;
                 }
-            }
+            } */
         }
 
 
@@ -421,7 +427,7 @@ public class AuthServlet extends ServiceServlet {
 
 
         for (int i = 0; i < auxLen; i++)
-            outInfo[i + 5] = new KV(AuxParameter, aux.get(i)[0], aux.get(i)[1]);
+            outInfo[i + 6] = new KV(AuxParameter, aux.get(i)[0], aux.get(i)[1]);
 
         resp.respond(HttpServletResponse.SC_OK, "OK", null, outInfo); // safe for null emails
     }
