@@ -1391,7 +1391,8 @@ public class ConfigurationManager
     tinf.setTimeZero(-1);
    
    tinf.setPeriod( tc.getInvokePeriodMins() );
-   
+   tinf.setTimer(BackendConfig.getTimer());
+
    List<OutputModule> mods = new ArrayList<>(tc.getOutputModulesConfig().size() );
    
    for( Map.Entry<String, Map<String,String>> me : tc.getOutputModulesConfig().entrySet() )

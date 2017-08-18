@@ -21,12 +21,14 @@ limitations under the License.
 package uk.ac.ebi.biostd.webapp.server.endpoint.tools;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 import javax.persistence.EntityManager;
@@ -37,12 +39,15 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import uk.ac.ebi.biostd.authz.Session;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
 import uk.ac.ebi.biostd.model.FileRef;
 import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.out.json.JSONFormatter;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
 import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
@@ -53,6 +58,8 @@ import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 
 public class ToolsServlet extends ServiceServlet
 {
+ private static Logger log = LoggerFactory.getLogger(ToolsServlet.class); ;
+
  private static final long serialVersionUID = 1L;
 
  private static enum Operation
@@ -65,7 +72,8 @@ public class ToolsServlet extends ServiceServlet
   CLEAN_EXP_USERS,
   REFRESH_USERS,
   UPDATE_USER_DIR_LAYOUT,
-  REVERSE_USER_DIR_LAYOUT;
+  REVERSE_USER_DIR_LAYOUT,
+  REGENERATE_JSON;
  }
  
  @Override
@@ -171,6 +179,14 @@ public class ToolsServlet extends ServiceServlet
    case REFRESH_USERS:
     
     BackendConfig.getServiceManager().getSecurityManager().refreshUserCache();
+
+    break;
+
+   case REGENERATE_JSON:
+
+    resp.setContentType("text/plain");
+    //regenerateJsonFiles(resp.getWriter());
+    regenerateJsonFilesNoThreads(resp.getWriter());
 
     break;
    default:
@@ -847,6 +863,166 @@ public class ToolsServlet extends ServiceServlet
     fr.setDirectory( Files.isDirectory(p));
    }
   }
+ }
+
+ public class RegenerateJsonOuputRunnable implements Runnable {
+  private PrintWriter servletOut;
+  private int offset;
+  private int blockSz;
+
+  public RegenerateJsonOuputRunnable(int offset, int blockSz, PrintWriter servletOut) {
+   this.offset = offset;
+   this.blockSz = blockSz;
+   this.servletOut = servletOut;
+  }
+
+  public void run() {
+
+   String threadName = Thread.currentThread().getName();
+   EntityManager entityMan = null;
+
+   try {
+    entityMan = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+    Query q = entityMan.createQuery("select sb from Submission sb");
+    q.setFirstResult(offset);
+    q.setMaxResults(blockSz);
+
+    servletOut.append(threadName + " Collecting from " + offset + " to " + (offset + blockSz) + " submissions\n"); servletOut.flush();
+    log.info(threadName + " Collecting from " + offset + " to " + (offset + blockSz) + " submissions");
+
+    List<Submission> res = q.getResultList();
+
+    if( res.size() == 0 ) {
+     moreWorkToDo = false;
+     return;
+    }
+
+    int cnt = 0;
+    for( Submission s : res ) {
+
+     Path filesP = BackendConfig.getSubmissionPath(s);
+
+     try( PrintStream jsonOut = new PrintStream( filesP.resolve(s.getAccNo()+".json").toFile() ) ) {
+      new JSONFormatter(jsonOut, true).format(s,jsonOut);
+      jsonOut.close();
+      cnt++;
+     }  catch (Exception e) {
+      log.error(threadName + " Error regenerating json files " + e.getMessage());
+      servletOut.append(threadName + " Can't generate JSON source file: " + e.getMessage() + "\n");
+      e.printStackTrace(servletOut);
+     }
+    }
+    log.info(threadName + "Exported : " + res.size() + " (" + cnt + ") submissions");
+    servletOut.append(threadName + " - Exported : " + res.size() + " (" + cnt + ") submissions\n");
+
+
+   } finally {
+     if( entityMan != null && entityMan.isOpen() )
+      entityMan.close();
+   }
+  }
+ }
+
+ private volatile boolean moreWorkToDo = true;
+
+ private void regenerateJsonFiles(PrintWriter servletOut) {
+  EntityManager entityMan = null;
+  moreWorkToDo = true;
+
+  int blockSz = 100;
+
+  ThreadPoolExecutor pool = new ThreadPoolExecutor(5, 5, 60, TimeUnit.SECONDS,
+          new LinkedBlockingQueue<Runnable>());
+  pool.allowCoreThreadTimeOut(true);
+
+  int offset = 0;
+  boolean processing = true;
+
+  while( moreWorkToDo ) {
+   pool.execute(new RegenerateJsonOuputRunnable(offset, blockSz, servletOut));
+   offset += blockSz;
+
+   /*
+   while (pool.getActiveCount() > 10) {
+    try { Thread.sleep(50);} catch (Exception ex){}
+   }
+   */
+  }
+
+  servletOut.append( "Terminating thread pool"); servletOut.flush();
+  log.info("Terminating thread pool");
+
+  pool.shutdown();
+  while (!pool.isTerminated()) {
+   try { Thread.sleep(1000);} catch (Exception ex){}
+  }
+
+
+  servletOut.append( "Finished"); servletOut.flush();
+  log.info("Finished regenerating json files!");
+
+ }
+
+
+ private void regenerateJsonFilesNoThreads(PrintWriter servletOut) {
+  moreWorkToDo = true;
+
+  int blockSz = 1000;
+  int offset = 0;
+  boolean processing = true;
+
+  String threadName = Thread.currentThread().getName();
+  EntityManager entityMan = null;
+
+  try {
+   while (processing) {
+    if (entityMan != null)
+     entityMan.close();
+
+    entityMan = BackendConfig.getEntityManagerFactory().createEntityManager();
+
+    Query q = entityMan.createQuery("select sb from Submission sb");
+    q.setFirstResult(offset);
+    q.setMaxResults(blockSz);
+
+    servletOut.append(threadName + " Collecting from " + offset + " to " + (offset + blockSz) + " submissions\n");
+    servletOut.flush();
+    log.info(threadName + " Collecting from " + offset + " to " + (offset + blockSz) + " submissions");
+
+    List<Submission> res = q.getResultList();
+
+    if (res.size() == 0) {
+     break;
+    }
+
+    int cnt = 0;
+    for (Submission s : res) {
+     Path filesP = BackendConfig.getSubmissionPath(s);
+
+     try (PrintStream jsonOut = new PrintStream(filesP.resolve(s.getAccNo() + ".json").toFile())) {
+      new JSONFormatter(jsonOut, true).format(s, jsonOut);
+      jsonOut.close();
+      cnt++;
+     } catch (Exception e) {
+      log.error(threadName + " Error regenerating json files " + e.getMessage());
+      servletOut.append(threadName + " Can't generate JSON source file: " + e.getMessage() + "\n");
+      e.printStackTrace(servletOut);
+     }
+    }
+    log.info(threadName + " Exported : " + res.size() + " (" + cnt + ") submissions");
+    servletOut.append(threadName + " Exported : " + res.size() + " (" + cnt + ") submissions\n");
+
+
+    offset += res.size();
+   }
+  } finally {
+    if( entityMan != null && entityMan.isOpen() )
+     entityMan.close();
+  }
+
+  servletOut.append( "Finished"); servletOut.flush();
+  log.info("Finished regenerating json files!");
  }
 
 }
