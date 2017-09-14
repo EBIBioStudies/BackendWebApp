@@ -324,11 +324,6 @@ public class AuthServlet extends ServiceServlet {
         String ssoToken = prms.getParameter(SSOTokenParameter);
         Session sess = null;
 
-        /*
-        boolean trySSOauthentication = false;
-        Exception deferredException = null;
-        */
-
         UserManager um = BackendConfig.getServiceManager().getUserManager();
 
         if (ssoToken != null) {
@@ -369,33 +364,7 @@ public class AuthServlet extends ServiceServlet {
 
                 resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL " + e.getMessage());
                 return;
-                /*
-                // make attempt to authenticate using SSO
-                //
-                trySSOauthentication = true;
-                deferredException = e;
-                */
-
             }
-
-            /*
-            if (trySSOauthentication) {
-                try {
-                    ssoToken = SSOSupport.authenticateUsingSSOServer(uname, pass);
-                } catch (Throwable t) {
-                    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "SSO Server error: " + t.getMessage() +
-                            (deferredException != null ? (", and: " + deferredException.getMessage()) : ""));
-                    return;
-                }
-
-                try {
-                    sess = signInUsingSSOToken(rqrs, ssoToken);
-                } catch (Exception ex) {
-                    resp.respond(HttpServletResponse.SC_FORBIDDEN, "FAIL", "FAIL " + ex.getMessage() +
-                            (deferredException != null ? (", and: " + deferredException.getMessage()) : ""));
-                    return;
-                }
-            } */
         }
 
 

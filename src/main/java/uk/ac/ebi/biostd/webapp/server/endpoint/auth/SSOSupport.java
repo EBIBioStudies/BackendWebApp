@@ -73,7 +73,7 @@ public class SSOSupport {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try {
                 is = keyURL.openStream();
-                byte[] byteChunk = new byte[2048]; // Or whatever size you want to read in at a time.
+                byte[] byteChunk = new byte[2048];
                 int n;
 
                 while ( (n = is.read(byteChunk)) > 0 ) {
