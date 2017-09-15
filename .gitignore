@@ -9,3 +9,5 @@
 /gwt-unitCache/
 /dist/
 /src/dev/resources
+/.idea/
+/*.iml

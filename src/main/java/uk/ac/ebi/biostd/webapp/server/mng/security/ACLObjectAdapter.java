@@ -6,25 +6,28 @@ import uk.ac.ebi.biostd.authz.SystemAction;
 import uk.ac.ebi.biostd.authz.User;
 import uk.ac.ebi.biostd.authz.UserGroup;
 
-public interface ACLObjectAdapter
-{
+public interface ACLObjectAdapter {
 
- boolean checkChangeAccessPermission(User user);
+    boolean checkChangeAccessPermission(User user);
 
- ACR findACR(SystemAction act, boolean pAction, User usr);
- ACR findACR(SystemAction act, boolean pAction, UserGroup grp);
+    ACR findACR(SystemAction act, boolean pAction, User usr);
 
- ACR findACR(PermissionProfile prof, User usr);
- ACR findACR(PermissionProfile prof, UserGroup grp);
+    ACR findACR(SystemAction act, boolean pAction, UserGroup grp);
 
- void addRule(SystemAction act, boolean pAction, User usr) throws SecurityException;
- void addRule(SystemAction act, boolean pAction, UserGroup grp) throws SecurityException;
+    ACR findACR(PermissionProfile prof, User usr);
 
- void addRule(PermissionProfile prof, User usr) throws SecurityException;
- void addRule(PermissionProfile prof, UserGroup grp) throws SecurityException;
+    ACR findACR(PermissionProfile prof, UserGroup grp);
 
- void removeRule(ACR rule) throws SecurityException;
+    void addRule(SystemAction act, boolean pAction, User usr) throws SecurityException;
 
- boolean isObjectOk();
+    void addRule(SystemAction act, boolean pAction, UserGroup grp) throws SecurityException;
+
+    void addRule(PermissionProfile prof, User usr) throws SecurityException;
+
+    void addRule(PermissionProfile prof, UserGroup grp) throws SecurityException;
+
+    void removeRule(ACR rule) throws SecurityException;
+
+    boolean isObjectOk();
 
 }
