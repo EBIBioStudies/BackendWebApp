@@ -12,7 +12,6 @@
   <property name="deploy.user" location="tomcat"/>
   <property name="deploy.pass" location="tomcat"/>
   <property name="deploy.war" location="${build}/${war}"/>
-  <property name="gwt.home" value="/home/jcamilorada/Apps/gwt-2.7.0"/>
 
 
   <path id="antCP">
