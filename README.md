@@ -6,3 +6,7 @@ Project follow google [java coding standards](https://google.github.io/styleguid
 
 - [Eclipse formatter](https://github.com/google/styleguide/blob/gh-pages/eclipse-java-google-style.xml)
 - [Idea formatter](https://github.com/google/styleguide/blob/gh-pages/intellij-java-google-style.xml)
+
+## Generating artifact
+
+run `ant build` and generted artifact will be available under libs folder.
