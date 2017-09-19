@@ -1,114 +1,116 @@
 <project name="BioStdWebApp" default="deps" basedir="." xmlns:maven="antlib:org.apache.maven.artifact.ant">
-	<description>BioStudies</description>
+  <description>BioStudies</description>
 
-	<property name="build" location="build"/>
-	<property name="dist" location="dist"/>
-	<property name="webapp" location="src/main/webapp"/>
-	<property name="res" location="src/main/resources"/>
-	<property name="src" location="src/main/java"/>
-
-	
-	<property name="deploy.url" location="http://biostudy-dev.ebi.ac.uk:9080/manager"/>
-	<property name="deploy.user" location="tomcat"/>
-	<property name="deploy.pass" location="tomcat"/>
-	<property name="deploy.war" location="${build}/${war}"/>
+  <property name="build" location="build"/>
+  <property name="dist" location="dist"/>
+  <property name="webapp" location="src/main/webapp"/>
+  <property name="res" location="src/main/resources"/>
+  <property name="src" location="src/main/java"/>
 
 
-	
-	<path id="antCP">
+  <property name="deploy.url" location="http://biostudy-dev.ebi.ac.uk:9080/manager"/>
+  <property name="deploy.user" location="tomcat"/>
+  <property name="deploy.pass" location="tomcat"/>
+  <property name="deploy.war" location="${build}/${war}"/>
+  <property name="gwt.home" value="/home/jcamilorada/Apps/gwt-2.7.0"/>
+
+
+  <path id="antCP">
+  </path>
+
+  <target name="build">
+
+    <fail unless="gwt.home">gwt.home property should point to GWT SDK</fail>
+
+    <delete dir="${build}"/>
+
+    <mkdir dir="${build}"/>
+    <mkdir dir="${dist}"/>
+
+    <mkdir dir="${build}/WEB-INF/classes"/>
+    <mkdir dir="${build}/WEB-INF/lib"/>
+
+
+    <maven:dependencies filesetId="maven.classpath">
+      <maven:pom id="maven.pom" file="pom.xml"/>
+    </maven:dependencies>
+
+    <path id="master-classpath">
+      <fileset refid="maven.classpath"></fileset>
+      <filelist>
+        <file name="${gwt.home}/gwt-servlet.jar"/>
+        <file name="${gwt.home}/gwt-dev.jar"/>
+      </filelist>
     </path>
-	
-	<target name="build">
 
-		<fail unless="gwt.home">gwt.home property should point to GWT SDK</fail>
-		
-		<delete dir="${build}"/>
+    <javac destdir="${build}/WEB-INF/classes" classpathref="master-classpath" source="1.8" target="1.8" debug="on"
+      nowarn="on" includeAntRuntime="false">
+      <src path="${src}"/>
+      <compilerarg value="-Xlint:deprecation"/>
+    </javac>
 
-		<mkdir dir="${build}"/>
-		<mkdir dir="${dist}"/>
+    <copy todir="${build}">
+      <fileset dir="${webapp}">
+        <exclude name="${webapp}/WEB-INF/classes"/>
+        <exclude name="${webapp}/WEB-INF/lib"/>
+      </fileset>
+    </copy>
 
-		<mkdir dir="${build}/WEB-INF/classes"/>
-		<mkdir dir="${build}/WEB-INF/lib"/>
-	
-		
-		<maven:dependencies filesetId="maven.classpath">
-			<maven:pom id="maven.pom" file="pom.xml" />
-		</maven:dependencies>
-		
-		<path id="master-classpath">
-			<fileset refid="maven.classpath"></fileset>
-			<filelist>
-				<file name="${gwt.home}/gwt-servlet.jar"/>
-				<file name="${gwt.home}/gwt-dev.jar"/>
-			</filelist>
-	    </path>
-		
-		<javac  destdir="${build}/WEB-INF/classes" classpathref="master-classpath" source="1.8" target="1.8" debug="on" nowarn="on" includeAntRuntime="false">
-			<src path="${src}"/>
-			<compilerarg value="-Xlint:deprecation"/>
-		</javac>
-		
-		<copy todir="${build}">
-			<fileset dir="${webapp}" >
-				<exclude name="${webapp}/WEB-INF/classes"/>
-				<exclude name="${webapp}/WEB-INF/lib"/>
-			</fileset>
-		</copy>
-		
-		<copy todir="${build}/WEB-INF/classes">
-			<fileset dir="${res}" />
-		</copy>
+    <copy todir="${build}/WEB-INF/classes">
+      <fileset dir="${res}"/>
+    </copy>
 
-		  <java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
-		    <classpath>
-		     <pathelement location="${src}" />
-		     <path refid="master-classpath" />
-		     <file file="${gwt.home}/gwt-user.jar"/>
-			 <file file="${gwt.home}/validation-api-1.0.0.GA.jar"/>
-			 <file file="${gwt.home}/validation-api-1.0.0.GA-sources.jar"/>
-		   </classpath>
-		   <jvmarg value="-Xmx1200M" />
-		   <arg value="-war" />
-		   <arg value="${build}" />
-		   <arg value="uk.ac.ebi.biostd.BioStdWebApp" />
-		 </java>
-		
-		<copy todir="${build}/WEB-INF/lib">
-			<fileset refid="maven.classpath" />
-			<file name="${gwt.home}/gwt-servlet.jar"/>
-			<!-- This mapper strips off all leading directory information -->
-			<mapper type="flatten" />
-		</copy>
-		
-	    <tstamp>
-	        <format property="BUILDTIME" pattern="yyyy-MM-dd HH:mm z Z" locale="en,UK"/>
-	    </tstamp>
-		
-		<filter token="BUILDTIME" value="${BUILDTIME}"/>
-		 
-        <copy file="${webapp}/RELEASE.html" todir="${build}" filtering="true" overwrite="true"/>
+    <java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
+      <classpath>
+        <pathelement location="${src}"/>
+        <path refid="master-classpath"/>
+        <file file="${gwt.home}/gwt-user.jar"/>
+        <file file="${gwt.home}/validation-api-1.0.0.GA.jar"/>
+        <file file="${gwt.home}/validation-api-1.0.0.GA-sources.jar"/>
+      </classpath>
+      <jvmarg value="-Xmx1200M"/>
+      <arg value="-war"/>
+      <arg value="${build}"/>
+      <arg value="uk.ac.ebi.biostd.BioStdWebApp"/>
+    </java>
 
-		
-		<jar jarfile="${dist}/biostudy-${DSTAMP}.war" basedir="${build}"/>
-		
-	</target>
-	
-	<target name="deploy">
-		<taskdef resource="org/apache/catalina/ant/catalina.tasks" classpathref="antCP" />
-		<deploy url="${deploy.url}" username="${deploy.user}" password="${deploy.pass}" path="${deploy.context}" war="file:${deploy.war}"/>
-	</target>
-	
-	<target name="deps" description="download dependences jars" >
-		<maven:pom id="biostdpom" file="pom.xml" />
-		
-		<maven:dependencies filesetId="deps" pomRefId="biostdpom" />
-		
-		<copy todir="war/WEB-INF/lib">
-			<fileset refid="deps" />
-			<!-- This mapper strips off all leading directory information -->
-			<mapper type="flatten" />
-		</copy>
-		
-    </target>
+    <copy todir="${build}/WEB-INF/lib">
+      <fileset refid="maven.classpath"/>
+      <file name="${gwt.home}/gwt-servlet.jar"/>
+      <!-- This mapper strips off all leading directory information -->
+      <mapper type="flatten"/>
+    </copy>
+
+    <tstamp>
+      <format property="BUILDTIME" pattern="yyyy-MM-dd HH:mm z Z" locale="en,UK"/>
+    </tstamp>
+
+    <filter token="BUILDTIME" value="${BUILDTIME}"/>
+
+    <copy file="${webapp}/RELEASE.html" todir="${build}" filtering="true" overwrite="true"/>
+
+
+    <jar jarfile="${dist}/biostudy-${DSTAMP}.war" basedir="${build}"/>
+
+  </target>
+
+  <target name="deploy">
+    <taskdef resource="org/apache/catalina/ant/catalina.tasks" classpathref="antCP"/>
+    <deploy url="${deploy.url}" username="${deploy.user}" password="${deploy.pass}" path="${deploy.context}"
+      war="file:${deploy.war}"/>
+  </target>
+
+  <target name="deps" description="download dependences jars">
+    <maven:pom id="biostdpom" file="pom.xml"/>
+
+    <maven:dependencies filesetId="deps" pomRefId="biostdpom"/>
+
+    <copy todir="war/WEB-INF/lib">
+      <fileset refid="deps"/>
+      <!-- This mapper strips off all leading directory information -->
+      <mapper type="flatten"/>
+    </copy>
+
+  </target>
 
 </project>
