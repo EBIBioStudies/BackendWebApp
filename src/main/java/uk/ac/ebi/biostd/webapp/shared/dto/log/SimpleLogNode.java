@@ -1,22 +1,17 @@
 /**
-
-Copyright 2014-2017 Functional Genomics Development Team, European Bioinformatics Institute 
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-@author Mikhail Gostev <gostev@gmail.com>
-
-**/
+ * Copyright 2014-2017 Functional Genomics Development Team, European Bioinformatics Institute
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * @author Mikhail Gostev <gostev@gmail.com>
+ **/
 
 package uk.ac.ebi.biostd.webapp.shared.dto.log;
 
@@ -26,153 +21,142 @@ import java.util.Iterator;
 import java.util.List;
 
 
-public class SimpleLogNode implements LogNode,Serializable
-{
- private static final long serialVersionUID = 1L;
+public class SimpleLogNode implements LogNode, Serializable {
 
- private String            nodeMessage;
- private Level             level;
+    private static final long serialVersionUID = 1L;
 
- private List<LogNode>     subNodes;
- 
- private transient ErrorCounter errCnt;
+    private String nodeMessage;
+    private Level level;
 
- SimpleLogNode()
- {}
- 
- public SimpleLogNode(Level l, String msg, ErrorCounter rn)
- {
-  nodeMessage = msg;
-  level = l;
-  errCnt = rn;
- }
+    private List<LogNode> subNodes;
 
- @Override
- public void log(Level lvl, String msg)
- {
-  if(subNodes == null)
-   subNodes = new ArrayList<LogNode>(10);
+    private transient ErrorCounter errCnt;
 
-  subNodes.add(new SimpleLogNode(lvl, msg, errCnt));
-  
-  if( lvl.getPriority() >= Level.ERROR.getPriority() )
-   errCnt.incErrorCounter();
- }
+    SimpleLogNode() {
+    }
 
- @Override
- public LogNode branch(String msg)
- {
-  if(subNodes == null)
-   subNodes = new ArrayList<LogNode>(10);
+    public SimpleLogNode(Level l, String msg, ErrorCounter rn) {
+        nodeMessage = msg;
+        level = l;
+        errCnt = rn;
+    }
 
-  LogNode nnd = new SimpleLogNode(null, msg, errCnt);
+    public static void setLevels(LogNode ln) {
+        setLevels(ln, Level.getMinLevel());
+    }
 
-  subNodes.add(nnd);
+    public static void setLevels(LogNode ln, Level reqLevel) {
+        if (ln.getSubNodes() == null) {
+            if (ln.getLevel() == null) {
+                ln.setLevel(Level.INFO);
+            }
 
-  return nnd;
- }
+            return;
+        }
 
- @Override
- public void append(LogNode node)
- {
-  if(subNodes == null)
-   subNodes = new ArrayList<LogNode>(10);
+        LogNode.Level maxLevel = ln.getLevel() != null ? ln.getLevel() : Level.getMinLevel();
 
-  subNodes.add(node);
-  
-  errCnt.addErrorCounter( countErrors(node) );
- }
+        for (LogNode snd : ln.getSubNodes()) {
+            setLevels(snd, reqLevel);
 
- private int countErrors( LogNode node )
- {
-  
-  if( node.getSubNodes() == null )
-  {
-   if( node.getLevel().getPriority() >= Level.ERROR.getPriority() )
-    return 1;
-   else
-    return 0;
-  }
-  else
-  {
-   int res = 0;
+            if (snd.getLevel().getPriority() > maxLevel.getPriority()) {
+                maxLevel = snd.getLevel();
+            }
+        }
 
-   for( LogNode sn : node.getSubNodes() )
-    res += countErrors(sn);
+        ln.setLevel(maxLevel);
 
-   return res;
-  }
- }
- 
- @Override
- public String getMessage()
- {
-  return nodeMessage;
- }
+        if (maxLevel.getPriority() >= reqLevel.getPriority()) {
+            Iterator<? extends LogNode> lnIter = ln.getSubNodes().iterator();
 
- @Override
- public Level getLevel()
- {
-  return level;
- }
+            while (lnIter.hasNext()) {
+                LogNode iln = lnIter.next();
 
- @Override
- public void setLevel(Level l)
- {
-  level = l;
- }
+                if (iln.getLevel().getPriority() < reqLevel.getPriority()) {
+                    lnIter.remove();
+                }
+            }
+        }
+    }
 
- @Override
- public List<LogNode> getSubNodes()
- {
-  return subNodes;
- }
+    @Override
+    public void log(Level lvl, String msg) {
+        if (subNodes == null) {
+            subNodes = new ArrayList<LogNode>(10);
+        }
 
- 
- @Override
- public void success()
- {
-  level = Level.SUCCESS;
- }
+        subNodes.add(new SimpleLogNode(lvl, msg, errCnt));
 
- public static void setLevels( LogNode ln )
- {
-  setLevels(ln, Level.getMinLevel());
- }
+        if (lvl.getPriority() >= Level.ERROR.getPriority()) {
+            errCnt.incErrorCounter();
+        }
+    }
 
- public static void setLevels(LogNode ln, Level reqLevel)
- {
-  if( ln.getSubNodes() == null )
-  {
-   if( ln.getLevel() == null )
-    ln.setLevel(Level.INFO);
-   
-   return;
-  }
-  
-  LogNode.Level maxLevel = ln.getLevel()!=null?ln.getLevel():Level.getMinLevel();
-  
-  for( LogNode snd : ln.getSubNodes() )
-  {
-   setLevels(snd,reqLevel);
-   
-   if( snd.getLevel().getPriority() > maxLevel.getPriority() )
-    maxLevel = snd.getLevel();
-  }
-  
-  ln.setLevel(maxLevel);
-  
-  if( maxLevel.getPriority() >= reqLevel.getPriority()  )
-  {
-   Iterator< ? extends LogNode> lnIter = ln.getSubNodes().iterator();
+    @Override
+    public LogNode branch(String msg) {
+        if (subNodes == null) {
+            subNodes = new ArrayList<LogNode>(10);
+        }
 
-   while(lnIter.hasNext())
-   {
-    LogNode iln = lnIter.next();
+        LogNode nnd = new SimpleLogNode(null, msg, errCnt);
 
-    if(iln.getLevel().getPriority() < reqLevel.getPriority())
-     lnIter.remove();
-   }
-  }
- }
+        subNodes.add(nnd);
+
+        return nnd;
+    }
+
+    @Override
+    public void append(LogNode node) {
+        if (subNodes == null) {
+            subNodes = new ArrayList<LogNode>(10);
+        }
+
+        subNodes.add(node);
+
+        errCnt.addErrorCounter(countErrors(node));
+    }
+
+    private int countErrors(LogNode node) {
+
+        if (node.getSubNodes() == null) {
+            if (node.getLevel().getPriority() >= Level.ERROR.getPriority()) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else {
+            int res = 0;
+
+            for (LogNode sn : node.getSubNodes()) {
+                res += countErrors(sn);
+            }
+
+            return res;
+        }
+    }
+
+    @Override
+    public String getMessage() {
+        return nodeMessage;
+    }
+
+    @Override
+    public Level getLevel() {
+        return level;
+    }
+
+    @Override
+    public void setLevel(Level l) {
+        level = l;
+    }
+
+    @Override
+    public List<LogNode> getSubNodes() {
+        return subNodes;
+    }
+
+    @Override
+    public void success() {
+        level = Level.SUCCESS;
+    }
 }

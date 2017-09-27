@@ -1,35 +1,30 @@
 /**
-
- Copyright 2014-2017 Functional Genomics Development Team, European Bioinformatics Institute
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
- http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
-
- @author Andrew Tikhonov <andrew.tikhonov@gmail.com>
-
+ * Copyright 2014-2017 Functional Genomics Development Team, European Bioinformatics Institute
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * @author Andrew Tikhonov <andrew.tikhonov@gmail.com>
  **/
 
 package uk.ac.ebi.biostd.webapp.server.mng.impl;
 
-import uk.ac.ebi.biostd.authz.*;
-import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
-import uk.ac.ebi.biostd.webapp.server.mng.SubscriptionManager;
-import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
-
+import java.util.Collection;
+import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Query;
-import java.util.Collection;
-import java.util.List;
+import uk.ac.ebi.biostd.authz.AttributeSubscription;
+import uk.ac.ebi.biostd.authz.User;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.mng.SubscriptionManager;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
 
 /**
  * Created by andrew on 04/05/2017.
@@ -38,7 +33,7 @@ public class JPASubscriptionManager implements SubscriptionManager {
 
 
     @Override
-    public void addAttributeSubscription(String attributeName, String textPattern, User user) throws  ServiceException {
+    public void addAttributeSubscription(String attributeName, String textPattern, User user) throws ServiceException {
 
         EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
 
@@ -46,19 +41,20 @@ public class JPASubscriptionManager implements SubscriptionManager {
 
         boolean trnOk = false;
 
-        try  {
+        try {
             trn.begin();
 
             Query exactSubscriptionQuery = em.createNamedQuery(AttributeSubscription.GetExactSubscriptonQuery);
 
-            exactSubscriptionQuery.setParameter(AttributeSubscription.AttributeQueryParameter,attributeName);
-            exactSubscriptionQuery.setParameter(AttributeSubscription.PatternQueryParameter,textPattern);
-            exactSubscriptionQuery.setParameter(AttributeSubscription.UserIdQueryParameter,user.getId());
+            exactSubscriptionQuery.setParameter(AttributeSubscription.AttributeQueryParameter, attributeName);
+            exactSubscriptionQuery.setParameter(AttributeSubscription.PatternQueryParameter, textPattern);
+            exactSubscriptionQuery.setParameter(AttributeSubscription.UserIdQueryParameter, user.getId());
 
             List<AttributeSubscription> queryResult = exactSubscriptionQuery.getResultList();
 
-            if( queryResult.size() != 0 )
+            if (queryResult.size() != 0) {
                 throw new ServiceException("Subscription exists");
+            }
 
             AttributeSubscription subscription = new AttributeSubscription();
 
@@ -69,14 +65,15 @@ public class JPASubscriptionManager implements SubscriptionManager {
             em.persist(subscription);
             trnOk = true;
 
-        }  finally {
-            if(trn.isActive()) {
-                try  {
-                    if(trnOk)
+        } finally {
+            if (trn.isActive()) {
+                try {
+                    if (trnOk) {
                         trn.commit();
-                    else
+                    } else {
                         trn.rollback();
-                }  catch(Exception e)  {
+                    }
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -86,14 +83,14 @@ public class JPASubscriptionManager implements SubscriptionManager {
     }
 
     @Override
-    public void deleteAttributeSubscription(long subscriptionId) throws  ServiceException {
+    public void deleteAttributeSubscription(long subscriptionId) throws ServiceException {
         EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
 
         EntityTransaction trn = em.getTransaction();
 
         boolean trnOk = false;
 
-        try  {
+        try {
             trn.begin();
 
             Query query = em.createNamedQuery(AttributeSubscription.GetBySubscriptionIdQuery);
@@ -102,8 +99,9 @@ public class JPASubscriptionManager implements SubscriptionManager {
 
             List<AttributeSubscription> queryResult = query.getResultList();
 
-            if( queryResult.size() == 0 )
+            if (queryResult.size() == 0) {
                 throw new ServiceException("Subscription doesn't exists");
+            }
 
             AttributeSubscription subscription = queryResult.get(0);
 
@@ -111,13 +109,14 @@ public class JPASubscriptionManager implements SubscriptionManager {
             trnOk = true;
 
         } finally {
-            if(trn.isActive()) {
+            if (trn.isActive()) {
                 try {
-                    if(trnOk)
+                    if (trnOk) {
                         trn.commit();
-                    else
+                    } else {
                         trn.rollback();
-                } catch(Exception e) {
+                    }
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -126,13 +125,13 @@ public class JPASubscriptionManager implements SubscriptionManager {
     }
 
     @Override
-    public Collection<AttributeSubscription> listAttributeSubscriptions(User user) throws  ServiceException {
+    public Collection<AttributeSubscription> listAttributeSubscriptions(User user) throws ServiceException {
 
         EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
 
         EntityTransaction trn = em.getTransaction();
 
-        boolean trnOk=true;
+        boolean trnOk = true;
 
         try {
             trn.begin();
@@ -150,18 +149,19 @@ public class JPASubscriptionManager implements SubscriptionManager {
             } */
 
             return queryResult;
-        } catch( Throwable t ) {
+        } catch (Throwable t) {
             trnOk = false;
 
-            throw new ServiceException( t.getMessage(), t );
+            throw new ServiceException(t.getMessage(), t);
         } finally {
-            if( trn.isActive() ) {
+            if (trn.isActive()) {
                 try {
-                    if( trnOk )
+                    if (trnOk) {
                         trn.commit();
-                    else
+                    } else {
                         trn.rollback();
-                } catch(Exception e) {
+                    }
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -170,12 +170,12 @@ public class JPASubscriptionManager implements SubscriptionManager {
         }
     }
 
-    public void triggerAttributeEventProcessors() throws  ServiceException {
-        new Thread( AttributeSubscriptionProcessor::processEvents ).start();
+    public void triggerAttributeEventProcessors() throws ServiceException {
+        new Thread(AttributeSubscriptionProcessor::processEvents).start();
     }
 
-    public void triggerTagEventProcessors() throws  ServiceException {
-        new Thread( () -> TagSubscriptionProcessor.processEvents() ).start();
+    public void triggerTagEventProcessors() throws ServiceException {
+        new Thread(() -> TagSubscriptionProcessor.processEvents()).start();
     }
 
 
