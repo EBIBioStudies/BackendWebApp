@@ -1,59 +1,53 @@
 /**
- * Copyright 2014-2017 Functional Genomics Development Team, European Bioinformatics Institute
- * <p>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2014-2017 Functional Genomics Development Team, European Bioinformatics Institute <p> Licensed under the
+ * Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may
+ * obtain a copy of the License at <p> http://www.apache.org/licenses/LICENSE-2.0 <p> Unless required by applicable law
+ * or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  *
  * @author Andrew Tikhonov andrew.tikhonov@gmail.com, Mikhail Gostev <gostev@gmail.com>
  **/
 
 package uk.ac.ebi.biostd.webapp.server.endpoint.subscription;
 
-import org.slf4j.Logger;
-import uk.ac.ebi.biostd.authz.Session;
-import uk.ac.ebi.biostd.authz.AttributeSubscription;
-import uk.ac.ebi.biostd.util.StringUtils;
-import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
-import uk.ac.ebi.biostd.webapp.server.endpoint.*;
-import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.util.Collection;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import uk.ac.ebi.biostd.authz.AttributeSubscription;
+import uk.ac.ebi.biostd.authz.Session;
+import uk.ac.ebi.biostd.util.StringUtils;
+import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
+import uk.ac.ebi.biostd.webapp.server.endpoint.HttpReqParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.JSONHttpResponse;
+import uk.ac.ebi.biostd.webapp.server.endpoint.JSONReqParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ParameterPool;
+import uk.ac.ebi.biostd.webapp.server.endpoint.Response;
+import uk.ac.ebi.biostd.webapp.server.endpoint.ServiceServlet;
+import uk.ac.ebi.biostd.webapp.server.endpoint.TextHttpResponse;
+import uk.ac.ebi.biostd.webapp.server.mng.exception.ServiceException;
 
 /**
  * Created by andrew on 26/04/2017.
  */
 
 public class SubscribeAttributeServlet extends ServiceServlet {
-    private static Logger log;
-
-    private static final long serialVersionUID = 1L;
 
     public static final String FormatParameter = "format";
-
+    private static final long serialVersionUID = 1L;
     private static final String AttributeParameter = "attribute";
-
     private static final String PatternParameter = "pattern";
-
     private static final String subscriptionIdParameter = "subscriptionId";
+    private static Logger log;
 
     @Override
     protected void service(HttpServletRequest request,
-                           HttpServletResponse response, Session sess) throws ServletException, IOException {
+            HttpServletResponse response, Session sess) throws ServletException, IOException {
 
         if (sess == null || sess.isAnonymouns()) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -65,7 +59,6 @@ public class SubscribeAttributeServlet extends ServiceServlet {
         String pi = request.getPathInfo();
 
         Operation act = null;
-
 
         if (pi != null && pi.length() > 1) {
             pi = pi.substring(1);
@@ -92,8 +85,9 @@ public class SubscribeAttributeServlet extends ServiceServlet {
         if (cType != null) {
             int pos = cType.indexOf(';');
 
-            if (pos > 0)
+            if (pos > 0) {
                 cType = cType.substring(0, pos).trim();
+            }
 
             jsonReq = cType.equalsIgnoreCase("application/json");
         }
@@ -110,14 +104,13 @@ public class SubscribeAttributeServlet extends ServiceServlet {
         } else if ("text".equals(prm)) {
             resp = new TextHttpResponse(response);
             jsonresp = false;
-        } else if (jsonReq)
+        } else if (jsonReq) {
             resp = new JSONHttpResponse(response);
-        else
+        } else {
             resp = new TextHttpResponse(response);
-
+        }
 
         ParameterPool params = null;
-
 
         if (jsonReq) {
             Charset cs = Charset.defaultCharset();
@@ -133,7 +126,6 @@ public class SubscribeAttributeServlet extends ServiceServlet {
 
             String reqBody = null;
 
-
             reqBody = StringUtils.readFully(request.getInputStream(), cs);
 
             if (reqBody == null || reqBody.length() == 0) {
@@ -143,7 +135,6 @@ public class SubscribeAttributeServlet extends ServiceServlet {
                 return;
             }
 
-
             try {
                 params = new JSONReqParameterPool(reqBody, request.getRemoteAddr());
             } catch (Exception e) {
@@ -151,19 +142,21 @@ public class SubscribeAttributeServlet extends ServiceServlet {
                 response.getWriter().print("FAIL Invalid JSON request body");
                 return;
             }
-        } else
+        } else {
             params = new HttpReqParameterPool(request);
+        }
 
-        if (act == Operation.SUBSCRIBE)
+        if (act == Operation.SUBSCRIBE) {
             subscribeToAttribute(params, resp, sess);
-        else if (act == Operation.UNSUBSCRIBE)
+        } else if (act == Operation.UNSUBSCRIBE) {
             unsubscribeFromAttribute(params, resp, sess);
-        else if (act == Operation.LIST)
+        } else if (act == Operation.LIST) {
             listUserSubscriptions(response, jsonresp, sess);
-        else if (act == Operation.TRIGGERATTREVENTS)
+        } else if (act == Operation.TRIGGERATTREVENTS) {
             triggerAttributeEvents(params, resp, sess);
-        else if (act == Operation.TRIGGERTAGEVENTS)
+        } else if (act == Operation.TRIGGERTAGEVENTS) {
             triggerTagEvents(params, resp, sess);
+        }
 
     }
 
@@ -171,23 +164,26 @@ public class SubscribeAttributeServlet extends ServiceServlet {
         PrintWriter out = response.getWriter();
 
         try {
-            Collection<AttributeSubscription> subscriptionList = BackendConfig.getServiceManager().getSubscriptionManager().
-                    listAttributeSubscriptions(session.getUser());
+            Collection<AttributeSubscription> subscriptionList = BackendConfig.getServiceManager()
+                    .getSubscriptionManager().
+                            listAttributeSubscriptions(session.getUser());
 
             if (json) {
                 response.setContentType("application/json; charset=UTF-8");
                 out.print("[\n");
-            } else
+            } else {
                 response.setContentType("text/plain; charset=UTF-8");
+            }
 
             boolean first = true;
 
             for (AttributeSubscription s : subscriptionList) {
                 if (json) {
-                    if (!first)
+                    if (!first) {
                         out.print(",\n");
-                    else
+                    } else {
                         first = false;
+                    }
 
                     out.print("{\n\"subscriptionId\": " + s.getId() + ",\n");
                     out.print("\"attribute\": \"");
@@ -220,7 +216,7 @@ public class SubscribeAttributeServlet extends ServiceServlet {
     }
 
     private void subscribeToAttribute(ParameterPool params,
-                                      Response response, Session session) throws IOException {
+            Response response, Session session) throws IOException {
         String attribute = params.getParameter(AttributeParameter);
 
         if (attribute == null) {
@@ -249,7 +245,6 @@ public class SubscribeAttributeServlet extends ServiceServlet {
             return;
         }
 
-
         try {
             BackendConfig.getServiceManager().getSubscriptionManager().addAttributeSubscription(attribute,
                     pattern, session.getUser());
@@ -261,7 +256,7 @@ public class SubscribeAttributeServlet extends ServiceServlet {
     }
 
     private void unsubscribeFromAttribute(ParameterPool params,
-                                          Response response, Session session) throws IOException {
+            Response response, Session session) throws IOException {
         String subscriptionId = params.getParameter(subscriptionIdParameter);
 
         if (subscriptionId == null) {
@@ -294,7 +289,7 @@ public class SubscribeAttributeServlet extends ServiceServlet {
     }
 
     private void triggerAttributeEvents(ParameterPool params, Response response,
-                                        Session session) throws IOException {
+            Session session) throws IOException {
 
         try {
             BackendConfig.getServiceManager().getSubscriptionManager().triggerAttributeEventProcessors();
@@ -305,7 +300,7 @@ public class SubscribeAttributeServlet extends ServiceServlet {
     }
 
     private void triggerTagEvents(ParameterPool params, Response response,
-                                        Session session) throws IOException {
+            Session session) throws IOException {
 
         try {
             BackendConfig.getServiceManager().getSubscriptionManager().triggerTagEventProcessors();
