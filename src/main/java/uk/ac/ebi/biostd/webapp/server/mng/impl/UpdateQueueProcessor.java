@@ -37,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.in.pageml.PageMLElements;
+import uk.ac.ebi.biostd.out.FormatterType;
+import uk.ac.ebi.biostd.out.json.JSONFormatter;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 
 public class UpdateQueueProcessor implements Runnable
@@ -136,7 +138,10 @@ public class UpdateQueueProcessor implements Runnable
     
     if( out == null )
     {
-     String fName = String.valueOf(System.currentTimeMillis()/1000)+"-"+BackendConfig.getSeqNumber()+".xml";
+     String fileExt = BackendConfig.getFrontendUpdateFormat().toLowerCase();
+
+     String fName = String.valueOf(System.currentTimeMillis()/1000)+"-"+BackendConfig.getSeqNumber() +
+             "." + fileExt; // ".xml"
      
      f = BackendConfig.getSubmissionUpdatePath().resolve(fName).toFile();
 
@@ -170,10 +175,14 @@ public class UpdateQueueProcessor implements Runnable
   try
   {
    out = new OutputStreamWriter( new FileOutputStream(f), StandardCharsets.UTF_8 ); // Charsets.UTF_8
-   
-   out.append("<").append(PageMLElements.ROOT.getElementName()).append(">\n");
-   out.append("<").append(PageMLElements.SUBMISSIONS.getElementName()).append(">\n");
-   
+
+   if (FormatterType.XML.name().equalsIgnoreCase(BackendConfig.getFrontendUpdateFormat())) {
+    out.append("<").append(PageMLElements.ROOT.getElementName()).append(">\n");
+    out.append("<").append(PageMLElements.SUBMISSIONS.getElementName()).append(">\n");
+   } else if (FormatterType.JSON.name().equalsIgnoreCase(BackendConfig.getFrontendUpdateFormat())) {
+    out.append("{\"").append(JSONFormatter.submissionsProperty).append("\":[\n");
+   }
+
    return out;
   }
   catch( IOException e )
@@ -203,8 +212,12 @@ public class UpdateQueueProcessor implements Runnable
  {
   try
   {
-   out.append("</").append(PageMLElements.SUBMISSIONS.getElementName()).append(">\n");
-   out.append("</").append(PageMLElements.ROOT.getElementName()).append(">\n");
+   if (FormatterType.XML.name().equalsIgnoreCase(BackendConfig.getFrontendUpdateFormat())) {
+    out.append("</").append(PageMLElements.SUBMISSIONS.getElementName()).append(">\n");
+    out.append("</").append(PageMLElements.ROOT.getElementName()).append(">\n");
+   } else if (FormatterType.JSON.name().equalsIgnoreCase(BackendConfig.getFrontendUpdateFormat())) {
+    out.append("]}\n");
+   }
 
    out.close();
    

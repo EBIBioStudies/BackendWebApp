@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import uk.ac.ebi.biostd.authz.AccessTag;
 import uk.ac.ebi.biostd.model.Submission;
+import uk.ac.ebi.biostd.out.FormatterFactory;
 import uk.ac.ebi.biostd.out.pageml.PageMLFormatter;
 import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.ReleaseManager;
@@ -144,10 +145,12 @@ public class JPAReleaser implements ReleaseManager
      
      try
      {
-      new PageMLFormatter(sb, false).format(subm, sb);
+      FormatterFactory.getFormatter(BackendConfig.getFrontendUpdateFormat(),
+              sb,false).format(subm, sb);
+      //new PageMLFormatter(sb, false).format(subm, sb);
      }
-     catch(IOException e)
-     {
+     catch(Exception e) {
+      log.error("Error! " + e.getMessage());
      }
      
      String msg = sb.toString();

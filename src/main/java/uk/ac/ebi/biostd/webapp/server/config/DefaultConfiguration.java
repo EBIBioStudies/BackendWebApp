@@ -96,6 +96,7 @@ public class DefaultConfiguration
   cfgBean.setSSOPublicCertificatePemURL("https://explore.api.aap.tsi.ebi.ac.uk/meta/public.pem");
   cfgBean.setSSOPublicCertificateDerURL("https://explore.api.aap.tsi.ebi.ac.uk/meta/public.der");
   cfgBean.setSSOAuthURL("https://explore.api.aap.tsi.ebi.ac.uk/auth");
+  cfgBean.setFrontendUpdateFormat("xml");
 
  }
 }

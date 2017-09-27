@@ -87,6 +87,8 @@ import uk.ac.ebi.biostd.model.Section;
 import uk.ac.ebi.biostd.model.Submission;
 import uk.ac.ebi.biostd.model.SubmissionAttributeException;
 import uk.ac.ebi.biostd.model.SubmissionTagRef;
+import uk.ac.ebi.biostd.out.AbstractFormatter;
+import uk.ac.ebi.biostd.out.FormatterFactory;
 import uk.ac.ebi.biostd.out.cell.CellFormatter;
 import uk.ac.ebi.biostd.out.json.JSONFormatter;
 import uk.ac.ebi.biostd.out.pageml.PageMLFormatter;
@@ -1376,10 +1378,12 @@ public class JPASubmissionManager implements SubmissionManager
     
     try
     {
-     new PageMLFormatter(sb,false).format(si.getSubmission(), sb);
+     FormatterFactory.getFormatter(BackendConfig.getFrontendUpdateFormat(),
+             sb,false).format(si.getSubmission(), sb);
+     //new PageMLFormatter(sb,false).format(si.getSubmission(), sb);
     }
-    catch(IOException e)
-    {
+    catch(Exception e) {
+     log.error("Error! " + e.getMessage());
     }
     
     String msg = sb.toString();
@@ -3058,10 +3062,12 @@ public class JPASubmissionManager implements SubmissionManager
 
     try
     {
-     new PageMLFormatter(sb,false).format(sbm, sb);
+     FormatterFactory.getFormatter(BackendConfig.getFrontendUpdateFormat(),
+             sb,false).format(sbm, sb);
+     //new PageMLFormatter(sb,false).format(sbm, sb);
     }
-    catch(IOException e)
-    {
+    catch(Exception e) {
+     log.error("Error: " + e.getMessage());
     }
 
     String msg = sb.toString();

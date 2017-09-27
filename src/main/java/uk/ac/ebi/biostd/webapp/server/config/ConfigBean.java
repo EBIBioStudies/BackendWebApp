@@ -27,6 +27,7 @@ import java.util.Timer;
 
 import javax.persistence.EntityManagerFactory;
 
+import uk.ac.ebi.biostd.out.FormatterType;
 import uk.ac.ebi.biostd.webapp.server.export.TaskConfig;
 import uk.ac.ebi.biostd.webapp.server.export.TaskInfo;
 import uk.ac.ebi.biostd.webapp.server.mng.ServiceManager;
@@ -81,6 +82,7 @@ public class ConfigBean
 
  private String               defaultSubmissionAccPrefix = null;
  private String               defaultSubmissionAccSuffix = null;
+ private String               frontendUpdateFormat = null;
 
  private int                  updateWaitPeriod           = 5;
  private int                  maxUpdatesPerFile          = 50;
@@ -314,6 +316,16 @@ public class ConfigBean
  {
   this.updateListenerURLSfx = updateListenerURLSfx;
  }
+
+ public String getFrontendUpdateFormat()
+  {
+   return frontendUpdateFormat;
+  }
+
+ public void setFrontendUpdateFormat(String frontendUpdateFormat)
+  {
+   this.frontendUpdateFormat = frontendUpdateFormat;
+  }
 
  public String getActivationEmailSubject()
  {

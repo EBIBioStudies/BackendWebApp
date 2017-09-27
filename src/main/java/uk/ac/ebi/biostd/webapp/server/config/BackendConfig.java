@@ -391,6 +391,8 @@ public class BackendConfig
   return conf.getMaxUpdatesPerFile();
  }
 
+ public static String getFrontendUpdateFormat() { return conf.getFrontendUpdateFormat(); }
+
  public static boolean isCreateFileStructure()
  {
   return conf.isCreateFileStructure();

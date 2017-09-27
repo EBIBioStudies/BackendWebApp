@@ -29,17 +29,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.PropertyResourceBundle;
-import java.util.ResourceBundle;
-import java.util.TimeZone;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
@@ -53,6 +43,7 @@ import org.hibernate.search.cfg.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import uk.ac.ebi.biostd.out.FormatterType;
 import uk.ac.ebi.biostd.webapp.server.email.EmailInitException;
 import uk.ac.ebi.biostd.webapp.server.email.EmailService;
 import uk.ac.ebi.biostd.webapp.server.export.ExportTask;
@@ -116,7 +107,8 @@ public class ConfigurationManager
  public static final String             UpdateURLParameter                  = "updateListenerURL";
  public static final String             UpdateWaitPeriodParameter           = "updateWaitPeriod";
  public static final String             MaxUpdatesPerFileParameter          = "maxUpdatesPerFile";
- 
+ public static final String             FrontendUpdateFormatParameter       = "frontendUpdateFormat";
+
  public static final String             UIURLParameter                      = "UIURL";
  public static final String             MandatoryAccountActivationParameter = "mandatoryAccountActivation";
  public static final String             ActivationEmailSubjectParameter     = "activationEmailSubject";
@@ -1066,6 +1058,20 @@ public class ConfigurationManager
    
    return true;
   }
+
+  if( FrontendUpdateFormatParameter.equals(param) ) {
+
+   try {
+    FormatterType.valueOf(val.toUpperCase());
+    cfg.setFrontendUpdateFormat(val);
+   } catch(IllegalArgumentException e) {
+    throw new ServiceConfigException(FrontendUpdateFormatParameter + ": value expected: '" +
+            Arrays.asList(FormatterType.values()).toString() + "'");
+   }
+
+   return true;
+  }
+
 
   if( UpdateWaitPeriodParameter.equals(param) )
   {
