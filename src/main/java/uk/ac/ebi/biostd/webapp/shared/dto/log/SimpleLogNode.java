@@ -82,7 +82,7 @@ public class SimpleLogNode implements LogNode, Serializable {
     @Override
     public void log(Level lvl, String msg) {
         if (subNodes == null) {
-            subNodes = new ArrayList<LogNode>(10);
+            subNodes = new ArrayList<>(10);
         }
 
         subNodes.add(new SimpleLogNode(lvl, msg, errCnt));
@@ -95,7 +95,7 @@ public class SimpleLogNode implements LogNode, Serializable {
     @Override
     public LogNode branch(String msg) {
         if (subNodes == null) {
-            subNodes = new ArrayList<LogNode>(10);
+            subNodes = new ArrayList<>(10);
         }
 
         LogNode nnd = new SimpleLogNode(null, msg, errCnt);
@@ -108,7 +108,7 @@ public class SimpleLogNode implements LogNode, Serializable {
     @Override
     public void append(LogNode node) {
         if (subNodes == null) {
-            subNodes = new ArrayList<LogNode>(10);
+            subNodes = new ArrayList<>(10);
         }
 
         subNodes.add(node);

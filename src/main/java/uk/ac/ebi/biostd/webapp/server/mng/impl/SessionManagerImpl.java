@@ -44,13 +44,13 @@ public class SessionManagerImpl implements SessionManager, Runnable {
     private static final int MAX_SESSION_IDLE_TIME = 3000000;
     private static Logger log = LoggerFactory.getLogger(SessionManagerImpl.class);
     private final Thread controlThread = new Thread(this);
-    private final Map<String, Session> sessionMap = new TreeMap<String, Session>();
-    private final Map<Thread, Session> threadMap = new HashMap<Thread, Session>();
+    private final Map<String, Session> sessionMap = new TreeMap<>();
+    private final Map<Thread, Session> threadMap = new HashMap<>();
     private final Lock lock = new ReentrantLock();
 
     private final File sessDirRoot;
     private boolean shutdown = false;
-    private Collection<SessionListener> sessLstnrs = new ArrayList<SessionListener>();
+    private Collection<SessionListener> sessLstnrs = new ArrayList<>();
     private int anonSessCount = 0;
 
     public SessionManagerImpl(File sdr) {

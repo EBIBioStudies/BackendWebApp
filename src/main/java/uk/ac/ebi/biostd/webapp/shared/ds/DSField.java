@@ -83,11 +83,8 @@ public class DSField {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof DSField && ((DSField) o).getFieldId().equals(getFieldId())) {
-            return true;
-        }
+        return o instanceof DSField && ((DSField) o).getFieldId().equals(getFieldId());
 
-        return false;
     }
 
     @Override

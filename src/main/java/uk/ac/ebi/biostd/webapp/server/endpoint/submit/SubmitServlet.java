@@ -260,7 +260,7 @@ public class SubmitServlet extends ServiceServlet {
             if (val.length() == 0) {
                 access = Collections.emptySet();
             } else {
-                access = new HashSet<String>();
+                access = new HashSet<>();
 
                 for (String s : val.split(",")) {
                     access.add(s.trim());

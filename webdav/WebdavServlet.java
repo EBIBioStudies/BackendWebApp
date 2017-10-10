@@ -79,15 +79,12 @@ import uk.ac.ebi.biostd.webapp.server.config.BackendConfig;
 import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
 
 /**
- * Servlet which adds support for WebDAV level 2. All the basic HTTP requests
- * are handled by the DefaultServlet. The WebDAVServlet must not be used as the
- * default servlet (ie mapped to '/') as it will not work in this configuration.
+ * Servlet which adds support for WebDAV level 2. All the basic HTTP requests are handled by the DefaultServlet. The
+ * WebDAVServlet must not be used as the default servlet (ie mapped to '/') as it will not work in this configuration.
  * <p/>
- * Mapping a subpath (e.g. <code>/webdav/*</code> to this servlet has the effect
- * of re-mounting the entire web application under that sub-path, with WebDAV
- * access to all the resources. This <code>WEB-INF</code> and
- * <code>META-INF</code> directories are protected in this re-mounted resource
- * tree.
+ * Mapping a subpath (e.g. <code>/webdav/*</code> to this servlet has the effect of re-mounting the entire web
+ * application under that sub-path, with WebDAV access to all the resources. This <code>WEB-INF</code> and
+ * <code>META-INF</code> directories are protected in this re-mounted resource tree.
  * <p/>
  * To enable WebDAV for a context add the following to web.xml:
  *
@@ -128,8 +125,7 @@ import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
  *  &lt;/servlet-mapping&gt;
  * </pre>
  *
- * By default access to /WEB-INF and META-INF are not available via WebDAV. To
- * enable access to these URLs, use add:
+ * By default access to /WEB-INF and META-INF are not available via WebDAV. To enable access to these URLs, use add:
  *
  * <pre>
  *  &lt;init-param&gt;
@@ -138,11 +134,9 @@ import uk.ac.ebi.biostd.webapp.server.mng.UserManager;
  *  &lt;/init-param&gt;
  * </pre>
  *
- * Don't forget to secure access appropriately to the editing URLs, especially
- * if allowSpecialPaths is used. With the mapping configuration above, the
- * context will be accessible to normal users as before. Those users with the
- * necessary access will be able to edit content available via
- * http://host:port/context/content using
+ * Don't forget to secure access appropriately to the editing URLs, especially if allowSpecialPaths is used. With the
+ * mapping configuration above, the context will be accessible to normal users as before. Those users with the necessary
+ * access will be able to edit content available via http://host:port/context/content using
  * http://host:port/context/webdavedit/content
  *
  * @author Remy Maucherat
@@ -200,28 +194,19 @@ public class WebdavServlet extends DefaultServlet {
 
     // ----------------------------------------------------- Instance Variables
     /**
-     * Repository of the locks put on single resources.
-     * <p>
-     * Key : path <br>
-     * Value : LockInfo
+     * Repository of the locks put on single resources. <p> Key : path <br> Value : LockInfo
      */
     private final Hashtable<String, LockInfo> resourceLocks = new Hashtable<>();
 
     /**
-     * Repository of the lock-null resources.
-     * <p>
-     * Key : path of the collection containing the lock-null resource<br>
-     * Value : Vector of lock-null resource which are members of the collection.
-     * Each element of the Vector is the path associated with the lock-null
-     * resource.
+     * Repository of the lock-null resources. <p> Key : path of the collection containing the lock-null resource<br>
+     * Value : Vector of lock-null resource which are members of the collection. Each element of the Vector is the path
+     * associated with the lock-null resource.
      */
     private final Hashtable<String, Vector<String>> lockNullResources = new Hashtable<>();
 
     /**
-     * Vector of the heritable locks.
-     * <p>
-     * Key : path <br>
-     * Value : LockInfo
+     * Vector of the heritable locks. <p> Key : path <br> Value : LockInfo
      */
     private final Vector<LockInfo> collectionLocks = new Vector<>();
 
@@ -231,8 +216,8 @@ public class WebdavServlet extends DefaultServlet {
     private String secret = "catalina";
 
     /**
-     * Default depth in spec is infinite. Limit depth to 3 by default as infinite
-     * depth makes operations very expensive.
+     * Default depth in spec is infinite. Limit depth to 3 by default as infinite depth makes operations very
+     * expensive.
      */
     private int maxDepth = 3;
 
@@ -406,11 +391,9 @@ public class WebdavServlet extends DefaultServlet {
     }
 
     /**
-     * Checks whether a given path refers to a resource under <code>WEB-INF</code>
-     * or <code>META-INF</code>.
+     * Checks whether a given path refers to a resource under <code>WEB-INF</code> or <code>META-INF</code>.
      *
-     * @param path
-     *         the full path of the resource being accessed
+     * @param path the full path of the resource being accessed
      * @return <code>true</code> if the resource specified is under a special path
      */
     private final boolean isSpecialPath(final String path) {
@@ -431,13 +414,11 @@ public class WebdavServlet extends DefaultServlet {
     }
 
     /**
-     * Override the DefaultServlet implementation and only use the PathInfo. If the
-     * ServletPath is non-null, it will be because the WebDAV servlet has been
-     * mapped to a url other than /* to configure editing at different url than
+     * Override the DefaultServlet implementation and only use the PathInfo. If the ServletPath is non-null, it will be
+     * because the WebDAV servlet has been mapped to a url other than /* to configure editing at different url than
      * normal viewing.
      *
-     * @param request
-     *         The servlet request we are processing
+     * @param request The servlet request we are processing
      */
     @Override
     protected String getRelativePath(HttpServletRequest request) {
@@ -475,14 +456,10 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * OPTIONS Method.
      *
-     * @param req
-     *         The request
-     * @param resp
-     *         The response
-     * @throws ServletException
-     *          If an error occurs
-     * @throws IOException
-     *          If an IO error occurs
+     * @param req The request
+     * @param resp The response
+     * @throws ServletException If an error occurs
+     * @throws IOException If an IO error occurs
      */
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -813,15 +790,10 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Process a PUT request for the specified resource.
      *
-     * @param req
-     *         The servlet request we are processing
-     * @param resp
-     *         The servlet response we are creating
-     *
-     * @exception IOException
-     *             if an input/output error occurs
-     * @exception ServletException
-     *             if a servlet-specified error occurs
+     * @param req The servlet request we are processing
+     * @param resp The servlet response we are creating
+     * @throws IOException if an input/output error occurs
+     * @throws ServletException if a servlet-specified error occurs
      */
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -1396,15 +1368,12 @@ public class WebdavServlet extends DefaultServlet {
     // -------------------------------------------------------- Private Methods
 
     /**
-     * Check to see if a resource is currently write locked. The method will look
-     * at the "If" header to make sure the client has give the appropriate lock
-     * tokens.
+     * Check to see if a resource is currently write locked. The method will look at the "If" header to make sure the
+     * client has give the appropriate lock tokens.
      *
-     * @param req
-     *         Servlet request
-     * @return boolean true if the resource is locked (and no appropriate lock
-     *         token has been found for at least one of the non-shared locks which
-     *         are present on the resource).
+     * @param req Servlet request
+     * @return boolean true if the resource is locked (and no appropriate lock token has been found for at least one of
+     * the non-shared locks which are present on the resource).
      */
     private boolean isLocked(HttpServletRequest req) {
 
@@ -1427,13 +1396,10 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Check to see if a resource is currently write locked.
      *
-     * @param path
-     *         Path of the resource
-     * @param ifHeader
-     *         "If" HTTP header which was included in the request
-     * @return boolean true if the resource is locked (and no appropriate lock
-     *         token has been found for at least one of the non-shared locks which
-     *         are present on the resource).
+     * @param path Path of the resource
+     * @param ifHeader "If" HTTP header which was included in the request
+     * @return boolean true if the resource is locked (and no appropriate lock token has been found for at least one of
+     * the non-shared locks which are present on the resource).
      */
     private boolean isLocked(String path, String ifHeader) {
 
@@ -1494,10 +1460,8 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Copy a resource.
      *
-     * @param req
-     *         Servlet request
-     * @param resp
-     *         Servlet response
+     * @param req Servlet request
+     * @param resp Servlet response
      * @return boolean true if the copy is successful
      */
     private boolean copyResource(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -1644,13 +1608,9 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Copy a collection.
      *
-     * @param errorList
-     *         Hashtable containing the list of errors which occurred during the
-     *         copy operation
-     * @param source
-     *         Path of the resource to be copied
-     * @param dest
-     *         Destination path
+     * @param errorList Hashtable containing the list of errors which occurred during the copy operation
+     * @param source Path of the resource to be copied
+     * @param dest Destination path
      */
     private boolean copyResource(Hashtable<String, Integer> errorList, String source, String dest) {
 
@@ -1710,10 +1670,8 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Delete a resource.
      *
-     * @param req
-     *         Servlet request
-     * @param resp
-     *         Servlet response
+     * @param req Servlet request
+     * @param resp Servlet response
      * @return boolean true if the copy is successful
      */
     private boolean deleteResource(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -1727,14 +1685,10 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Delete a resource.
      *
-     * @param path
-     *         Path of the resource which is to be deleted
-     * @param req
-     *         Servlet request
-     * @param resp
-     *         Servlet response
-     * @param setStatus
-     *         Should the response status be set on successful completion
+     * @param path Path of the resource which is to be deleted
+     * @param req Servlet request
+     * @param resp Servlet response
+     * @param setStatus Should the response status be set on successful completion
      */
     private boolean deleteResource(String path, HttpServletRequest req, HttpServletResponse resp, boolean setStatus)
             throws IOException {
@@ -1789,10 +1743,8 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Deletes a collection.
      *
-     * @param path
-     *         Path to the collection to be deleted
-     * @param errorList
-     *         Contains the list of the errors which occurred
+     * @param path Path to the collection to be deleted
+     * @param errorList Contains the list of the errors which occurred
      */
     private void deleteCollection(HttpServletRequest req, String path, Hashtable<String, Integer> errorList) {
 
@@ -1849,12 +1801,9 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Send a multistatus element containing a complete error report to the client.
      *
-     * @param req
-     *         Servlet request
-     * @param resp
-     *         Servlet response
-     * @param errorList
-     *         List of error to be displayed
+     * @param req Servlet request
+     * @param resp Servlet response
+     * @param errorList List of error to be displayed
      */
     private void sendReport(HttpServletRequest req, HttpServletResponse resp, Hashtable<String, Integer> errorList)
             throws IOException {
@@ -1903,19 +1852,13 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Propfind helper method.
      *
-     * @param req
-     *         The servlet request
-     * @param resources
-     *         Resources object associated with this context
-     * @param generatedXML
-     *         XML response to the Propfind request
-     * @param path
-     *         Path of the current resource
-     * @param type
-     *         Propfind type
-     * @param propertiesVector
-     *         If the propfind type is find properties by name, then this Vector
-     *         contains those properties
+     * @param req The servlet request
+     * @param resources Resources object associated with this context
+     * @param generatedXML XML response to the Propfind request
+     * @param path Path of the current resource
+     * @param type Propfind type
+     * @param propertiesVector If the propfind type is find properties by name, then this Vector contains those
+     * properties
      */
     private void parseProperties(HttpServletRequest req, XMLWriter generatedXML, String path, int type,
             Vector<String> propertiesVector) {
@@ -2152,17 +2095,12 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Propfind helper method. Displays the properties of a lock-null resource.
      *
-     * @param resources
-     *         Resources object associated with this context
-     * @param generatedXML
-     *         XML response to the Propfind request
-     * @param path
-     *         Path of the current resource
-     * @param type
-     *         Propfind type
-     * @param propertiesVector
-     *         If the propfind type is find properties by name, then this Vector
-     *         contains those properties
+     * @param resources Resources object associated with this context
+     * @param generatedXML XML response to the Propfind request
+     * @param path Path of the current resource
+     * @param type Propfind type
+     * @param propertiesVector If the propfind type is find properties by name, then this Vector contains those
+     * properties
      */
     private void parseLockNullProperties(HttpServletRequest req, XMLWriter generatedXML, String path, int type,
             Vector<String> propertiesVector) {
@@ -2362,10 +2300,8 @@ public class WebdavServlet extends DefaultServlet {
     /**
      * Print the lock discovery information associated with a path.
      *
-     * @param path
-     *         Path
-     * @param generatedXML
-     *         XML data to which the locks info will be appended
+     * @param path Path
+     * @param generatedXML XML data to which the locks info will be appended
      * @return true if at least one lock was displayed
      */
     private boolean generateLockDiscovery(String path, XMLWriter generatedXML) {
@@ -2411,7 +2347,6 @@ public class WebdavServlet extends DefaultServlet {
 
     /**
      * Determines the methods normally allowed for the resource.
-     *
      */
     private StringBuilder determineMethodsAllowed(HttpServletRequest req) {
 
@@ -2442,9 +2377,9 @@ public class WebdavServlet extends DefaultServlet {
 
     /**
      * Work around for XML parsers that don't fully respect
-     * {@link DocumentBuilderFactory#setExpandEntityReferences(boolean)} when
-     * called with <code>false</code>. External references are filtered out for
-     * security reasons. See CVE-2007-5461.
+     * {@link DocumentBuilderFactory#setExpandEntityReferences(boolean)}
+     * when called with <code>false</code>. External references are filtered out for security reasons. See
+     * CVE-2007-5461.
      */
     private static class WebdavResolver implements EntityResolver {
 
@@ -2480,6 +2415,7 @@ public class WebdavServlet extends DefaultServlet {
         Vector<String> tokens = new Vector<>();
         long expiresAt = 0;
         Date creationDate = new Date();
+
         /**
          * Constructor.
          */
@@ -2531,8 +2467,8 @@ public class WebdavServlet extends DefaultServlet {
         }
 
         /**
-         * Get an XML representation of this lock token. This method will append an
-         * XML fragment to the given XML writer.
+         * Get an XML representation of this lock token. This method will append an XML fragment to the given XML
+         * writer.
          */
         public void toXML(XMLWriter generatedXML) {
 
@@ -2582,9 +2518,8 @@ public class WebdavServlet extends DefaultServlet {
 // --------------------------------------------------------  WebdavStatus Class
 
 /**
- * Wraps the HttpServletResponse class to abstract the specific protocol used.
- * To support other protocols we would only need to modify this class and the
- * WebDavRetCode classes.
+ * Wraps the HttpServletResponse class to abstract the specific protocol used. To support other protocols we would only
+ * need to modify this class and the WebDavRetCode classes.
  *
  * @author Marc Eaddy
  * @version 1.0, 16 Nov 1997
@@ -2600,40 +2535,34 @@ class WebdavStatus {
 
     // ------------------------------------------------------ HTTP Status Codes
     /**
-     * Status code (201) indicating the request succeeded and created a new
-     * resource on the server.
+     * Status code (201) indicating the request succeeded and created a new resource on the server.
      */
     public static final int SC_CREATED = HttpServletResponse.SC_CREATED;
     /**
-     * Status code (202) indicating that a request was accepted for processing, but
-     * was not completed.
+     * Status code (202) indicating that a request was accepted for processing, but was not completed.
      */
     public static final int SC_ACCEPTED = HttpServletResponse.SC_ACCEPTED;
     /**
-     * Status code (204) indicating that the request succeeded but that there was
-     * no new information to return.
+     * Status code (204) indicating that the request succeeded but that there was no new information to return.
      */
     public static final int SC_NO_CONTENT = HttpServletResponse.SC_NO_CONTENT;
     /**
-     * Status code (301) indicating that the resource has permanently moved to a
-     * new location, and that future references should use a new URI with their
-     * requests.
+     * Status code (301) indicating that the resource has permanently moved to a new location, and that future
+     * references should use a new URI with their requests.
      */
     public static final int SC_MOVED_PERMANENTLY = HttpServletResponse.SC_MOVED_PERMANENTLY;
     /**
-     * Status code (302) indicating that the resource has temporarily moved to
-     * another location, but that future references should still use the original
-     * URI to access the resource.
+     * Status code (302) indicating that the resource has temporarily moved to another location, but that future
+     * references should still use the original URI to access the resource.
      */
     public static final int SC_MOVED_TEMPORARILY = HttpServletResponse.SC_MOVED_TEMPORARILY;
     /**
-     * Status code (304) indicating that a conditional GET operation found that the
-     * resource was available and not modified.
+     * Status code (304) indicating that a conditional GET operation found that the resource was available and not
+     * modified.
      */
     public static final int SC_NOT_MODIFIED = HttpServletResponse.SC_NOT_MODIFIED;
     /**
-     * Status code (400) indicating the request sent by the client was
-     * syntactically incorrect.
+     * Status code (400) indicating the request sent by the client was syntactically incorrect.
      */
     public static final int SC_BAD_REQUEST = HttpServletResponse.SC_BAD_REQUEST;
     /**
@@ -2641,8 +2570,7 @@ class WebdavStatus {
      */
     public static final int SC_UNAUTHORIZED = HttpServletResponse.SC_UNAUTHORIZED;
     /**
-     * Status code (403) indicating the server understood the request but refused
-     * to fulfill it.
+     * Status code (403) indicating the server understood the request but refused to fulfill it.
      */
     public static final int SC_FORBIDDEN = HttpServletResponse.SC_FORBIDDEN;
     /**
@@ -2650,97 +2578,85 @@ class WebdavStatus {
      */
     public static final int SC_NOT_FOUND = HttpServletResponse.SC_NOT_FOUND;
     /**
-     * Status code (500) indicating an error inside the HTTP service which
-     * prevented it from fulfilling the request.
+     * Status code (500) indicating an error inside the HTTP service which prevented it from fulfilling the request.
      */
     public static final int SC_INTERNAL_SERVER_ERROR = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
     /**
-     * Status code (501) indicating the HTTP service does not support the
-     * functionality needed to fulfill the request.
+     * Status code (501) indicating the HTTP service does not support the functionality needed to fulfill the request.
      */
     public static final int SC_NOT_IMPLEMENTED = HttpServletResponse.SC_NOT_IMPLEMENTED;
     /**
-     * Status code (502) indicating that the HTTP server received an invalid
-     * response from a server it consulted when acting as a proxy or gateway.
+     * Status code (502) indicating that the HTTP server received an invalid response from a server it consulted when
+     * acting as a proxy or gateway.
      */
     public static final int SC_BAD_GATEWAY = HttpServletResponse.SC_BAD_GATEWAY;
     /**
-     * Status code (503) indicating that the HTTP service is temporarily
-     * overloaded, and unable to handle the request.
+     * Status code (503) indicating that the HTTP service is temporarily overloaded, and unable to handle the request.
      */
     public static final int SC_SERVICE_UNAVAILABLE = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
     /**
-     * Status code (100) indicating the client may continue with its request. This
-     * interim response is used to inform the client that the initial part of the
-     * request has been received and has not yet been rejected by the server.
+     * Status code (100) indicating the client may continue with its request. This interim response is used to inform
+     * the client that the initial part of the request has been received and has not yet been rejected by the server.
      */
     public static final int SC_CONTINUE = 100;
     /**
-     * Status code (405) indicating the method specified is not allowed for the
-     * resource.
+     * Status code (405) indicating the method specified is not allowed for the resource.
      */
     public static final int SC_METHOD_NOT_ALLOWED = 405;
     /**
-     * Status code (409) indicating that the request could not be completed due to
-     * a conflict with the current state of the resource.
+     * Status code (409) indicating that the request could not be completed due to a conflict with the current state of
+     * the resource.
      */
     public static final int SC_CONFLICT = 409;
     /**
-     * Status code (412) indicating the precondition given in one or more of the
-     * request-header fields evaluated to false when it was tested on the server.
+     * Status code (412) indicating the precondition given in one or more of the request-header fields evaluated to
+     * false when it was tested on the server.
      */
     public static final int SC_PRECONDITION_FAILED = 412;
     /**
-     * Status code (413) indicating the server is refusing to process a request
-     * because the request entity is larger than the server is willing or able to
-     * process.
+     * Status code (413) indicating the server is refusing to process a request because the request entity is larger
+     * than the server is willing or able to process.
      */
     public static final int SC_REQUEST_TOO_LONG = 413;
     /**
-     * Status code (415) indicating the server is refusing to service the request
-     * because the entity of the request is in a format not supported by the
-     * requested resource for the requested method.
+     * Status code (415) indicating the server is refusing to service the request because the entity of the request is
+     * in a format not supported by the requested resource for the requested method.
      */
     public static final int SC_UNSUPPORTED_MEDIA_TYPE = 415;
     /**
-     * Status code (207) indicating that the response requires providing status for
-     * multiple independent operations.
+     * Status code (207) indicating that the response requires providing status for multiple independent operations.
      */
     public static final int SC_MULTI_STATUS = 207;
 
     // -------------------------------------------- Extended WebDav status code
     /**
-     * Status code (418) indicating the entity body submitted with the PATCH method
-     * was not understood by the resource.
+     * Status code (418) indicating the entity body submitted with the PATCH method was not understood by the resource.
      */
     public static final int SC_UNPROCESSABLE_ENTITY = 418;
     // This one collides with HTTP 1.1
     // "207 Partial Update OK"
     /**
-     * Status code (419) indicating that the resource does not have sufficient
-     * space to record the state of the resource after the execution of this
-     * method.
+     * Status code (419) indicating that the resource does not have sufficient space to record the state of the resource
+     * after the execution of this method.
      */
     public static final int SC_INSUFFICIENT_SPACE_ON_RESOURCE = 419;
     // This one collides with HTTP 1.1
     // "418 Reauthentication Required"
     /**
-     * Status code (420) indicating the method was not executed on a particular
-     * resource within its scope because some part of the method's execution failed
-     * causing the entire method to be aborted.
+     * Status code (420) indicating the method was not executed on a particular resource within its scope because some
+     * part of the method's execution failed causing the entire method to be aborted.
      */
     public static final int SC_METHOD_FAILURE = 420;
     // This one collides with HTTP 1.1
     // "419 Proxy Reauthentication Required"
     /**
-     * Status code (423) indicating the destination resource of a method is locked,
-     * and either the request did not contain a valid Lock-Info header, or the
-     * Lock-Info header identifies a lock held by another principal.
+     * Status code (423) indicating the destination resource of a method is locked, and either the request did not
+     * contain a valid Lock-Info header, or the Lock-Info header identifies a lock held by another principal.
      */
     public static final int SC_LOCKED = 423;
     /**
-     * This Hashtable contains the mapping of HTTP and WebDAV status codes to
-     * descriptive text. This is a static variable.
+     * This Hashtable contains the mapping of HTTP and WebDAV status codes to descriptive text. This is a static
+     * variable.
      */
     private static final Hashtable<Integer, String> mapStatusCodes = new Hashtable<>();
 
@@ -2780,13 +2696,11 @@ class WebdavStatus {
     // --------------------------------------------------------- Public Methods
 
     /**
-     * Returns the HTTP status text for the HTTP or WebDav status code specified by
-     * looking it up in the static mapping. This is a static function.
+     * Returns the HTTP status text for the HTTP or WebDav status code specified by looking it up in the static mapping.
+     * This is a static function.
      *
-     * @param nHttpStatusCode
-     *         [IN] HTTP or WebDAV status code
-     * @return A string with a short descriptive phrase for the HTTP status code
-     *         (e.g., "OK").
+     * @param nHttpStatusCode [IN] HTTP or WebDAV status code
+     * @return A string with a short descriptive phrase for the HTTP status code (e.g., "OK").
      */
     public static String getStatusText(int nHttpStatusCode) {
         Integer intKey = Integer.valueOf(nHttpStatusCode);
@@ -2801,13 +2715,10 @@ class WebdavStatus {
     // -------------------------------------------------------- Private Methods
 
     /**
-     * Adds a new status code -> status text mapping. This is a static method
-     * because the mapping is a static variable.
+     * Adds a new status code -> status text mapping. This is a static method because the mapping is a static variable.
      *
-     * @param nKey
-     *         [IN] HTTP or WebDAV status code
-     * @param strVal
-     *         [IN] HTTP status text
+     * @param nKey [IN] HTTP or WebDAV status code
+     * @param strVal [IN] HTTP status text
      */
     private static void addStatusCodeMap(int nKey, String strVal) {
         mapStatusCodes.put(Integer.valueOf(nKey), strVal);

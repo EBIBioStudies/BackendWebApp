@@ -135,7 +135,7 @@ public class EPMCLinkFormatter implements TextStreamFormatter {
 
     private List<Section> collectPMCPublications(Section s, List<Section> coll) {
         if (coll == null) {
-            coll = new ArrayList<Section>();
+            coll = new ArrayList<>();
         }
 
         if (s.getType().equals(PUBLICATION_SEC) && s.getAccNo() != null && s.getAccNo().startsWith(EPMC_ID_PFX)) {

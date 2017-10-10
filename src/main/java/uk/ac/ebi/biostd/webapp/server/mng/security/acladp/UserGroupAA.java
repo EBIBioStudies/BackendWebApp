@@ -1,10 +1,8 @@
 package uk.ac.ebi.biostd.webapp.server.mng.security.acladp;
 
 import java.util.List;
-
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
-
 import uk.ac.ebi.biostd.authz.UserGroup;
 
 public class UserGroupAA extends AbstractAA {

@@ -29,7 +29,7 @@ public enum EPMCLinkElements {
 
     private String elementName;
 
-    private EPMCLinkElements(String el) {
+    EPMCLinkElements(String el) {
         elementName = el;
     }
 

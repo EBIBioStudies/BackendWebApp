@@ -37,7 +37,7 @@ public class FmtModuleConfig {
     private String outputFile;
     private String tmpDir;
     private String fsProvider;
-    private Map<String, String> formatterParams = new HashMap<String, String>();
+    private Map<String, String> formatterParams = new HashMap<>();
     private boolean chunkOutput;
     private long chunkSize;
     private boolean chunkSizeInUnits;

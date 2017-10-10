@@ -43,7 +43,7 @@ public class FTPFSProvider implements FSProvider {
 
     private FTPClient ftp;
 
-    private Map<String, FTPFile[]> cache = new HashMap<String, FTPFile[]>();
+    private Map<String, FTPFile[]> cache = new HashMap<>();
 
     public FTPFSProvider(String connStr) {
         if (log == null) {
@@ -57,7 +57,6 @@ public class FTPFSProvider implements FSProvider {
         int i = 0;
 
         for (i = 0; i < connStr.length() && connStr.charAt(i) == '/'; i++) {
-            ;
         }
 
         if (i > 0) {
@@ -237,11 +236,7 @@ public class FTPFSProvider implements FSProvider {
 
         for (FTPFile fff : fl) {
             if (name.equals(fff.getName())) {
-                if (fff.isDirectory()) {
-                    return true;
-                } else {
-                    return false;
-                }
+                return fff.isDirectory();
             }
         }
 
@@ -249,7 +244,7 @@ public class FTPFSProvider implements FSProvider {
     }
 
     @Override
-    public PrintStream createPrintStream(Path file, String enc) throws UnsupportedEncodingException, IOException {
+    public PrintStream createPrintStream(Path file, String enc) throws IOException {
         connect();
 
         String pathstr = file.toString();

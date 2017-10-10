@@ -40,6 +40,7 @@ public class PrefsServlet extends ServiceServlet {
     public static final String valueParameterPrefix = "value";
     private static final long serialVersionUID = 1L;
     private static Logger log;
+
     public PrefsServlet() {
         if (log == null) {
             log = LoggerFactory.getLogger(this.getClass());
@@ -143,7 +144,7 @@ public class PrefsServlet extends ServiceServlet {
                 try {
                     jobj = new JSONObject(body);
 
-                    Map<String, String> map = new HashMap<String, String>();
+                    Map<String, String> map = new HashMap<>();
 
                     for (Iterator<String> it = jobj.keys(); it.hasNext(); ) {
                         String key = it.next();
@@ -163,7 +164,7 @@ public class PrefsServlet extends ServiceServlet {
                     return;
                 }
             } else if (request.getContentType().startsWith("application/x-www-form-urlencoded")) {
-                Map<String, String> map = new HashMap<String, String>();
+                Map<String, String> map = new HashMap<>();
 
                 Enumeration<String> names = request.getParameterNames();
 

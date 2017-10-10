@@ -54,7 +54,6 @@ import uk.ac.ebi.biostd.webapp.server.mng.FileManager;
 public class ToolsServlet extends ServiceServlet {
 
     private static final long serialVersionUID = 1L;
-    ;
     private static Logger log = LoggerFactory.getLogger(ToolsServlet.class);
     private volatile boolean moreWorkToDo = true;
 
@@ -753,7 +752,7 @@ public class ToolsServlet extends ServiceServlet {
         int blockSz = 100;
 
         ThreadPoolExecutor pool = new ThreadPoolExecutor(5, 5, 60, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>());
+                new LinkedBlockingQueue<>());
         pool.allowCoreThreadTimeOut(true);
 
         int offset = 0;
@@ -851,7 +850,7 @@ public class ToolsServlet extends ServiceServlet {
         log.info("Finished regenerating json files!");
     }
 
-    private static enum Operation {
+    private enum Operation {
         RELINK_DROPBOXES,
         FIX_SECRET_KEY,
         FIX_FILE_TYPE,
@@ -861,7 +860,7 @@ public class ToolsServlet extends ServiceServlet {
         REFRESH_USERS,
         UPDATE_USER_DIR_LAYOUT,
         REVERSE_USER_DIR_LAYOUT,
-        REGENERATE_JSON;
+        REGENERATE_JSON
     }
 
     public class RegenerateJsonOuputRunnable implements Runnable {

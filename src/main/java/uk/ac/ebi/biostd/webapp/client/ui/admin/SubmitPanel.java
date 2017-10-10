@@ -287,7 +287,7 @@ class ProgressPanel extends VLayout implements ClickHandler {
         this.cancelHndlr = cancelHndlr;
     }
 
-    static interface CancelHandler {
+    interface CancelHandler {
 
         void onCancel();
     }

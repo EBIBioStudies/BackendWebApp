@@ -278,7 +278,7 @@ public class FileManagerImpl implements FileManager {
 
         try (
                 InputStream fis = zf.getInputStream(ze);
-                OutputStream fos = new FileOutputStream(outFile);
+                OutputStream fos = new FileOutputStream(outFile)
         ) {
 
             int nread;
@@ -296,7 +296,7 @@ public class FileManagerImpl implements FileManager {
 
         try (
                 InputStream fis = zf.getInputStream(ze);
-                OutputStream fos = Files.newOutputStream(outFile);
+                OutputStream fos = Files.newOutputStream(outFile)
         ) {
 
             int nread;

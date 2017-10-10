@@ -35,7 +35,7 @@ public interface LogNode {
 
     void append(LogNode rootNode);
 
-    static enum Level {
+    enum Level {
         ERROR(5),
         WARN(4),
         SUCCESS(3),

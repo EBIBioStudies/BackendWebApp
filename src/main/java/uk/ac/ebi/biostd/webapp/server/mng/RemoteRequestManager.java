@@ -22,7 +22,7 @@ import java.util.TreeMap;
 
 public class RemoteRequestManager {
 
-    private final Map<String, RemoteRequestListener> lsnrs = new TreeMap<String, RemoteRequestListener>();
+    private final Map<String, RemoteRequestListener> lsnrs = new TreeMap<>();
 
     public void processUpload(ServiceRequest upReq, PrintWriter printWriter) {
         try {

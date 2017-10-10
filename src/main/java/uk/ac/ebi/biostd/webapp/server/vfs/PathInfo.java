@@ -134,7 +134,7 @@ public class PathInfo {
 
         } else if (GROUP_VIRT_DIR.equals(frstComp)) {
 
-            Collection<UserGroup> grps = new ArrayList<UserGroup>();
+            Collection<UserGroup> grps = new ArrayList<>();
 
             if (user.getGroups() != null) {
                 for (UserGroup g : user.getGroups()) {

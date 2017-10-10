@@ -28,8 +28,6 @@ public final class ROJSLogNode extends JavaScriptObject implements LogNode {
         super();
     }
 
-    ;
-
     public static ROJSLogNode convert(String txt) {
         return JsonUtils.safeEval(txt);
     }
@@ -74,7 +72,7 @@ public final class ROJSLogNode extends JavaScriptObject implements LogNode {
             return null;
         }
 
-        return new ListOnJsArray<ROJSLogNode>(snds);
+        return new ListOnJsArray<>(snds);
     }
 
     @Override

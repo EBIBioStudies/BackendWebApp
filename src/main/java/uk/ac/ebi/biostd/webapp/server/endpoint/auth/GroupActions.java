@@ -243,7 +243,7 @@ public class GroupActions {
 
         Collection<UserGroup> allGrps = BackendConfig.getServiceManager().getSecurityManager().getGroups();
 
-        List<UserGroup> groups = new ArrayList<UserGroup>();
+        List<UserGroup> groups = new ArrayList<>();
 
         User usr = sess.getUser();
 

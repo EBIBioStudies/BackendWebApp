@@ -37,6 +37,7 @@ public class NewDMPanel extends CaptionPanel {
     private final Hidden statusInput = new Hidden();
     private final RemoveListener remListener;
     private int order;
+
     NewDMPanel(int n, RemoveListener rml) {
         remListener = rml;
         order = n;

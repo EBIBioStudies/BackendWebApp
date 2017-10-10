@@ -1,7 +1,7 @@
-#Bio Studies Backend
+# Bio Studies Backend
 Java application that support bio studies data submission thought http web services.
 
-##Coding standards
+## Coding standards
 Project follow google [java coding standards](https://google.github.io/styleguide/javaguide.html)
 
 - [Eclipse formatter](https://github.com/google/styleguide/blob/gh-pages/eclipse-java-google-style.xml)
