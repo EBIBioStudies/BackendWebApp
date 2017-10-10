@@ -64,7 +64,7 @@ public class TagSubscriptionProcessor implements Runnable {
             return;
         }
 
-        Set<Long> tgIds = new HashSet<Long>();
+        Set<Long> tgIds = new HashSet<>();
 
         for (SubmissionTagRef tr : tags) {
             Tag t = tr.getTag();
@@ -98,7 +98,7 @@ public class TagSubscriptionProcessor implements Runnable {
 
     private static synchronized BlockingQueue<NotificationRequest> getQueue() {
         if (queue == null) {
-            queue = new LinkedBlockingQueue<TagSubscriptionProcessor.NotificationRequest>();
+            queue = new LinkedBlockingQueue<>();
 
             new Thread(new TagSubscriptionProcessor(), "TagNotifier").start();
         }

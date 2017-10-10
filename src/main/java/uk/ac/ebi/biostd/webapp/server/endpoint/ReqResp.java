@@ -28,6 +28,7 @@ public class ReqResp {
     private Response resp;
     private HttpServletRequest srltRequest;
     private HttpServletResponse srltResponse;
+
     public ReqResp(HttpServletRequest request, HttpServletResponse response) throws IOException {
         srltRequest = request;
         srltResponse = response;

@@ -33,7 +33,6 @@ import uk.ac.ebi.biostd.webapp.server.util.ServletContextParamPool;
 
 /**
  * Application Lifecycle Listener implementation class WebAppInit
- *
  */
 
 public class WebAppInit implements ServletContextListener {

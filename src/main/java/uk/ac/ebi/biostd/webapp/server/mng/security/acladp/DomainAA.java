@@ -1,7 +1,6 @@
 package uk.ac.ebi.biostd.webapp.server.mng.security.acladp;
 
 import javax.persistence.EntityManager;
-
 import uk.ac.ebi.biostd.idgen.Domain;
 
 public class DomainAA extends AbstractAA {

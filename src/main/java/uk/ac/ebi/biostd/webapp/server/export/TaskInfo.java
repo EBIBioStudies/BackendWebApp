@@ -36,7 +36,7 @@ public class TaskInfo extends TimerTask {
 
     private int periodMin = -1;
 
-    private Map<String, Long> lockMap = new HashMap<String, Long>();
+    private Map<String, Long> lockMap = new HashMap<>();
 
     private boolean enqueued;
 

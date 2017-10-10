@@ -83,13 +83,13 @@ public class SecurityManagerImpl implements SecurityManager {
     private User anonUser;
 
     private Collection<ACR> systemACR;
-    private Map<Long, UserGroup> groupMap = new HashMap<Long, UserGroup>();
-    private Map<Long, User> userMap = new HashMap<Long, User>();
-    private Map<String, User> userEmailMap = new HashMap<String, User>();
-    private Map<String, User> userLoginMap = new HashMap<String, User>();
-    private Map<String, User> userSSOSubjectMap = new HashMap<String, User>();
-    private Map<String, UserGroup> groupNameMap = new HashMap<String, UserGroup>();
-    private Map<Long, PermissionProfile> profileMap = new HashMap<Long, PermissionProfile>();
+    private Map<Long, UserGroup> groupMap = new HashMap<>();
+    private Map<Long, User> userMap = new HashMap<>();
+    private Map<String, User> userEmailMap = new HashMap<>();
+    private Map<String, User> userLoginMap = new HashMap<>();
+    private Map<String, User> userSSOSubjectMap = new HashMap<>();
+    private Map<String, UserGroup> groupNameMap = new HashMap<>();
+    private Map<Long, PermissionProfile> profileMap = new HashMap<>();
 
 
     public SecurityManagerImpl() {
@@ -111,7 +111,7 @@ public class SecurityManagerImpl implements SecurityManager {
     private void loadCache() {
         EntityManager em = BackendConfig.getEntityManagerFactory().createEntityManager();
         try {
-            systemACR = new ArrayList<ACR>();
+            systemACR = new ArrayList<>();
 
             groupMap.clear();
             userMap.clear();
@@ -353,7 +353,7 @@ public class SecurityManagerImpl implements SecurityManager {
             List<AuthorizationTemplate> tpls = ctq.getResultList();
 
             if (tpls.size() == 1) {
-                newSysACR = new ArrayList<UserACR>();
+                newSysACR = new ArrayList<>();
 
                 AuthorizationTemplate tpl = tpls.get(0);
 
@@ -508,7 +508,7 @@ public class SecurityManagerImpl implements SecurityManager {
             List<AuthorizationTemplate> tpls = ctq.getResultList();
 
             if (tpls.size() == 1) {
-                newSysACR = new ArrayList<GroupACR>();
+                newSysACR = new ArrayList<>();
 
                 AuthorizationTemplate tpl = tpls.get(0);
 
@@ -585,7 +585,7 @@ public class SecurityManagerImpl implements SecurityManager {
 
     @Override
     public synchronized void removeExpiredUsers() {
-        List<Long> expUsers = new ArrayList<Long>();
+        List<Long> expUsers = new ArrayList<>();
 
         long now = System.currentTimeMillis();
 
@@ -666,7 +666,7 @@ public class SecurityManagerImpl implements SecurityManager {
         }
 
         if (u.getGroups() != null) {
-            Set<UserGroup> grps = new HashSet<UserGroup>();
+            Set<UserGroup> grps = new HashSet<>();
 
             for (UserGroup g : u.getGroups()) {
                 grps.add(detachGroup(g, true));
@@ -695,7 +695,7 @@ public class SecurityManagerImpl implements SecurityManager {
         profileMap.put(np.getId(), np);
 
         if (pr.getPermissions() != null && pr.getPermissions().size() > 0) {
-            Collection<Permission> pms = new ArrayList<Permission>(pr.getPermissions().size());
+            Collection<Permission> pms = new ArrayList<>(pr.getPermissions().size());
 
             for (Permission pm : pr.getPermissions()) {
                 Permission npm = new Permission();
@@ -710,7 +710,7 @@ public class SecurityManagerImpl implements SecurityManager {
         }
 
         if (pr.getProfiles() != null && pr.getProfiles().size() > 0) {
-            Collection<PermissionProfile> pps = new ArrayList<PermissionProfile>(pr.getProfiles().size());
+            Collection<PermissionProfile> pps = new ArrayList<>(pr.getProfiles().size());
 
             for (PermissionProfile pp : pr.getProfiles()) {
                 pps.add(detachProfile(pp));
@@ -744,7 +744,7 @@ public class SecurityManagerImpl implements SecurityManager {
         groupNameMap.put(ug.getName(), ug);
 
         if (g.getUsers() != null && g.getUsers().size() > 0 && ldUsr) {
-            Set<User> usrs = new HashSet<User>();
+            Set<User> usrs = new HashSet<>();
 
             for (User u : g.getUsers()) {
                 usrs.add(detachUser(u));
@@ -754,7 +754,7 @@ public class SecurityManagerImpl implements SecurityManager {
         }
 
         if (g.getGroups() != null && g.getGroups().size() > 0) {
-            Collection<UserGroup> grps = new ArrayList<UserGroup>(g.getGroups().size());
+            Collection<UserGroup> grps = new ArrayList<>(g.getGroups().size());
 
             for (UserGroup sg : g.getGroups()) {
                 grps.add(detachGroup(sg, ldUsr));
@@ -1414,7 +1414,8 @@ public class SecurityManagerImpl implements SecurityManager {
    if( sfx != null && sfx.length() == 0 )
     sfx=null;
 
-   q = em.createQuery("select g from "+IdGen.class.getName()+" g where ( (:prefix is null AND g.prefix is null ) OR g.prefix=:prefix) "
+   q = em.createQuery("select g from "+IdGen.class.getName()+" g where ( (:prefix is null AND g.prefix is null ) OR g
+   .prefix=:prefix) "
      + "AND ( (:suffix is null AND g.suffix is null ) OR g.suffix=:suffix)");
    
    q.setParameter("prefix", pfx);

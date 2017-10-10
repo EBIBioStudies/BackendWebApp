@@ -31,7 +31,7 @@ public class TagRefParser {
             return Collections.emptyList();
         }
 
-        List<TagRef> res = new ArrayList<TagRef>();
+        List<TagRef> res = new ArrayList<>();
 
         int bpos = 0;
 

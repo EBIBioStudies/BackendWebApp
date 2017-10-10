@@ -30,7 +30,7 @@ public class TaskConfig {
 
     private final String taskName;
 
-    private final Map<String, Map<String, String>> outputParameters = new HashMap<String, Map<String, String>>();
+    private final Map<String, Map<String, String>> outputParameters = new HashMap<>();
 
     private Long limit;
     private Integer slice;

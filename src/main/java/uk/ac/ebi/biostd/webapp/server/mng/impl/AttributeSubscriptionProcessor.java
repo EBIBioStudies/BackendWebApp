@@ -88,7 +88,7 @@ public class AttributeSubscriptionProcessor implements Runnable {
 
     private static synchronized BlockingQueue<ProcessorRequest> getQueue() {
         if (queue == null) {
-            queue = new LinkedBlockingQueue<ProcessorRequest>();
+            queue = new LinkedBlockingQueue<>();
             new Thread(new AttributeSubscriptionProcessor(), "AttributeSubscriptionProcessor").start();
         }
 

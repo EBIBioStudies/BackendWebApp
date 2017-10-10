@@ -22,6 +22,7 @@ public class ControlMessage {
     private final Type type;
     private final Object subject;
     private Throwable exception;
+
     public ControlMessage(String tName, Type type, Object subject) {
         super();
         this.type = type;

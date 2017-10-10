@@ -23,8 +23,8 @@ import java.util.TreeMap;
 public class ServiceRequest {
 
     private String command;
-    private Map<String, String> params = new TreeMap<String, String>();
-    private Map<String, File> files = new HashMap<String, File>();
+    private Map<String, String> params = new TreeMap<>();
+    private Map<String, File> files = new HashMap<>();
 
     public String getHandlerName() {
         return command;

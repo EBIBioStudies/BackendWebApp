@@ -30,7 +30,7 @@ public class ExporterStat {
     private int threads;
     private int errorRecoverCount = 0;
 
-    private Map<String, Integer> outStat = new HashMap<String, Integer>();
+    private Map<String, Integer> outStat = new HashMap<>();
 
     public ExporterStat(Date now) {
         this.now = now;

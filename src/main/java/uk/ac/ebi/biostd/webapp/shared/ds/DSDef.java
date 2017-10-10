@@ -24,7 +24,7 @@ import java.util.List;
 public class DSDef {
 
     private DSField keyField;
-    private List<DSField> fields = new ArrayList<DSField>(10);
+    private List<DSField> fields = new ArrayList<>(10);
 
 
     public void addField(DSField fld) {

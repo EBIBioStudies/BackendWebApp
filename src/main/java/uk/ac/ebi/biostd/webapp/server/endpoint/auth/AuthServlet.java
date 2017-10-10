@@ -129,8 +129,7 @@ public class AuthServlet extends ServiceServlet {
     }
 
     /**
-     * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
-     *      response)
+     * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
      */
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response, Session sess)
@@ -438,7 +437,7 @@ public class AuthServlet extends ServiceServlet {
         String[] auxP = prms.getParameters(AuxParameter);
 
         if (auxP != null && auxP.length > 0) {
-            aux = new ArrayList<String[]>(auxP.length);
+            aux = new ArrayList<>(auxP.length);
 
             for (String s : auxP) {
                 int pos = s.indexOf(AuxParameterSeparator);

@@ -45,8 +45,8 @@ public class GreetingServiceImpl extends RemoteServiceServlet implements Greetin
     }
 
     /**
-     * Escape an html string. Escaping data received from the client helps to
-     * prevent cross-site script vulnerabilities.
+     * Escape an html string. Escaping data received from the client helps to prevent cross-site script
+     * vulnerabilities.
      *
      * @param html the html string to escape
      * @return the escaped string

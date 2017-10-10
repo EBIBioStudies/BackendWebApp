@@ -223,7 +223,7 @@ public class FormattingOutputModule implements OutputModule {
             tmpStream.close();
         }
 
-        Map<String, List<String>> hdrs = new HashMap<String, List<String>>();
+        Map<String, List<String>> hdrs = new HashMap<>();
 
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 

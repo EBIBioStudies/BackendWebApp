@@ -1,9 +1,7 @@
 package uk.ac.ebi.biostd.webapp.server.mng.security.acladp;
 
 import java.util.Collection;
-
 import javax.persistence.EntityManager;
-
 import uk.ac.ebi.biostd.authz.ACR;
 import uk.ac.ebi.biostd.authz.ACR.Permit;
 import uk.ac.ebi.biostd.authz.AccessTag;

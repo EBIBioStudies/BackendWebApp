@@ -76,7 +76,7 @@ public class SingleSubmissionServlet extends ServiceServlet {
                     HttpAccept accp = new HttpAccept(accpt);
 
                     int mtch = accp
-                            .bestMatch(Arrays.asList(new String[]{"text/xml", "application/xml", "application/json"}));
+                            .bestMatch(Arrays.asList("text/xml", "application/xml", "application/json"));
 
                     if (mtch == 0 || mtch == 1) {
                         format = "xml";

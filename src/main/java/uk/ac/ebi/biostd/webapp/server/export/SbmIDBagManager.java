@@ -98,7 +98,7 @@ public class SbmIDBagManager {
 
             if (log.isDebugEnabled()) {
                 log.debug("Requested submissions range. Offset {} out of {} ({}%)",
-                        new Object[]{offset, submissionIds.length, offset * 100 / submissionIds.length});
+                        offset, submissionIds.length, offset * 100 / submissionIds.length);
             }
 
             Range r = new Range(submissionIds[offset], 0);

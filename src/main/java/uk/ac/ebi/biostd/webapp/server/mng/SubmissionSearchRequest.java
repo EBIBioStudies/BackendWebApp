@@ -153,7 +153,7 @@ public class SubmissionSearchRequest {
         this.ownerId = ownerId;
     }
 
-    public static enum SortFields {
+    public enum SortFields {
         CTime,
         MTime,
         RTime

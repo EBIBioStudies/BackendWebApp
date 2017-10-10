@@ -30,7 +30,7 @@ public interface FSProvider {
 
     boolean isDirectory(Path outDir) throws IOException;
 
-    PrintStream createPrintStream(Path resolve, String string) throws UnsupportedEncodingException, IOException;
+    PrintStream createPrintStream(Path resolve, String string) throws IOException;
 
     void move(Path tmpDir, Path tmpOutDir) throws IOException;
 

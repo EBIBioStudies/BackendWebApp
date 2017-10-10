@@ -551,7 +551,7 @@ public class DirServlet extends ServiceServlet {
 
                     jsGrp.put("files", jsGrps);
 
-                    Collection<UserGroup> grps = new ArrayList<UserGroup>();
+                    Collection<UserGroup> grps = new ArrayList<>();
 
                     for (UserGroup g : user.getGroups()) {
                         if (g.isProject() && BackendConfig.getServiceManager().getSecurityManager()
@@ -888,7 +888,7 @@ public class DirServlet extends ServiceServlet {
         public Collection<Node> getSubnodes() throws IOException {
 
             try (Stream<Path> list = Files.list(file)) {
-                ArrayList<Node> sbn = new ArrayList<DirServlet.Node>();
+                ArrayList<Node> sbn = new ArrayList<>();
 
                 list.forEach(f -> sbn.add(new FileNode(f)));
 
@@ -977,7 +977,7 @@ public class DirServlet extends ServiceServlet {
 
         @Override
         public Collection<Node> getSubnodes() {
-            ArrayList<Node> sbn = new ArrayList<DirServlet.Node>(files.size() + dirs.size());
+            ArrayList<Node> sbn = new ArrayList<>(files.size() + dirs.size());
 
             sbn.addAll(dirs.values());
             sbn.addAll(files);

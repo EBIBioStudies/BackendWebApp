@@ -1,10 +1,8 @@
 package uk.ac.ebi.biostd.webapp.server.mng.security.acladp;
 
 import javax.persistence.EntityManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import uk.ac.ebi.biostd.authz.ACR;
 import uk.ac.ebi.biostd.authz.ACR.Permit;
 import uk.ac.ebi.biostd.authz.AuthzObject;

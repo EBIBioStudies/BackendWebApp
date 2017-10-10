@@ -72,7 +72,7 @@ public class UserAuxXMLFormatter {
         SAXParserFactory spf = SAXParserFactory.newInstance();
         spf.setNamespaceAware(false);
 
-        List<String[]> res = new ArrayList<String[]>();
+        List<String[]> res = new ArrayList<>();
 
         SAXParser saxParser;
         try {
@@ -99,7 +99,6 @@ public class UserAuxXMLFormatter {
 
         private CEl cElem = CEl.OTHER;
 
-        ;
         private String[] tuple;
         private StringBuilder sb = new StringBuilder();
         private List<String[]> collector;

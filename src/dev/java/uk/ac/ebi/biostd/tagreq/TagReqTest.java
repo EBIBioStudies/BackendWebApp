@@ -65,7 +65,8 @@ public class TagReqTest {
         System.out.println("--------------------");
 
         q = em.createQuery(
-                "SELECT count(s) FROM Submission s where s.id not in (SELECT ss.id FROM Submission ss JOIN ss.accessTags t where t.name='Public') ",
+                "SELECT count(s) FROM Submission s where s.id not in (SELECT ss.id FROM Submission ss JOIN ss"
+                        + ".accessTags t where t.name='Public') ",
                 Submission.class);
 
         System.out.println("Unpublic count: " + q.getSingleResult());
