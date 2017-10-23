@@ -9,4 +9,4 @@ Project follow google [java coding standards](https://google.github.io/styleguid
 
 ## Generating artifact
 
-run `ant build` and generted artifact will be available under libs folder.
+run `ant build` and generated artifact will be available under libs folder.
