@@ -19,8 +19,6 @@
 
   <target name="build">
 
-    <fail unless="gwt.home">gwt.home property should point to GWT SDK</fail>
-
     <delete dir="${build}"/>
 
     <mkdir dir="${build}"/>
@@ -36,12 +34,7 @@
 
     <path id="master-classpath">
       <fileset refid="maven.classpath"></fileset>
-      <filelist>
-        <file name="${gwt.home}/gwt-servlet.jar"/>
-        <file name="${gwt.home}/gwt-dev.jar"/>
-      </filelist>
     </path>
-
     <javac destdir="${build}/WEB-INF/classes" classpathref="master-classpath" source="1.8" target="1.8" debug="on"
       nowarn="on" includeAntRuntime="false">
       <src path="${src}"/>
@@ -59,24 +52,8 @@
       <fileset dir="${res}"/>
     </copy>
 
-    <java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
-      <classpath>
-        <pathelement location="${src}"/>
-        <path refid="master-classpath"/>
-        <file file="${gwt.home}/gwt-user.jar"/>
-        <file file="${gwt.home}/validation-api-1.0.0.GA.jar"/>
-        <file file="${gwt.home}/validation-api-1.0.0.GA-sources.jar"/>
-      </classpath>
-      <jvmarg value="-Xmx1200M"/>
-      <arg value="-war"/>
-      <arg value="${build}"/>
-      <arg value="uk.ac.ebi.biostd.BioStdWebApp"/>
-    </java>
-
     <copy todir="${build}/WEB-INF/lib">
       <fileset refid="maven.classpath"/>
-      <file name="${gwt.home}/gwt-servlet.jar"/>
-      <!-- This mapper strips off all leading directory information -->
       <mapper type="flatten"/>
     </copy>
 
