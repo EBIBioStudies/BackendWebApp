@@ -11,3 +11,5 @@
 /src/dev/resources
 /.idea/
 /*.iml
+/out/
+/.gradle/
