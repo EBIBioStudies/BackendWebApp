@@ -34,13 +34,6 @@ public class RemoteRequestManager {
 
             if (lsnr != null) {
                 lsnr.processRequest(upReq, printWriter);
-
-                // if( lsnr.processUpload(upReq,sess,printWriter) && upReq.getFiles() !=
-                // null )
-                // {
-                // for( File f : upReq.getFiles().values() )
-                // f.delete();
-                // }
             }
 
         } finally {

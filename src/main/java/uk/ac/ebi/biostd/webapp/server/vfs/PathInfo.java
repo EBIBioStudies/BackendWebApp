@@ -38,15 +38,6 @@ public class PathInfo {
     private UserGroup group;
     private Collection<UserGroup> groups;
 
-    // public PathInfo resolve( PathInfo relPI, User user )
-// {
-//  PathInfo npi = new PathInfo();
-//
-//  if( getTarget() == PathTarget.ROOT )
-//  {
-//
-//  }
-// }
     public static PathInfo getPathInfo(String path, User user) throws InvalidPathException {
         if (path == null) {
             PathInfo pi = new PathInfo();
@@ -277,14 +268,12 @@ public class PathInfo {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-
         sb.append("Target: ").append(target.name()).append("\n");
         sb.append("Virtual path: ").append(virtPath).append("\n");
         sb.append("Relative path: ").append(relPath).append("\n");
         sb.append("Real path: ").append(realPath).append("\n");
         sb.append("Real base path: ").append(realBasePath).append("\n");
         sb.append("Virtual base path: ").append(virtBasePath).append("\n");
-
         return sb.toString();
     }
 

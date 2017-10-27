@@ -102,7 +102,7 @@ public class AccountActivation {
 
         try {
             if (txtFile != null) {
-                textBody = txtFile.readToString(Charsets.UTF_8); //FileUtil.readFile(txtFile.toFile(), Charsets.UTF_8);
+                textBody = txtFile.readToString(Charsets.UTF_8);
 
                 if (url != null) {
                     textBody = textBody.replaceAll(BackendConfig.ActivateURLPlaceHolderRx, url);
@@ -139,7 +139,7 @@ public class AccountActivation {
             }
 
             if (htmlFile != null) {
-                htmlBody = htmlFile.readToString(Charsets.UTF_8);//FileUtil.readFile(htmlFile.toFile(), Charsets.UTF_8);
+                htmlBody = htmlFile.readToString(Charsets.UTF_8);
 
                 if (url != null) {
                     htmlBody = htmlBody.replaceAll(BackendConfig.ActivateURLPlaceHolderRx, url);

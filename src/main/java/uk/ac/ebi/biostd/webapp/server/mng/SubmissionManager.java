@@ -36,16 +36,6 @@ public interface SubmissionManager {
 
     SubmissionReport createSubmission(byte[] data, DataFormat fmt, String charset, Operation op, User usr,
             boolean validateOnly, boolean ignoreAbsFiles);
- 
- /*
- LogNode createJSONSubmission(String txt, User usr);
- LogNode createXMLSubmission(String txt, User usr);
- LogNode createPageTabSubmission(String txt, User usr);
- 
- LogNode updateJSONSubmission(String txt, User usr);
- LogNode updateXMLSubmission(String txt, User usr);
- LogNode updatePageTabSubmission(String txt, User usr);
-*/
 
     LogNode updateSubmissionMeta(String sbmAcc, Collection<TagRef> tags, Set<String> access, long rTime, User user);
 

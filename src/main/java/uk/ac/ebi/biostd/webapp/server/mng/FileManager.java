@@ -29,7 +29,6 @@ public interface FileManager {
 
     FilePointer checkFileExist(String name, PathInfo rootPI, User usr, Submission oldSbm) throws InvalidPathException;
 
-
     void moveToHistory(Submission submission) throws IOException;
 
     void moveDirectory(Path src, Path dst) throws IOException;

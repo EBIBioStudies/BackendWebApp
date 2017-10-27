@@ -24,5 +24,4 @@ public interface AccessionManager {
     String getNextAccNo(String prefix, String suffix, User usr) throws SecurityException, ServiceException;
 
     long incrementIdGen(String prefix, String suffix, int num, User usr) throws SecurityException, ServiceException;
-
 }

@@ -62,8 +62,7 @@ public class SearchMapper {
                 .field()
                 .analyze(Analyze.NO)
                 .index(Index.YES)
-                .store(Store.NO)
-        ;
+                .store(Store.NO);
 
         mapping.entity(Submission.class)
                 .indexed()
@@ -108,9 +107,7 @@ public class SearchMapper {
                 .store(Store.NO)
                 .property(ownerField, ElementType.METHOD)
                 .indexEmbedded()
-                .includePaths(emailField, numidField)
-
-        ;
+                .includePaths(emailField, numidField);
 
         return mapping;
     }

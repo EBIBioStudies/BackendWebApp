@@ -36,20 +36,6 @@ import uk.ac.ebi.biostd.webapp.server.util.ServletContextParamPool;
  */
 
 public class WebAppInit implements ServletContextListener {
-// public static final String DefaultName = "_default_";
-
-    static final String ApplicationConfigNode = "BioStdWebApp";
-    static final String ApplicationBasePathParameter = "appBasePath";
-
-    static final String DBParamPrefix = "db.";
-    static final String ServiceParamPrefix = "biostd.";
-    static final String TaskParamPrefix = "export.";
-    static final String EmailParamPrefix = "email.";
-    static final String OutputParamPrefix = "output";
-
-    static final String OutputClassParameter = "class";
-
-
     private Logger log = null;
 
 
@@ -57,10 +43,6 @@ public class WebAppInit implements ServletContextListener {
         if (log == null) {
             log = LoggerFactory.getLogger(getClass());
         }
-
-//  java.util.logging.Logger.getLogger("org.hibernate").setLevel(Level.WARNING);
-//  java.util.logging.Logger.getLogger("com.mchange").setLevel(Level.WARNING);
-
     }
 
     /**
@@ -85,7 +67,6 @@ public class WebAppInit implements ServletContextListener {
                 stat.close();
                 conn.close();
             } catch (SQLException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
 
@@ -117,50 +98,10 @@ public class WebAppInit implements ServletContextListener {
 
     public void contextInitializedUnsafe(ServletContextEvent ctxEv) throws ConfigurationException {
         ServletContext ctx = ctxEv.getServletContext();
-
         BackendConfig.setInstanceId(ctx.getContextPath().hashCode());
         BackendConfig.setConfigurationManager(new ConfigurationManager(new ServletContextParamPool(ctx)));
-
         BackendConfig.getConfigurationManager().loadConfiguration();
-
         BackendConfig.setConfigValid(true);
-
-  
-/*
-  
-  String dataDir = BackendConfig.getUserGroupDropboxPath().toString();
-  String dataMount = BackendConfig.getDataMountPath();
-  
-
-  if( dataMount == null )
-   throw new RuntimeException(BackendConfig.DataMountPathParameter+" parameter is not set");
-  
-  resRoot.createWebResourceSet(ResourceSetType.POST, dataMount, dataDir, null, "/");
-  
-  StandardRoot davRoot = new StandardRoot( new ContextWrapper(resRoot.getContext(), dataDir ) );
-  davRoot.setCachingAllowed(false);
-  
-  try
-  {
-   davRoot.start();
-  }
-  catch(LifecycleException e)
-  {
-   // TODO Auto-generated catch block
-   e.printStackTrace();
-  }
-  
-  ctx.setAttribute("davRoot", davRoot);
-  
-  ServletRegistration.Dynamic dn = ctx.addServlet("WebDAV",WebdavServlet.class);
-
-  dn.setAsyncSupported(true);
-  dn.setInitParameter(BackendConfig.DataMountPathParameter, dataMount);
-  dn.setInitParameter("listings", "true");
-  dn.setInitParameter("readonly", "false");
-  dn.addMapping(dataMount.endsWith("/")?dataMount+'*':dataMount+"/*");
-  
-  */
     }
 
 
